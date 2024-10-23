@@ -32,6 +32,7 @@
     - [Other types to know about](#other-types-to-know-about)
       - [void](#void)
     - [object](#object)
+  - [Object Types](#object-types-1)
   - [Found in codebase](#found-in-codebase)
     - [Tables](#tables)
     - [React function component](#react-function-component)
@@ -664,6 +665,46 @@ In JavaScript, a function that doesn’t return any value will implicitly return
 The special type object refers to any value that isn’t a primitive (`string`, `number`, `bigint`, `boolean`, `symbol`, `null`, or `undefined`). This is different from the empty object type `{ }`, and also different from the global type `Object`. It’s very likely you will never use `Object`.
 
 Note that in JavaScript, function values are objects: They have properties, have `Object.prototype` in their prototype chain, are `instanceof Object`, you can call `Object.keys` on them, and so on. For this reason, function types are considered to be `object`s in TypeScript.
+
+## Object Types
+
+In JavaScript, the fundamental way that we group and pass around data is through objects. In TypeScript, we represent those through object types.
+
+As we’ve seen, they can be anonymous:
+
+```ts
+function greet(person: { name: string; age: number }) {
+  return "Hello " + person.name;
+}
+```
+
+or they can be named by using either an interface:
+
+```ts
+interface Person {
+  name: string;
+  age: number;
+}
+ 
+function greet(person: Person) {
+  return "Hello " + person.name;
+}
+```
+
+or a type alias:
+
+```ts
+type Person = {
+  name: string;
+  age: number;
+};
+ 
+function greet(person: Person) {
+  return "Hello " + person.name;
+}
+```
+
+In all three examples above, we’ve written functions that take objects that contain the property `name` (which must be a `string`) and `age` (which must be a `number`).
 
 ## Found in codebase
 
