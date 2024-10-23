@@ -24,7 +24,17 @@
     - [Type Assertions](#type-assertions)
     - [Literal Types](#literal-types)
       - [Literal interfaces](#literal-interfaces)
+  - [Functions (advanced)](#functions-advanced)
+    - [Function Type Expressions](#function-type-expressions)
+    - [Call Signatures](#call-signatures)
+    - [Construct Signatures](#construct-signatures)
+    - [Generic Functions](#generic-functions)
+    - [Other types to know about](#other-types-to-know-about)
+      - [void](#void)
+    - [object](#object)
   - [Found in codebase](#found-in-codebase)
+    - [Tables](#tables)
+    - [React function component](#react-function-component)
 
 
 This markdown file is written based on TypeScript official website documentations.
@@ -429,7 +439,7 @@ You can also use the angle-bracket syntax (except if the code is in a .tsx file)
 const myCanvas = <HTMLCanvasElement>document.getElementById("main_canvas");
 ```
 
-> **Note:** Reminder: Because type assertions are removed at compile-time, there is no runtime checking associated with a type assertion. There won’t be an exception or null generated if the type assertion is wrong.
+> **Note:** Because type assertions are removed at compile-time, there is no runtime checking associated with a type assertion. There won’t be an exception or null generated if the type assertion is wrong.
 
 TypeScript only allows type assertions which convert to a more specific or less specific version of a type. This rule prevents “impossible” coercions like:
 
@@ -507,7 +517,157 @@ There’s one more kind of literal type: boolean literals. There are only two bo
 
 #### Literal interfaces
 
+When you initialize a variable with an object, TypeScript assumes that the properties of that object might change values later. For example, if you wrote code like this:
+
+```ts
+const obj = { counter: 0 };
+if (someCondition) {
+  obj.counter = 1;
+}
+```
+
+TypeScript doesn’t assume the assignment of `1` to a field which previously had `0` is an error. Another way of saying this is that `obj.counter` must have the type `number`, not `0`, because types are used to determine both reading and writing behavior.
+
+The same applies to strings:
+
+```ts
+declare function handleRequest(url: string, method: "GET" | "POST"): void;
+ 
+const req = { url: "https://example.com", method: "GET" };
+handleRequest(req.url, req.method);
+// Argument of type 'string' is not assignable to parameter of type '"GET" | "POST"'.
+```
+
+In the above example `req.method` is inferred to be `string`, not `"GET"`. Because code can be evaluated between the creation of `req` and the call of `handleRequest` which could assign a new string like `"GUESS"` to `req.method`, TypeScript considers this code to have an error.
+
+There are two ways to work around this.
+
+1. You can change the inference by adding a type assertion in either location:
+
+```ts
+// Change 1:
+const req = { url: "https://example.com", method: "GET" as "GET" };
+// Change 2
+handleRequest(req.url, req.method as "GET");
+```
+
+Change 1 means “I intend for `req.method` to always have the literal type `"GET"`”, preventing the possible assignment of `"GUESS"` to that field after. Change 2 means “I know for other reasons that `req.method` has the value `"GET"`“.
+
+2. You can use as const to convert the entire object to be type literals:
+
+```ts
+const req = { url: "https://example.com", method: "GET" } as const;
+handleRequest(req.url, req.method);
+```
+
+The `as const` suffix acts like `const` but for the type system, ensuring that all properties are assigned the literal type instead of a more general version like `string` or `number`.
+
+## Functions (advanced)
+
+Functions are the basic building block of any application, whether they’re local functions, imported from another module, or methods on a class. They’re also values, and just like other values, TypeScript has many ways to describe how functions can be called. Let’s learn about how to write types that describe functions.
+
+### Function Type Expressions
+
+The simplest way to describe a function is with a function type expression. These types are syntactically similar to arrow functions:
+
+```ts
+function greeter(fn: (a: string) => void) {
+  fn("Hello, World");
+}
+ 
+function printToConsole(s: string) {
+  console.log(s);
+}
+ 
+greeter(printToConsole);
+```
+
+The syntax `(a: string) => void` means “a function with one parameter, named a, of type string, that doesn’t have a return value”. Just like with function declarations, if a parameter type isn’t specified, it’s implicitly any.
+
+> **Note:** Note that the parameter name is required. The function type `(string) => void` means “a function with a parameter named string of type `any`“!
+
+Of course, we can use a type alias to name a function type:
+
+```ts
+type GreetFunction = (a: string) => void;
+function greeter(fn: GreetFunction) {
+  // ...
+}
+```
+
+### Call Signatures
+
+### Construct Signatures
+
+### Generic Functions
+
+It’s common to write a function where the types of the input relate to the type of the output, or where the types of two inputs are related in some way. Let’s consider for a moment a function that returns the first element of an array:
+
+```ts
+function firstElement(arr: any[]) {
+  return arr[0];
+}
+```
+
+This function does its job, but unfortunately has the return type any. It’d be better if the function returned the type of the array element.
+
+In TypeScript, *generics* are used when we want to describe a correspondence between two values. We do this by declaring a *type parameter* in the function signature:
+
+```ts
+function firstElement<Type>(arr: Type[]): Type | undefined {
+  return arr[0];
+}
+```
+
+By adding a type parameter `Type` to this function and using it in two places, we’ve created a link between the input of the function (the array) and the output (the return value). Now when we call it, a more specific type comes out:
+
+```ts
+// s is of type 'string'
+const s = firstElement(["a", "b", "c"]);
+// n is of type 'number'
+const n = firstElement([1, 2, 3]);
+// u is of type undefined
+const u = firstElement([]);
+```
+
+We can use multiple type parameters as well. For example, a standalone version of `map` would look like this:
+
+```ts
+function map<Input, Output>(arr: Input[], func: (arg: Input) => Output): Output[] {
+  return arr.map(func);
+}
+ 
+// Parameter 'n' is of type 'string'
+// 'parsed' is of type 'number[]'
+const parsed = map(["1", "2", "3"], (n) => parseInt(n));
+```
+
+### Other types to know about
+
+There are some additional types you’ll want to recognize that appear often when working with function types. Like all types, you can use them everywhere, but these are especially relevant in the context of functions.
+
+#### void
+
+`void` represents the return value of functions which don’t return a value. It’s the inferred type any time a function doesn’t have any `return` statements, or doesn’t return any explicit value from those return statements:
+
+```ts
+// The inferred return type is void
+function noop() {
+  return;
+}
+```
+
+In JavaScript, a function that doesn’t return any value will implicitly return the value undefined. However, void and undefined are not the same thing in TypeScript.
+
+### object
+
+The special type object refers to any value that isn’t a primitive (`string`, `number`, `bigint`, `boolean`, `symbol`, `null`, or `undefined`). This is different from the empty object type `{ }`, and also different from the global type `Object`. It’s very likely you will never use `Object`.
+
+Note that in JavaScript, function values are objects: They have properties, have `Object.prototype` in their prototype chain, are `instanceof Object`, you can call `Object.keys` on them, and so on. For this reason, function types are considered to be `object`s in TypeScript.
+
 ## Found in codebase
+
+### Tables
 
 ```ts
 interface iTable {
@@ -541,4 +701,12 @@ The `data` field type definition is set to accept this format for the data array
     population: 1.2
   }
 ]
+```
+
+### React function component
+
+???
+
+```ts
+export const DepositHistory = ({ tradeAccess }: { tradeAccess: boolean }) => {}
 ```
