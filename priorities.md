@@ -1,7 +1,7 @@
 # Learning priorities
 
 + NextJS
-  + Pages router
+  + Page router
 + JavaScript
   + Request and Response APIs
 + React
