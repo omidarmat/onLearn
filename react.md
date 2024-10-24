@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
     - [Performance optimization tools](#performance-optimization-tools)
@@ -161,6 +161,7 @@
       - [The `memo` function](#the-memo-function)
       - [`memo` in practice](#memo-in-practice)
     - [Understanding `useMemo` and `useCallback`](#understanding-usememo-and-usecallback)
+      - [When to use `useMemo` and `useCallback`](#when-to-use-usememo-and-usecallback)
       - [`useMemo` in practice](#usememo-in-practice)
       - [`useCallback` in practice](#usecallback-in-practice)
 - [Project deployment](#project-deployment)
@@ -7148,7 +7149,77 @@ Let's analyse why that is.
 
 #### `memo` in practice
 
+We have a page that in it we show a list of blog posts, followed by a section where we have inserted a button that toggles the state of showing or hiding archived posts. Since there are about 30000 archived posts, the component responsible for rendering the archived posts is a slow one. Since this component is a **child component** of the whole page, it creates lag in the entire page. So if we start typing in the search bar, the letters that we type appear in the search bar with a considerable delay. This means that typing in the search bar updates the state, which causes the whole page component to re-render, which in turn, causes the archive component to re-render, which would be a pretty slow re-render and therefore, would slow down the whole page.
+
+So in this situation, the archive component is a perfect candidate for memoization. The way we do this, is to wrap the entire component function into React's `memo` function.
+
+```jsx
+const Archive = memo(function Archive({ show }) {
+  const [posts] = useState(() =>
+    Array.from({ length: 30000 }, () => createRandomPost())
+  );
+
+  const [showArchive, setShowArchive] = useState(show);
+
+  return;
+  // some jsx
+});
+```
+
+We call `memo` with a component as an argument, and the function will return a new component, so then we store it somewhere, in a variable called `Archive`, with the same name as the function. So `Archive` is now the memoized version of the original `Archive`. This will improve the situation. We can try this and confirm that there is no lag in the whole page's subsequent re-renders, because the `Archive` slow component is now memoized. So the `Archive` component does not re-render as long as the prop that it receives remains unchanged. So as long as the prop does not change, parent component re-renders won't trigger re-renders on the `Archive` component, and therefore, it will not create lag on the page.
+
+> **Note:** Something that can break this memoization, is to pass an object as prop to the `Archive` component, instead of a simple primitive boolean value (we passed `show={false}` as prop before). It means that we update the code above to something like this:
+
+```jsx
+const archiveOptions: {
+  show: false,
+  title: 'Post archive in addition to main posts'
+}
+
+return <Archive archiveOptions={archiveOptions}>
+```
+
+```jsx
+const Archive = memo(function Archive({ archiveOptions }) {
+  const [posts] = useState(() =>
+    Array.from({ length: 30000 }, () => createRandomPost())
+  );
+
+  const [showArchive, setShowArchive] = useState(archiveOptions.show);
+
+  return <h2>{archiveOptions.title}</h2>;
+});
+```
+
+> So again, the prop that the `Archive` component receives is the same object and it is not changed (apparently!), but the component is re-rendered. To see why, you should understand `useMemo` and `useCallback`.
+
 ### Understanding `useMemo` and `useCallback`
+
+In React, we know that everything is re-created on every render (including objects and funcitons that are defined within the component). So a new render, gets new functions and new objects even if they are the exact same ones as before.
+
+We also know that in JavaScript, two objects or functions that look the same, are actually different.
+
+Based on these two pieces of information, we can understand that if objects or functions are passed as props, the child component will always see them **as new props** on each re-render. So if props are different between re-renders, `memo` will not work. This is the issue that we have with `memo`.
+
+In summary, if we memoize a component but then we give it functions or objects as props, the component will always re-render anyway, regardless of being memoized. So there must a solution.
+
+We can make objects and functions stable. We need to memoize objects and functions, to make them stable (preserve) between re-renders. This way, unlike before, two identical memoized objects will now be strictly equal. To do this we can use `useMemo` and `useCallback`.
+
+`useMemo` is used to memoize values that we want to preserve between renders, and `useCallback` is used to memoize functions between rendes.
+
+> **Note:** `useCallback` is just a special case of `useMemo`.
+
+But what does memoization of values actually look like? The idea is similar to memoization discussed before. Values passed into `useMemo` and `useCallback` will be stored in memory (cache) and returned in subsequent re-renders, as long as dependencies (`inputs`) stay the same.
+
+So `useMemo` and `useCallback` have a dependancy array (like `useEffect`). When one dependancy changes, the value will be re-created.
+
+#### When to use `useMemo` and `useCallback`
+
+1. We mentioned that we need to make objects or functions stable in order to make the `memo` function work. In other words, if props are objects or functions, we need to memoize these props in order to prevent wasted renders.
+2. Memoizing values to avoide expensive re-calculations on every render. If your component re-renders everyime, React would have to recalculate it over and over again, each time there is a render. To fix this, you can preserver the result of the calculation across renders using the `useMemo` hook.
+3. Memoizing values that are used in dependency array of another hook. For instance, in order to avoid infinite `useEffect` loops.
+
+> **Note:** just like with `memo` function, it is important to not overuse these hooks. You should only use them for only the 3 usecases mentioned above.
 
 #### `useMemo` in practice
 

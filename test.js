@@ -51,3 +51,13 @@ function List() {
     </>
   );
 }
+
+const Archive = memo(function Archive({ archiveOptions }) {
+  const [posts] = useState(() =>
+    Array.from({ length: 30000 }, () => createRandomPost())
+  );
+
+  const [showArchive, setShowArchive] = useState(archiveOptions.show);
+
+  return <h2>{archiveOptions.title}</h2>;
+});
