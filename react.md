@@ -1,162 +1,165 @@
-- [**A first look at react**](#a-first-look-at-react)
-  - [**Why do front-end frameworks exist?**](#why-do-front-end-frameworks-exist)
-  - [**What is React?**](#what-is-react)
-  - [**Setting up a new React project: The options**](#setting-up-a-new-react-project-the-options)
-    - [**Setting up a project with `create-react-app`**](#setting-up-a-project-with-create-react-app)
-    - [**Setting up a project with Vite**](#setting-up-a-project-with-vite)
-      - [**A professional file structure**](#a-professional-file-structure)
-- [**Core concepts of building React apps**](#core-concepts-of-building-react-apps)
-  - [**JSX**](#jsx)
-    - [**Declarative JSX**](#declarative-jsx)
-      - [**Imperative appraoch**](#imperative-appraoch)
-      - [**Declarative appraoch**](#declarative-appraoch)
-    - [**Rules of JSX**](#rules-of-jsx)
-    - [**Extracting JSX into a new component**](#extracting-jsx-into-a-new-component)
-  - [**Components**](#components)
-    - [**Rendering the `root` component and strict mode**](#rendering-the-root-component-and-strict-mode)
-    - [**Creating and reusing a component**](#creating-and-reusing-a-component)
-      - [**Using public assets in components**](#using-public-assets-in-components)
-      - [**Implementing JavaScript logic in components**](#implementing-javascript-logic-in-components)
-    - [**Moving components into separate files**](#moving-components-into-separate-files)
-    - [**Component composition**](#component-composition)
-  - [**Props**](#props)
-    - [**Props make one-way data flow**](#props-make-one-way-data-flow)
-    - [**Passing and reciving props**](#passing-and-reciving-props)
-      - [**Rendering lists with props**](#rendering-lists-with-props)
-      - [**Conditional rendering**](#conditional-rendering)
-        - [**With `&&`**](#with-)
-        - [**With ternary operator**](#with-ternary-operator)
-        - [**With multiple `return` statements**](#with-multiple-return-statements)
-      - [**Prop drilling**](#prop-drilling)
-      - [**PropTypes**](#proptypes)
-    - [**Props as an API**](#props-as-an-api)
-  - [**Effects**](#effects)
-    - [**Effects vs. event handlers**](#effects-vs-event-handlers)
-      - [**Syncronization and lifecycle**](#syncronization-and-lifecycle)
-      - [**When are effects executed?**](#when-are-effects-executed)
-    - [**Dependancy array**](#dependancy-array)
-    - [**Cleanup functions**](#cleanup-functions)
-      - [**When to use a cleanup function?**](#when-to-use-a-cleanup-function)
-    - [**Effect use cases**](#effect-use-cases)
-      - [**Fetching data in React**](#fetching-data-in-react)
-        - [**The wrong way**](#the-wrong-way)
-        - [**The `useEffect` hook: the correct way**](#the-useeffect-hook-the-correct-way)
-        - [**Handling errors**](#handling-errors)
-        - [**Preventing race conditions**](#preventing-race-conditions)
-      - [**Listening for keypress event on the document object**](#listening-for-keypress-event-on-the-document-object)
-    - [**RECAP**](#recap)
-  - [**The Context API**](#the-context-api)
-    - [**The provider**](#the-provider)
-    - [**The value**](#the-value)
-    - [**Consumers**](#consumers)
-    - [**Creating and providing a context**](#creating-and-providing-a-context)
-    - [**Advanced pattern: A custom provider and hook**](#advanced-pattern-a-custom-provider-and-hook)
-  - [**Performance Optimization**](#performance-optimization)
-  - [**React Fragments**](#react-fragments)
-  - [**Styling React applications**](#styling-react-applications)
-    - [**Inline styling**](#inline-styling)
-    - [**External CSS or Sass**](#external-css-or-sass)
-    - [**CSS modules**](#css-modules)
-      - [**Global CSS**](#global-css)
-    - [**CSS-in-JS**](#css-in-js)
-    - [**Utility-first CSS**](#utility-first-css)
-    - [**No CSS!**](#no-css)
-  - [**Separation of concerns in React**](#separation-of-concerns-in-react)
-  - [**Routing and Single-Page Applications (SPA)**](#routing-and-single-page-applications-spa)
-- [**State, Events and Forms: interactive components**](#state-events-and-forms-interactive-components)
-  - [**Handling events**](#handling-events)
-  - [**State in React**](#state-in-react)
-    - [**Mechanics of state**](#mechanics-of-state)
-    - [**State guidelines**](#state-guidelines)
-    - [**Working with a state variable**](#working-with-a-state-variable)
-    - [**Forms and handling submissions**](#forms-and-handling-submissions)
-      - [**Creating a form**](#creating-a-form)
-      - [**Form Events**](#form-events)
-      - [**Controlled elements**](#controlled-elements)
-  - [**Review: State vs. Props**](#review-state-vs-props)
-- [**Thinking in React**](#thinking-in-react)
-  - [**Thinking: State management (Basic)**](#thinking-state-management-basic)
-    - [**Types of state (accessibility)**](#types-of-state-accessibility)
-    - [**When and where?**](#when-and-where)
-    - [**Lifting state**](#lifting-state)
-    - [**Derived state**](#derived-state)
-  - [**Thinking: State management (Advanced)**](#thinking-state-management-advanced)
-    - [**Types of state**](#types-of-state)
-    - [**Where to place state**](#where-to-place-state)
-    - [**State management tool options**](#state-management-tool-options)
-  - [**Thinking: Components**](#thinking-components)
-    - [**Splitting a UI into components**](#splitting-a-ui-into-components)
-      - [**When to create a new component?**](#when-to-create-a-new-component)
-      - [**General guidelines**](#general-guidelines)
-    - [**Component categories**](#component-categories)
-    - [**Component's API**](#components-api)
-- [**How React works behind the scenes**](#how-react-works-behind-the-scenes)
-  - [**Know more about React components, component instances and React elements**](#know-more-about-react-components-component-instances-and-react-elements)
-    - [**React Component**](#react-component)
-    - [**Component Instance**](#component-instance)
-    - [**React element**](#react-element)
-  - [**How rendering works**](#how-rendering-works)
-    - [**How components are displayed on the screen**](#how-components-are-displayed-on-the-screen)
-      - [**REACAP**](#reacap)
-    - [**What is the `key` prop?**](#what-is-the-key-prop)
-    - [**Rules for render logic**](#rules-for-render-logic)
-      - [**Functional programming principles**](#functional-programming-principles)
-  - [**How events work in React**](#how-events-work-in-react)
-    - [**Synthetic events**](#synthetic-events)
-    - [**How event handlers bahave in vanilla JavaScript and React**](#how-event-handlers-bahave-in-vanilla-javascript-and-react)
-    - [**Component lifecycle**](#component-lifecycle)
-      - [**Phase 1: mounting - initial render**](#phase-1-mounting---initial-render)
-      - [**Phase 2: re-rendering**](#phase-2-re-rendering)
-      - [**Phase 3: unmounting**](#phase-3-unmounting)
-  - [**Hooks**](#hooks)
-    - [**Rules of hooks**](#rules-of-hooks)
-    - [**The `useState` hook**](#the-usestate-hook)
-      - [**Creating state**](#creating-state)
-      - [**Updating state**](#updating-state)
-      - [**`useState`: some useful details**](#usestate-some-useful-details)
-        - [**Initial state value only matters for initial render**](#initial-state-value-only-matters-for-initial-render)
-        - [**State is always updated asynchronously**](#state-is-always-updated-asynchronously)
-        - [**Initialize state with a callback function: Lazy evaluation**](#initialize-state-with-a-callback-function-lazy-evaluation)
-    - [**`useRef` hook**](#useref-hook)
-      - [**`useState` vs. `useRef`**](#usestate-vs-useref)
-      - [**`useRef` to count something behind the scenes**](#useref-to-count-something-behind-the-scenes)
-    - [**`useReducer` hook**](#usereducer-hook)
-      - [**Reducers in detail**](#reducers-in-detail)
-      - [**`useReducer` vs. `useState`**](#usereducer-vs-usestate)
-      - [**When to use `useReducer`**](#when-to-use-usereducer)
-    - [**custom hooks**](#custom-hooks)
-- [**React 3rd party libraries**](#react-3rd-party-libraries)
-  - [**React developer tools**](#react-developer-tools)
-  - [**React Router**](#react-router)
-    - [**Basic implementation**](#basic-implementation)
-    - [**Linking between routes**](#linking-between-routes)
-    - [**Nested routes and index route**](#nested-routes-and-index-route)
-    - [**Storing state in the URL**](#storing-state-in-the-url)
-      - [**Dynamic routes with URL parameters**](#dynamic-routes-with-url-parameters)
-      - [**Reading and setting a query string**](#reading-and-setting-a-query-string)
-    - [**Programmatic navigation with `useNavigate`**](#programmatic-navigation-with-usenavigate)
-    - [**Programmatic navigation with `Navigate`**](#programmatic-navigation-with-navigate)
-    - [**Data loading with React Router**](#data-loading-with-react-router)
-  - [**React Query**](#react-query)
-    - [**Setting up React Query**](#setting-up-react-query)
-      - [**React Query Dev tools**](#react-query-dev-tools)
-      - [**Fetching data**](#fetching-data)
-      - [**Mutations**](#mutations)
-      - [**Mutations (adding data to remote server state)**](#mutations-adding-data-to-remote-server-state)
-  - [**React Hook Form**](#react-hook-form)
-    - [**Handling form errors**](#handling-form-errors)
-    - [**Uploading images through form**](#uploading-images-through-form)
-    - [**Filling in a form with default values**](#filling-in-a-form-with-default-values)
-  - [**React Hot Toast**](#react-hot-toast)
-  - [**Styled Component library**](#styled-component-library)
-    - [**Introducing global styles**](#introducing-global-styles)
-    - [**Styled Component props and CSS function**](#styled-component-props-and-css-function)
-- [**Project deployment**](#project-deployment)
-  - [**First, build the application**](#first-build-the-application)
-  - [**Second, deploy to Netlify**](#second-deploy-to-netlify)
-  - [**Deploying to Vercel**](#deploying-to-vercel)
+- [A first look at react](#a-first-look-at-react)
+  - [Why do front-end frameworks exist?](#why-do-front-end-frameworks-exist)
+  - [What is React?](#what-is-react)
+  - [Setting up a new React project: The options](#setting-up-a-new-react-project-the-options)
+    - [Setting up a project with `create-react-app`](#setting-up-a-project-with-create-react-app)
+    - [Setting up a project with Vite](#setting-up-a-project-with-vite)
+      - [A professional file structure](#a-professional-file-structure)
+- [Core concepts of building React apps](#core-concepts-of-building-react-apps)
+  - [JSX](#jsx)
+    - [Declarative JSX](#declarative-jsx)
+      - [Imperative appraoch](#imperative-appraoch)
+      - [Declarative appraoch](#declarative-appraoch)
+    - [Rules of JSX](#rules-of-jsx)
+    - [Extracting JSX into a new component](#extracting-jsx-into-a-new-component)
+  - [Components](#components)
+    - [Rendering the `root` component and strict mode](#rendering-the-root-component-and-strict-mode)
+    - [Creating and reusing a component](#creating-and-reusing-a-component)
+      - [Using public assets in components](#using-public-assets-in-components)
+      - [Implementing JavaScript logic in components](#implementing-javascript-logic-in-components)
+    - [Moving components into separate files](#moving-components-into-separate-files)
+    - [Component composition](#component-composition)
+  - [Props](#props)
+    - [Props make one-way data flow](#props-make-one-way-data-flow)
+    - [Passing and reciving props](#passing-and-reciving-props)
+      - [Rendering lists with props](#rendering-lists-with-props)
+      - [Conditional rendering](#conditional-rendering)
+        - [With `&&`](#with-)
+        - [With ternary operator](#with-ternary-operator)
+        - [With multiple `return` statements](#with-multiple-return-statements)
+      - [Prop drilling](#prop-drilling)
+      - [PropTypes](#proptypes)
+    - [Props as an API](#props-as-an-api)
+  - [Effects](#effects)
+    - [Effects vs. event handlers](#effects-vs-event-handlers)
+      - [Syncronization and lifecycle](#syncronization-and-lifecycle)
+      - [When are effects executed?](#when-are-effects-executed)
+    - [Dependancy array](#dependancy-array)
+    - [Cleanup functions](#cleanup-functions)
+      - [When to use a cleanup function?](#when-to-use-a-cleanup-function)
+    - [Effect use cases](#effect-use-cases)
+      - [Fetching data in React](#fetching-data-in-react)
+        - [The wrong way](#the-wrong-way)
+        - [The `useEffect` hook: the correct way](#the-useeffect-hook-the-correct-way)
+        - [Handling errors](#handling-errors)
+        - [Preventing race conditions](#preventing-race-conditions)
+      - [Listening for keypress event on the document object](#listening-for-keypress-event-on-the-document-object)
+    - [RECAP](#recap)
+  - [The Context API](#the-context-api)
+    - [The provider](#the-provider)
+    - [The value](#the-value)
+    - [Consumers](#consumers)
+    - [Creating and providing a context](#creating-and-providing-a-context)
+    - [Advanced pattern: A custom provider and hook](#advanced-pattern-a-custom-provider-and-hook)
+  - [Performance Optimization](#performance-optimization)
+  - [React Fragments](#react-fragments)
+  - [Styling React applications](#styling-react-applications)
+    - [Inline styling](#inline-styling)
+    - [External CSS or Sass](#external-css-or-sass)
+    - [CSS modules](#css-modules)
+      - [Global CSS](#global-css)
+    - [CSS-in-JS](#css-in-js)
+    - [Utility-first CSS](#utility-first-css)
+    - [No CSS!](#no-css)
+  - [Separation of concerns in React](#separation-of-concerns-in-react)
+  - [Routing and Single-Page Applications (SPA)](#routing-and-single-page-applications-spa)
+- [State, Events and Forms: interactive components](#state-events-and-forms-interactive-components)
+  - [Handling events](#handling-events)
+  - [State in React](#state-in-react)
+    - [Mechanics of state](#mechanics-of-state)
+    - [State guidelines](#state-guidelines)
+    - [Working with a state variable](#working-with-a-state-variable)
+    - [Forms and handling submissions](#forms-and-handling-submissions)
+      - [Creating a form](#creating-a-form)
+      - [Form Events](#form-events)
+      - [Controlled elements](#controlled-elements)
+  - [Review: State vs. Props](#review-state-vs-props)
+- [Thinking in React](#thinking-in-react)
+  - [Thinking: State management (Basic)](#thinking-state-management-basic)
+    - [Types of state (accessibility)](#types-of-state-accessibility)
+    - [When and where?](#when-and-where)
+    - [Lifting state](#lifting-state)
+    - [Derived state](#derived-state)
+  - [Thinking: State management (Advanced)](#thinking-state-management-advanced)
+    - [Types of state](#types-of-state)
+    - [Where to place state](#where-to-place-state)
+    - [State management tool options](#state-management-tool-options)
+  - [Thinking: Components](#thinking-components)
+    - [Splitting a UI into components](#splitting-a-ui-into-components)
+      - [When to create a new component?](#when-to-create-a-new-component)
+      - [General guidelines](#general-guidelines)
+    - [Component categories](#component-categories)
+    - [Component's API](#components-api)
+- [How React works behind the scenes](#how-react-works-behind-the-scenes)
+  - [Know more about React components, component instances and React elements](#know-more-about-react-components-component-instances-and-react-elements)
+    - [React Component](#react-component)
+    - [Component Instance](#component-instance)
+    - [React element](#react-element)
+  - [How rendering works](#how-rendering-works)
+    - [How components are displayed on the screen](#how-components-are-displayed-on-the-screen)
+      - [REACAP](#reacap)
+    - [What is the `key` prop?](#what-is-the-key-prop)
+    - [Rules for render logic](#rules-for-render-logic)
+      - [Functional programming principles](#functional-programming-principles)
+  - [How events work in React](#how-events-work-in-react)
+    - [Synthetic events](#synthetic-events)
+    - [How event handlers bahave in vanilla JavaScript and React](#how-event-handlers-bahave-in-vanilla-javascript-and-react)
+    - [Component lifecycle](#component-lifecycle)
+      - [Phase 1: mounting - initial render](#phase-1-mounting---initial-render)
+      - [Phase 2: re-rendering](#phase-2-re-rendering)
+      - [Phase 3: unmounting](#phase-3-unmounting)
+  - [Hooks](#hooks)
+    - [Rules of hooks](#rules-of-hooks)
+    - [The `useState` hook](#the-usestate-hook)
+      - [Creating state](#creating-state)
+      - [Updating state](#updating-state)
+      - [`useState`: some useful details](#usestate-some-useful-details)
+        - [Initial state value only matters for initial render](#initial-state-value-only-matters-for-initial-render)
+        - [State is always updated asynchronously](#state-is-always-updated-asynchronously)
+        - [Initialize state with a callback function: Lazy evaluation](#initialize-state-with-a-callback-function-lazy-evaluation)
+    - [`useRef` hook](#useref-hook)
+      - [`useState` vs. `useRef`](#usestate-vs-useref)
+      - [`useRef` to count something behind the scenes](#useref-to-count-something-behind-the-scenes)
+    - [`useReducer` hook](#usereducer-hook)
+      - [Reducers in detail](#reducers-in-detail)
+      - [`useReducer` vs. `useState`](#usereducer-vs-usestate)
+      - [When to use `useReducer`](#when-to-use-usereducer)
+    - [custom hooks](#custom-hooks)
+- [React 3rd party libraries](#react-3rd-party-libraries)
+  - [React developer tools](#react-developer-tools)
+  - [React Router](#react-router)
+    - [Basic implementation](#basic-implementation)
+    - [Linking between routes](#linking-between-routes)
+    - [Nested routes and index route](#nested-routes-and-index-route)
+    - [Storing state in the URL](#storing-state-in-the-url)
+      - [Dynamic routes with URL parameters](#dynamic-routes-with-url-parameters)
+      - [Reading and setting a query string](#reading-and-setting-a-query-string)
+    - [Programmatic navigation with `useNavigate`](#programmatic-navigation-with-usenavigate)
+    - [Programmatic navigation with `Navigate`](#programmatic-navigation-with-navigate)
+    - [Data loading with React Router](#data-loading-with-react-router)
+  - [React Query](#react-query)
+    - [Setting up React Query](#setting-up-react-query)
+      - [React Query Dev tools](#react-query-dev-tools)
+      - [Fetching data](#fetching-data)
+      - [Mutations](#mutations)
+      - [Mutations (adding data to remote server state)](#mutations-adding-data-to-remote-server-state)
+  - [React Hook Form](#react-hook-form)
+    - [Handling form errors](#handling-form-errors)
+    - [Uploading images through form](#uploading-images-through-form)
+    - [Filling in a form with default values](#filling-in-a-form-with-default-values)
+  - [React Hot Toast](#react-hot-toast)
+  - [Styled Component library](#styled-component-library)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+- [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
+  - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
+    - [Performance optimization tools](#performance-optimization-tools)
+- [Project deployment](#project-deployment)
+  - [First, build the application](#first-build-the-application)
+  - [Second, deploy to Netlify](#second-deploy-to-netlify)
+  - [Deploying to Vercel](#deploying-to-vercel)
 
-# **A first look at react**
+# A first look at react
 
 We will talk about:
 
@@ -165,48 +168,48 @@ We will talk about:
 3. What are different options for setting up a new React application?
 4. Use a tool called `Create-React_App` to build our very first React project.
 
-## **Why do front-end frameworks exist?**
+## Why do front-end frameworks exist?
 
 So why not simply use Vanilla JavaScript to build our applications?
 
-Before around 2010 all websites were **server-side rendered** websites. A website is assembled on the backend based on data and templates. The resulting HTML, CSS, and JavaScript code is then sent to the client-side. The browser then takes this code and paints it to the screen. All websites built with Wordpress are of this kind. The JavaScript used in this kind of websites was initially only to add some simple dynamics to the page, like simple animations, hover effects, and other stuff. Usually a popular library called **jQuery** was used for this purpose.
+Before around 2010 all websites were server-side rendered websites. A website is assembled on the backend based on data and templates. The resulting HTML, CSS, and JavaScript code is then sent to the client-side. The browser then takes this code and paints it to the screen. All websites built with Wordpress are of this kind. The JavaScript used in this kind of websites was initially only to add some simple dynamics to the page, like simple animations, hover effects, and other stuff. Usually a popular library called jQuery was used for this purpose.
 
-However, developers started to write more and more JavaScript code to be executed by the browser, and this led to fully fledged web applications which then led to the rise of so-called **single-page applications**. These are webpages that are rendered on the client and not on the server.
+However, developers started to write more and more JavaScript code to be executed by the browser, and this led to fully fledged web applications which then led to the rise of so-called single-page applications. These are webpages that are rendered on the client and not on the server.
 
-In client-side rendering, the process of rendering a webpage is shifted from the server to the client. We call these not webpages anymore, but **web applications**. A web application gets its data from the backend, usually by consuming an **API**. The application renders the screen for each view of the application. This single-page application feels as if you were using a native desktop or phone application.
+In client-side rendering, the process of rendering a webpage is shifted from the server to the client. We call these not webpages anymore, but web applications. A web application gets its data from the backend, usually by consuming an API. The application renders the screen for each view of the application. This single-page application feels as if you were using a native desktop or phone application.
 
-There are several problems with using Vanilla JavaScript for building large-scale applications. Keep in mind that building any front-end web application is all about **handling data** and **displaying data** in a user interface. The most important task of a single-page application (and really of any application and website) is to keep the user interface in sync with the data, or in other words, to make sure that the **UI always displays the current state of the data**. This have proved to be a hard task to perform! Without a framework, it would be virtually impossible to keep the huge amount of data in an application in sync with a super-complex UI. Why?
+There are several problems with using Vanilla JavaScript for building large-scale applications. Keep in mind that building any front-end web application is all about handling data and displaying data in a user interface. The most important task of a single-page application (and really of any application and website) is to keep the user interface in sync with the data, or in other words, to make sure that the UI always displays the current state of the data. This have proved to be a hard task to perform! Without a framework, it would be virtually impossible to keep the huge amount of data in an application in sync with a super-complex UI. Why?
 
-1. Building a complex front-end with Vanilla JavaScript alone requires large amount of direct **DOM traversing and manipulation**, and this will lead to a huge mess of spaghetti code.
-2. In Vanilla JavaScript apps, **states** such as simple text or numbers are often simply **stored right in the DOM**, right in the HTML elements themselves rather in a central place in the application. This results in many parts of the app accessing and changing that DOM state directly. This will introduce many bugs into our application.
+1. Building a complex front-end with Vanilla JavaScript alone requires large amount of direct DOM traversing and manipulation, and this will lead to a huge mess of spaghetti code.
+2. In Vanilla JavaScript apps, states such as simple text or numbers are often simply stored right in the DOM, right in the HTML elements themselves rather in a central place in the application. This results in many parts of the app accessing and changing that DOM state directly. This will introduce many bugs into our application.
 
 So in conclusion, this is mainly why framworks exist:
 
-1. **Keeping a user interface in sync with data** is really hard and takes a lot of work.
-2. Frameworks enforce a **correct way of structuring and writing code**, therefore contributing to solving the problem of spaghetti code.
-3. Frameworks give developers and teams a **consistent way of building front-end applications**.
+1. Keeping a user interface in sync with data is really hard and takes a lot of work.
+2. Frameworks enforce a correct way of structuring and writing code, therefore contributing to solving the problem of spaghetti code.
+3. Frameworks give developers and teams a consistent way of building front-end applications.
 
-## **What is React?**
+## What is React?
 
-React is a JavaScript library for building user interfaces. But let's extend this definition. React is an extremely **popular**, **declarative**, **component-based**, **state-driven** JavaScript library for building user interfaces, created by Facebook.
+React is a JavaScript library for building user interfaces. But let's extend this definition. React is an extremely popular, declarative, component-based, state-driven JavaScript library for building user interfaces, created by Facebook.
 
-- **Based on components:** components are the building blocks of user interfaces in React, such as buttons, input fields, search bars and so on. Basically, what React does is to **take components and draw them on webpages**. We build complex UIs by building and combining multiple components.
-- **Declarative:** We describe how components look like and how they work using a declarative syntax called **JSX**. So React is a huge abstraction away from the DOM, we never touch the DOM. JSX is a syntax that **combines HTML, CSS, JavaScript, as well as referncing other components**. If we never touch the DOM, how does React update the UI? This is where state comes to play.
-- **State-driven:** React keeps the data in sync with the UI. Let's call this data "state" from now on. Whenever the state changes, **we manually update the state in our application, and React will automatically re-render the UI to reflect the latest state**. In other words, React actually reacts to state changes by re-rendering the UI.
-- **JavaScript library:** React is actually just a JavaScript library. React is only the **view** layer. We need to pick **multiple external libraries** to build a complete application, for instance, for routing or for data fetching. To address this issue, multiple frameworks have been built on top of React, such as **NextJS** and **Remix**.
+- Based on components: components are the building blocks of user interfaces in React, such as buttons, input fields, search bars and so on. Basically, what React does is to take components and draw them on webpages. We build complex UIs by building and combining multiple components.
+- Declarative: We describe how components look like and how they work using a declarative syntax called JSX. So React is a huge abstraction away from the DOM, we never touch the DOM. JSX is a syntax that combines HTML, CSS, JavaScript, as well as referncing other components. If we never touch the DOM, how does React update the UI? This is where state comes to play.
+- State-driven: React keeps the data in sync with the UI. Let's call this data "state" from now on. Whenever the state changes, we manually update the state in our application, and React will automatically re-render the UI to reflect the latest state. In other words, React actually reacts to state changes by re-rendering the UI.
+- JavaScript library: React is actually just a JavaScript library. React is only the view layer. We need to pick multiple external libraries to build a complete application, for instance, for routing or for data fetching. To address this issue, multiple frameworks have been built on top of React, such as NextJS and Remix.
 
-## **Setting up a new React project: The options**
+## Setting up a new React project: The options
 
 The two options that are available for setting up a react project:
 
-1. **`create-react-app` tool:** a complete starter kit for React applications. The nice thing about this is that everything is already configured in it: An app created with this tool automatically comes with a development server, Webpack for module bundling, and important developer tools such as ESLint, Prettier, Jest, Babel, etc. The problem with this tool is that it was built many years ago, and uses some **slow and outdated technologies** like Webpack. So don't use this tool for real-world projects anymore. Only use for tutorials or experiments.
-2. **Vite build tool:** use this tool for **real-world applications**. It is a modern build tool that contains a template for setting up React applications. This needs you to manually set up ESLint and other things. This can sometimes go wrong. So why use Vite? For its extremely **fast page refreshment** when the code changes. This is called **Hot Module Replacement (HMR)**. Also bundling is extremely fast in Vite.
+1. `create-react-app` tool: a complete starter kit for React applications. The nice thing about this is that everything is already configured in it: An app created with this tool automatically comes with a development server, Webpack for module bundling, and important developer tools such as ESLint, Prettier, Jest, Babel, etc. The problem with this tool is that it was built many years ago, and uses some slow and outdated technologies like Webpack. So don't use this tool for real-world projects anymore. Only use for tutorials or experiments.
+2. Vite build tool: use this tool for real-world applications. It is a modern build tool that contains a template for setting up React applications. This needs you to manually set up ESLint and other things. This can sometimes go wrong. So why use Vite? For its extremely fast page refreshment when the code changes. This is called Hot Module Replacement (HMR). Also bundling is extremely fast in Vite.
 
-But we also have other options in addition to the two options mentioned above. It is to use a React framework like **NextJS** or **Remix**. A framework like NextJS contains solutions for things like routing, data fetching, and server-side rendering, which are things that React itself does not provide easily out of the box. So a React framework is something built on top of React and makes it even easier to build applications.
+But we also have other options in addition to the two options mentioned above. It is to use a React framework like NextJS or Remix. A framework like NextJS contains solutions for things like routing, data fetching, and server-side rendering, which are things that React itself does not provide easily out of the box. So a React framework is something built on top of React and makes it even easier to build applications.
 
-This sounds great, but only for some applications. **Vanilla React applications** are still very important. It only makes sense to use React frameworks for building actual products, not for learning React.
+This sounds great, but only for some applications. Vanilla React applications are still very important. It only makes sense to use React frameworks for building actual products, not for learning React.
 
-### **Setting up a project with `create-react-app`**
+### Setting up a project with `create-react-app`
 
 Here are the steps you should follow:
 
@@ -237,7 +240,7 @@ package.json
 
 In the `src` folder we have some files that we don't need and we will get rid of. So in order to create a project from scratch, we will select all files in this folder and delete them. This will make the application show you an error.
 
-We will then create an `index.js` file in this folder. Remember that this file needs to be named `index.js` because **Webpack** expects the entry points to be called that. Inside this file, we will first import React:
+We will then create an `index.js` file in this folder. Remember that this file needs to be named `index.js` because Webpack expects the entry points to be called that. Inside this file, we will first import React:
 
 ```js
 import React from "react";
@@ -248,7 +251,7 @@ Next up, we will create our `App` component. It is not necessary to call it App,
 
 The `public` folder contains all the assets that will end up in the final application, such as all the images and an `index.html` file that contains a `<div>` element with the id `root`. Remember that Webpack, which is the module bundler here, will automatically look into the `public` folder to find the assets of our application, such as images, etc.
 
-### **Setting up a project with Vite**
+### Setting up a project with Vite
 
 In order to start a project with Vite, you need to insert this command in the terminal:
 
@@ -341,7 +344,7 @@ export default defineConfig({
 
 Now we have Vite correctly set up.
 
-#### **A professional file structure**
+#### A professional file structure
 
 To establish a professional order in your file structure, so that you will be able to manage your project files more efficiently, you can use this structure inside your `src` folder:
 
@@ -364,11 +367,11 @@ To establish a professional order in your file structure, so that you will be ab
 6. UI: this is for all the components that don't belong to any of the features or those that we want to reuse in many different features, like inputs, forms, buttons, tables, etc.
 7. Utils: usually contains some helper code.
 
-# **Core concepts of building React apps**
+# Core concepts of building React apps
 
-We will talk about **Components**, **Props**, and **JSX**. We will learn how components are the building blocks of React applications and how to create and reuse them using the powerfull JSX syntax.
+We will talk about Components, Props, and JSX. We will learn how components are the building blocks of React applications and how to create and reuse them using the powerfull JSX syntax.
 
-We will also share data between components using Props and learn about rendering **lists**, **conditional rendering**, and more. Looking at a React app, there is nothing that is not a component, or at least not inside of some component. As mentioned before, what React does is to basically take components and draw them on to a webpage. In technical terms, React renders a "View" for each component, and all these views together make up the UI.
+We will also share data between components using Props and learn about rendering lists, conditional rendering, and more. Looking at a React app, there is nothing that is not a component, or at least not inside of some component. As mentioned before, what React does is to basically take components and draw them on to a webpage. In technical terms, React renders a "View" for each component, and all these views together make up the UI.
 
 It is important to remember that each component has its own:
 
@@ -376,33 +379,33 @@ It is important to remember that each component has its own:
 2. JavaScript Logic
 3. Appearance (JSX)
 
-## **JSX**
+## JSX
 
 JSX is a declarative syntax to describe how components look like and how they work based on their data and logic. In practice, this means that each component must return one block of JSX, which React will then use to render the component on the UI.
 
 JSX is similar to HTML, but it is actually an extension of JavaScript that allows us to embed JavaScript, CSS, and React components into HTML.
 
-If react is a JavaScript framework, how does it understand this HTML-looking code? Remember that JSX is an extension of JavaScript, which means that there is a simple way of converting JSX to JavaScript. This is done by **Babel**, which was automatically included in our application by `create-react-app`.
+If react is a JavaScript framework, how does it understand this HTML-looking code? Remember that JSX is an extension of JavaScript, which means that there is a simple way of converting JSX to JavaScript. This is done by Babel, which was automatically included in our application by `create-react-app`.
 
 Each JSX element is converted to a `React.createElement()` function call. Remember that browsers don't understand JSX, they only understand HTML. So our JSX is converted into `createElement()` function calls, which in the end creates the HTML elements that we see on the screen.
 
-### **Declarative JSX**
+### Declarative JSX
 
 Let's first review what is imperative, in order to understand what is declarative.
 
-#### **Imperative appraoch**
+#### Imperative appraoch
 
 When we try to build UIs using Vanilla JavaScript we use an imperative approach. It means that we manually select elements, traverse the DOM, and attach event handlers to elements. Then as soon as an event happens, we give the browser a step-by-step instruction on how to mutate DOM until we reach the desired UI.
 
-So in the imperative approach, we tell the browser exactly **how to do things**. However, doing this in a complex app is virtually impossible! So we use React in order to implement a declarative approach.
+So in the imperative approach, we tell the browser exactly how to do things. However, doing this in a complex app is virtually impossible! So we use React in order to implement a declarative approach.
 
-#### **Declarative appraoch**
+#### Declarative appraoch
 
-Declarative approach means to describe what the UI should look like at all times, always based on the current data that is in the component. We know that this data is actually **props** and **state**. So basically, we use JSX to describe the UI based on props and state. All this, happens without any DOM manipulation at all!
+Declarative approach means to describe what the UI should look like at all times, always based on the current data that is in the component. We know that this data is actually props and state. So basically, we use JSX to describe the UI based on props and state. All this, happens without any DOM manipulation at all!
 
-So in the declarative approach, we tell the browser **what we want to achieve**. It helps us developers to never think of touching the DOM. Instead, we should only think of the UI as a reflection of the current data.
+So in the declarative approach, we tell the browser what we want to achieve. It helps us developers to never think of touching the DOM. Instead, we should only think of the UI as a reflection of the current data.
 
-### **Rules of JSX**
+### Rules of JSX
 
 1. JSX works essentially like HTML, but we can enter JavaScript mode by using `{}`.
 2. Inside the JavaScript mode, we can place any JavaScript expressions. Example: reference variables, create arrays or objects, `.map()`, ternary opertor. But statements are not allowed (`if/else`, `for`, `switch`)
@@ -425,7 +428,7 @@ This fact has 2 important implications:
 
 4. A piece of JSX can only have one, and exactly one root element. If you need more, use `<React.Fragment>`. Also note that when you open a `return` statement to return a JSX, you must always start with a JSX element. You cannot immediately enter JavaScript mode by `{}`. You will have to first open a `<div>` element, and then inside that, you can enter JavaScript mode.
 
-### **Extracting JSX into a new component**
+### Extracting JSX into a new component
 
 Let's talk on the `Footer` component example. As we notice that the JSX inside this component is growing too much, we can extract JSX into another component. We simply define another component that returns a JSX.
 
@@ -468,17 +471,17 @@ function Footer() {
 
 So we take out a part of the JSX, and replace it with the result of calling the `Order` component by passing the `closeHour` prop into it, because it depends on it.
 
-## **Components**
+## Components
 
 Components are the most fundamental concept in React. React applications are entirely made out of components. Each component is a self-contained piece of the UI which contains its own data, JS logic, and appearance (JSX).
 
-In a real-world application, we can identify main components, and if we look with more precision, we can also identify some smaller components inside other major components. In React applications, it is very normal to **nest** components inside other components.
+In a real-world application, we can identify main components, and if we look with more precision, we can also identify some smaller components inside other major components. In React applications, it is very normal to nest components inside other components.
 
-These nested components may be of the **list** type, which means that their appearance is the same, but their data is different. So they are actually the same component that is being reused to display varying information. This can be handled using **props** which enables us to pass data between components.
+These nested components may be of the list type, which means that their appearance is the same, but their data is different. So they are actually the same component that is being reused to display varying information. This can be handled using props which enables us to pass data between components.
 
 One thing that can help to analyze our components is the component tree which clarifies the hierarchy that exists between the components (parent and child components).
 
-### **Rendering the `root` component and strict mode**
+### Rendering the `root` component and strict mode
 
 Inside the `index.js` file which we normally place inside the `src` folder of our project, we first import `React` and `ReactDOM` libraries.
 
@@ -509,7 +512,7 @@ Now this `root` object has the `render` method available on it, and we can use i
 root.render(<App />);
 ```
 
-Now to activate **strict mode**, we can do the rendering in another way. So instead of directly rendering the `App` component as the root component, we can wrap the `App` component inside a `React.StrictMode` component.
+Now to activate strict mode, we can do the rendering in another way. So instead of directly rendering the `App` component as the root component, we can wrap the `App` component inside a `React.StrictMode` component.
 
 ```js
 root.render(
@@ -527,12 +530,12 @@ We can now start our project using the NPM command below, since it is already de
 npm run start
 ```
 
-### **Creating and reusing a component**
+### Creating and reusing a component
 
 In React, we write new components using functions. Also, there are 2 important rules as we define components as functions.
 
-1. The function name needs to start in **uppercase**.
-2. The function needs to return some **markup**, usually in the form of JSX, but we can also return nothing, like `null`.
+1. The function name needs to start in uppercase.
+2. The function needs to return some markup, usually in the form of JSX, but we can also return nothing, like `null`.
 
 ```js
 function Pizza() {
@@ -540,7 +543,7 @@ function Pizza() {
 }
 ```
 
-Up until this point this component cannot appear in the UI since we are not incluing this new component anywhere. We can include this in our main component which is usually called `App`. This way we are actually **nesting** the `Pizza` component inside the `App` component.
+Up until this point this component cannot appear in the UI since we are not incluing this new component anywhere. We can include this in our main component which is usually called `App`. This way we are actually nesting the `Pizza` component inside the `App` component.
 
 ```js
 function App() {
@@ -563,9 +566,9 @@ function App() {
 }
 ```
 
-The `Pizza` component is now **reusable**, meaning that we can include its returned JSX in any of our other components simply by inserting the `<Pizza />`. For now, this will re-render the `Pizza` component with the same data over and over, but we can update it each time we insert it by using [**props**](#using-props-in-a-component).
+The `Pizza` component is now reusable, meaning that we can include its returned JSX in any of our other components simply by inserting the `<Pizza />`. For now, this will re-render the `Pizza` component with the same data over and over, but we can update it each time we insert it by using [props](#using-props-in-a-component).
 
-#### **Using public assets in components**
+#### Using public assets in components
 
 In order to use an image inside a component we include an `<img/>` tag in the `return` statement of the component. Note that if we are actually returning more than one elements, we should wrap them all in another whole `<div>` element.
 
@@ -583,7 +586,7 @@ function Pizza() {
 
 > When writing the address to a specific image, you should consider the `public` folder as the root directory and start the image file path from that root.
 
-#### **Implementing JavaScript logic in components**
+#### Implementing JavaScript logic in components
 
 This will include writing JavaScript logic in components. Until this point, we have already written some JavaScript logic, but it was only inside JSX. But since components are JavaScript functions, we can do any JavaScript code inside them.
 
@@ -605,13 +608,13 @@ Notice how we have used regular JavaScript logic before returning the JSX. Also 
 
 > You will probably receive every result twice, and that is becasue of the strict mode.
 
-### **Moving components into separate files**
+### Moving components into separate files
 
 We take the component code from the main `App.js` file and put it in a separate file in the `src` folder of our project. It is a good practice to call the new file with the same name as the component. For instance, if we are taking the `Logo` component to a separate file, we call the new file `Logo.js`.
 
 Inside the `Logo.js` file we `export default` the component, and then import it in the main `App.js` file.
 
-### **Component composition**
+### Component composition
 
 Component composition is all about reusability. We have talked about a way of creating and reusing a component, but that would introduce a problem regarding reusability.
 
@@ -698,32 +701,32 @@ In this case, we don't need opening and closing tags for the reusable component 
 
 > We can pass multiple elements as the `element` prop into the component tag. In this case however, we would have to use the [React fragment](#react-fragments) tool around the elements that are passed in.
 
-## **Props**
+## Props
 
-Up until this point, we have learned about a component's appearance and logic. We also know that React renders a component based on its current data and that the UI will always be in sync with that data. This data is made out of **props** and **state**. There are actually more, but for now these two matter.
+Up until this point, we have learned about a component's appearance and logic. We also know that React renders a component based on its current data and that the UI will always be in sync with that data. This data is made out of props and state. There are actually more, but for now these two matter.
 
-State is **internal component data** that can be updated by the component's **logic**, while props is the data coming from the **parent component**, so from outside. So it is the parent component that owns the data, and therefore it cannot be modified by the child component. Props can only be updated by the parent component itself. So keep in mind that **Props are read-only, they are immutable**. Therefore, if you need to mutate props, you actually need state.
+State is internal component data that can be updated by the component's logic, while props is the data coming from the parent component, so from outside. So it is the parent component that owns the data, and therefore it cannot be modified by the child component. Props can only be updated by the parent component itself. So keep in mind that Props are read-only, they are immutable. Therefore, if you need to mutate props, you actually need state.
 
 Why props are immutable? Because props are just simple objects. Mutating props would affect the parent component, that is how objects work in JavaScript. If you change an object that is located outside a function, that function has then created side effects. React is all about pure functions that don't produce side effects. Components have to be pure in terms of their props and state, because this allows React to optimize apps, avoid bugs, and make apps predictable.
 
-Props essentially define **how we pass data between components**, in particular, from parent components to child components. Props are an essential React tool to configure and to customize components. You can imagine props as settings that we can use to make a parent component control how its child components should look like. Props are just like **function arguments** passed to regular JavaScript functions.
+Props essentially define how we pass data between components, in particular, from parent components to child components. Props are an essential React tool to configure and to customize components. You can imagine props as settings that we can use to make a parent component control how its child components should look like. Props are just like function arguments passed to regular JavaScript functions.
 
-### **Props make one-way data flow**
+### Props make one-way data flow
 
 This means that in React applications, data can only be passed from parent to child components which happens by using props. There are multiple reasons that React uses this one-way data flow:
 
-1. Makes applications more **predictable** and easier to understand for developers.
-2. Makes applications **easier to debug**, as we have more control over the data.
-3. This is more **performant**.
+1. Makes applications more predictable and easier to understand for developers.
+2. Makes applications easier to debug, as we have more control over the data.
+3. This is more performant.
 
 Now you might ask, what if I actually wanted to pass some state up to a parent component? There is a very clever way to do that, but we will learn that later.
 
-### **Passing and reciving props**
+### Passing and reciving props
 
 To define props we do it in 2 steps:
 
-1. **Pass** the props
-2. **Receive** the props
+1. Pass the props
+2. Receive the props
 
 Imagine we have a `Menu` component that is going to pass props into a `Pizza` component. This would be the most basic way to implement:
 
@@ -775,7 +778,7 @@ function Button({ children }) {
 }
 ```
 
-#### **Rendering lists with props**
+#### Rendering lists with props
 
 Rendering a list is when we have an array and we want to render an element for each component of the array. We will continue the example mentioned above for this use case.
 
@@ -815,9 +818,9 @@ function Pizza(props) {
 }
 ```
 
-> Note how we also defined a `key` prop in the `Menu` component. If we didn't do it, React would give us an error in the console saying that "Each child in a list should have a unique "key" prop." This means that each time we render a list, as we did in the `Menu` component using the `.map()` method, each of the items that gets rendered needs also a **`key`** property or attribute. This is a prop that is internal to React and it uses it to do some performance optimization. We should pass a unique value for the `key` prop. In this example, we used the pizza name as the key for each pizza.
+> Note how we also defined a `key` prop in the `Menu` component. If we didn't do it, React would give us an error in the console saying that "Each child in a list should have a unique "key" prop." This means that each time we render a list, as we did in the `Menu` component using the `.map()` method, each of the items that gets rendered needs also a `key` property or attribute. This is a prop that is internal to React and it uses it to do some performance optimization. We should pass a unique value for the `key` prop. In this example, we used the pizza name as the key for each pizza.
 
-> Also keep in mind that we should still keep using **semantic HTML** in React. Notice how we did that by using `ul` and `li` tags in the `Menu` and `Pizza` components respectively.
+> Also keep in mind that we should still keep using semantic HTML in React. Notice how we did that by using `ul` and `li` tags in the `Menu` and `Pizza` components respectively.
 
 > It is a good practice to destructure props immediately when they are received in a component. This lets us quickly figure out what props the component is receiving, without having to look at the parent component in the chain. For instance, for the `Pizza` component mentioned above, we can do it like this:
 
@@ -838,18 +841,18 @@ function Pizza({ pizzaObj }) {
 }
 ```
 
-#### **Conditional rendering**
+#### Conditional rendering
 
 This is a very important technique that we use all the time in React. There are 3 ways of rendering some JSX or an entire component in React.
 
 Keep these notes in mind:
 
-1. Use the **ternary operator** when you need to return some piece of JSX based on a condition.
-2. Sometimes you may need to return something entirely different in a certain condition. In these situations you may use **multiple `return` statements** based on conditions.
+1. Use the ternary operator when you need to return some piece of JSX based on a condition.
+2. Sometimes you may need to return something entirely different in a certain condition. In these situations you may use multiple `return` statements based on conditions.
 
-##### **With `&&`**
+##### With `&&`
 
-This basically involves using the short circuiting technique of JavaScript. Short circuiting means that you combine a condition with something that should be returned. If the condition becomes **`true`** or if it contains a **truthy** value, the second thing will actually be returned.
+This basically involves using the short circuiting technique of JavaScript. Short circuiting means that you combine a condition with something that should be returned. If the condition becomes `true` or if it contains a truthy value, the second thing will actually be returned.
 
 In this example, we want to render the footer content if the `isOpen` variable contains `true`.
 
@@ -897,7 +900,7 @@ This will make it so that if the `pizzaData` array is empty, then the whole `ul`
 
 > We should not implement the condition by simply writing `numPizzas` as a truthy/falsey value. In this case, if `numPizzas` is 0, then it would be a falsey value and short circuiting will happen. Therefore, what will be returned is not what we wrote after the `&&`. Instead, the value of `numPizzas` will be returned and rendered on the page. We don't want that. So we should actually write the condition in a way that becomes `true` or `false`.
 
-##### **With ternary operator**
+##### With ternary operator
 
 We are now going to do the same thing with the ternary operator. The advantage of using ternary operator is that we can display some alternative.
 
@@ -964,7 +967,7 @@ function Pizza({ pizzaObj }) {
 }
 ```
 
-##### **With multiple `return` statements**
+##### With multiple `return` statements
 
 Up until this point, all our components only ever had one `return` statement. But as JavaScript allows us, we can use multiple return statements based on some condition. Of course, only one of the `return` statements would be executed in the component, and that is why we implement this based on some condition.
 
@@ -987,9 +990,9 @@ function Pizza(props) {
 }
 ```
 
-#### **Prop drilling**
+#### Prop drilling
 
-When the scale of the application grows a bit, we might find ourselves from time to time passing props through several nested child components to get the data into some **deeply nested component**. This is called **prop drilling** and can become frustrating in large-scale applications. It is obvious that many of the components through which the prop is passed does not even need that prop. They are just acting as a tunnel only to pass data to our destination component.
+When the scale of the application grows a bit, we might find ourselves from time to time passing props through several nested child components to get the data into some deeply nested component. This is called prop drilling and can become frustrating in large-scale applications. It is obvious that many of the components through which the prop is passed does not even need that prop. They are just acting as a tunnel only to pass data to our destination component.
 
 There are several ways that we can use to fix prop drilling:
 
@@ -1043,7 +1046,7 @@ function NavBar({ children }) {
 
 This can obviously be done for several levels of nesting.
 
-#### **PropTypes**
+#### PropTypes
 
 With `PropTypes` we can specify the type of values that we expect the consumer of the component to pass in for each of the props. For this pupose, we can use React's built-in prop types.
 
@@ -1069,20 +1072,20 @@ StarRating.propTypes = {
 };
 ```
 
-### **Props as an API**
+### Props as an API
 
 This is directly related to the issue of thinking about components' reusability that comes with props acting as the [component's API](#components-api).
 
-## **Effects**
+## Effects
 
 What is an effect, and how is it different from an event handler function?
 
-First, let's review what a side effect is. In React, any interaction between the component and the world outsite that component is a side effect. Side effect is a code that make something useful happen, for example, fetching some data from an API. We always need side effects when we build React apps. What we know for sure is that **side effects should not happen during the component's render**. In other words, side effects should not be in render logic. Instead, we can create side effects in 2 different places:
+First, let's review what a side effect is. In React, any interaction between the component and the world outsite that component is a side effect. Side effect is a code that make something useful happen, for example, fetching some data from an API. We always need side effects when we build React apps. What we know for sure is that side effects should not happen during the component's render. In other words, side effects should not be in render logic. Instead, we can create side effects in 2 different places:
 
-1. **Inside event handlers:** these are functions that are triggered when the event that they are listening to, happens.
-2. **Effects (`useEffect`):** simply reacting to events is sometimes not enough for what an app needs. Instead, in some situations, we need to write some **code that will be executed automatically as the component renders or re-renders**. This is when we can create an effect to run code at different moments of a component lifecycle; mounting, re-rendering, or unmounting. This activates a whole new door of posibilities.
+1. Inside event handlers: these are functions that are triggered when the event that they are listening to, happens.
+2. Effects (`useEffect`): simply reacting to events is sometimes not enough for what an app needs. Instead, in some situations, we need to write some code that will be executed automatically as the component renders or re-renders. This is when we can create an effect to run code at different moments of a component lifecycle; mounting, re-rendering, or unmounting. This activates a whole new door of posibilities.
 
-### **Effects vs. event handlers**
+### Effects vs. event handlers
 
 Let's compare these two in the case of fetching movie data in our app.
 
@@ -1111,15 +1114,15 @@ useEffect(function () {
 }, []);
 ```
 
-We can say that the two pieces of code produce the exact same result, but they do so at different moments in time. The exact moment in which the effect is executed depends on its **[dependancy array](#dependancy-array)**. We can use the dependancy array to tell an effect to also run after a component re-renders.
+We can say that the two pieces of code produce the exact same result, but they do so at different moments in time. The exact moment in which the effect is executed depends on its [dependancy array](#dependancy-array). We can use the dependancy array to tell an effect to also run after a component re-renders.
 
-This dependancy array is only one of the three parts that an effect can have. Besides the dependancy array, we have the effect code itself, inserted into the `useEffect()` function call as the first argument. As the third part, each effect can `return` a **cleanup** function, which is called before the component re-renders or unmounts.
+This dependancy array is only one of the three parts that an effect can have. Besides the dependancy array, we have the effect code itself, inserted into the `useEffect()` function call as the first argument. As the third part, each effect can `return` a cleanup function, which is called before the component re-renders or unmounts.
 
-Thinking about the different moments of a component lifecycle can be very helpful to understand how effects work. However, we should not think about lifecycles, but about **synchronization**. The real reason that effects exist is not to run code at differnt points of the lifecycle, but to keep a component synchronized with some **external system**. That would mean, in our example, to keep the component in sync with the movie data that comes from an external API.
+Thinking about the different moments of a component lifecycle can be very helpful to understand how effects work. However, we should not think about lifecycles, but about synchronization. The real reason that effects exist is not to run code at differnt points of the lifecycle, but to keep a component synchronized with some external system. That would mean, in our example, to keep the component in sync with the movie data that comes from an external API.
 
 `useEffect` is truly a synchronization mechanism to synchronize effect with the state of the application. Refer to [Synchronization and lifecycle](#syncronization-and-lifecycle) for a deeper dive into this.
 
-#### **Syncronization and lifecycle**
+#### Syncronization and lifecycle
 
 When a dependancy changes, the effect is executed again. But now let's remember that dependancies are alaways states or props. What happens to a component when its state or prop is updated? The component will re-render. This means that effects and the lifecycle of a component are deeply interconnected. When the `useEffect` hook was first introduced, many thought that it was a lifecycle hook, rather than a hook for syncing a component with a side effect.
 
@@ -1148,26 +1151,26 @@ useEffect(fn);
 // In this example, where we have no dependancy array, we know that the effect will run on every render, which is a bad practice. This means that the effect syncs with everything. Every state and every prop will be dependancies in this case.
 ```
 
-#### **When are effects executed?**
+#### When are effects executed?
 
 Let's see when are effects executed during the render and commit process?
 
 We previously mentioned that effects are executed after render, but this is not the full story. There is a timeline of events that happen as components render and re-render.
 
-1. The whole process starts with **mounting** the component instance, which is the initial render.
+1. The whole process starts with mounting the component instance, which is the initial render.
 2. The result of rendering is commited to the DOM.
 3. Finally the DOM changes are painted on the screen by the browser.
 4. Effects are only executed at this point, after the browser has painted the component instance on the screen, not immediately after render. This is why we say effects run asynchronously after the render has been painted on the screen. The reason why effect works this way, is that effects may contain long-running process, such as fetching data. So in such situations, if React would execute the effect before the browser paints a new screen, it would block this entire process, and users would see an old version of the component for too long. One important consequence of the fact the effects don't run during a render, is that if an effect sets state, then a second additional render is required to display the UI correctly. This is why you should not overuse `useEffect`.
 5. As one of the props change, the component will re-render.
 6. DOM changes will be commited.
-7. In React there is another type of effect called the **layout effect**, which runs before the browser paints the changes on the screen. This is the only difference between layout effects and regular effects. We almost never need this. It is just good to know that this exists.
+7. In React there is another type of effect called the layout effect, which runs before the browser paints the changes on the screen. This is the only difference between layout effects and regular effects. We almost never need this. It is just good to know that this exists.
 8. DOM changes will be painted to the screen again.
 9. This is a point in a component's lifecycle where the effect's cleanup function is executed.
 10. Now if the updated state is part of the dependancy array of the effect, the effect will be executed again at this point.
-11. This whole process can be repeated over and over again until the component is **unmounted**.
+11. This whole process can be repeated over and over again until the component is unmounted.
 12. This is another point in a component's lifecycle where the effect's cleanup function is executed.
 
-### **Dependancy array**
+### Dependancy array
 
 By default, an effect will run after each and every render. However, that is almost never what we want. We can change this default behavior by passing a dependancy array into the `useEffect()` hook as the second argument.
 
@@ -1175,7 +1178,7 @@ Why the `useEffect` hook need the dependancy array? Without this array, React do
 
 We can think of the `useEffect` hook as an event listener that listens for one or more dependancies to change. When one or more dependecies change, `useEffect` will execute the effect again. This is similar to a regular even listener, but for effects.
 
-What exactly are the dependencies? These are state variables and props used inside the effect. The rule is that **each and every one of state variables and props must be included in the dependency array**. Take a look at the code example below:
+What exactly are the dependencies? These are state variables and props used inside the effect. The rule is that each and every one of state variables and props must be included in the dependency array. Take a look at the code example below:
 
 ```js
 const title = props.movie.Title;
@@ -1190,7 +1193,7 @@ useEffect(
 );
 ```
 
-So the effect function depends on the `title` and `userRating` variables to do its job. If we don't pass these variables into the dependancy array, React will not know about them, and it won't be able to re-execute the effect code, and this would lead to a bug called **stale closure**.
+So the effect function depends on the `title` and `userRating` variables to do its job. If we don't pass these variables into the dependancy array, React will not know about them, and it won't be able to re-execute the effect code, and this would lead to a bug called stale closure.
 
 Whenever the `title` or `userRating` changes, the effect is executed again. This will, in turn, update the `document.title`. Essentially, effects react to updates to state and props that are used inside the effect. Effects are reactive, just like React reacts to state updates by re-rendering the UI. This is extremely useful as you will see.
 
@@ -1272,7 +1275,7 @@ export default function App() {
 
 > Sometimes we pass state setter functions as props into a component where we are introducing an effect, and the effect that we have introduced is actually using that state setter function to perform some action. In these situations, you should include the function in the dependency array. [more about this later...]
 
-### **Cleanup functions**
+### Cleanup functions
 
 Take the example of the usePopcorn project, where we wanted the title of the page to change whenever we select a movie to display its details. We actually want the title go back to it's primary value if the movie details column is closed and no movie is selected. This is one situation where we need the cleanup function of the effect that is responsible for changing the page title.
 
@@ -1283,11 +1286,11 @@ It is optional to return a cleanup function from an effect. We can simply omit i
 1. Before the effect is executed again, in order to cleanup the results of the previous side effect.
 2. After a component has unmounted in order to enable us to reset the side effect that we created if it is necessary.
 
-#### **When to use a cleanup function?**
+#### When to use a cleanup function?
 
 Using a cleanup function in an effect is necessary whenever the side effect keeps happening after the component has been re-rendered or unmounted.
 
-For example, you might be doing an HTTP request in your effect. If the component is re-rendered while the first request is still running, a new request will be fired off. This might create a bug called **race condition**. Therefore, it is a good idea to cancel the request in a cleanup function when the component re-renders or unmounts.
+For example, you might be doing an HTTP request in your effect. If the component is re-rendered while the first request is still running, a new request will be fired off. This might create a bug called race condition. Therefore, it is a good idea to cancel the request in a cleanup function when the component re-renders or unmounts.
 
 Other examples include:
 
@@ -1297,13 +1300,13 @@ Other examples include:
 
 > In order to make effects easier to cleanup, you should always follow one rule. That is, each effect should do only one thing. So use the `useEffect` hook for each side effect seperately.
 
-### **Effect use cases**
+### Effect use cases
 
-#### **Fetching data in React**
+#### Fetching data in React
 
 Let's first learn the wrong way of fetching data in a React app. This way you can learn more effectively.
 
-##### **The wrong way**
+##### The wrong way
 
 As we learned before, we should never update state in render logic. Let's break this rule so we can see why this rule exists.
 
@@ -1328,13 +1331,13 @@ export default function App() {
 
 This is the wrong way because this data fetching is introducing side effect into the component's render logic. This is an interaction with the outside world, which should never be allowed in render logic. The fetching code, written in the top level of the function, runs as the component first runs, which is actually why it is called render logic. But what is the problem?
 
-As you run your app with this fetching approach, you can observe in the Network tab of the browser that your app is endlessly attempting to fetch data from the API. Why? Setting the state in the render logic causes the component to re-render itself again. However, as the component is re-rendered, the fetching function is executed again, leading to another state update, which in turn, will cause the component to re-render itself in an **infinite loop**.This is why it is not allowed to `setState` in render logic.
+As you run your app with this fetching approach, you can observe in the Network tab of the browser that your app is endlessly attempting to fetch data from the API. Why? Setting the state in the render logic causes the component to re-render itself again. However, as the component is re-rendered, the fetching function is executed again, leading to another state update, which in turn, will cause the component to re-render itself in an infinite loop.This is why it is not allowed to `setState` in render logic.
 
 > "React limits the number of renders to prevent an infinite loop."
 
 But we actually need to update the state here. So let's now learn the correct way to do this, which is the `useEffect` hook.
 
-##### **The `useEffect` hook: the correct way**
+##### The `useEffect` hook: the correct way
 
 The idea of the `useEffect` hook is to give us a place where we can safely introduce side effects. The side effects registered with the `useEffect` hook will only be executed after certain renders, for instance, only right after the initial render.
 
@@ -1359,9 +1362,9 @@ export default function App() {
 
 The `useEffect` does not return anything, so we don't store its result in any variable, but instead, we pass in a function, and this function is called the 'effect', containing the code that we want to run as a side effect.
 
-The `useEffect` hook accepts as the first argument, a function which holds the code that we want it to run as the side effect, and as the second argument, the **dependancy array**. For now we just pass in an empty array, which means that this effect will only run on the mount phase.
+The `useEffect` hook accepts as the first argument, a function which holds the code that we want it to run as the side effect, and as the second argument, the dependancy array. For now we just pass in an empty array, which means that this effect will only run on the mount phase.
 
-Now if you check your Network tab of your browser, you will see that the problem with your infinite loop is now gone. This is the very bare bones way of data fetching in simple React app, at least if we want to fetch our data as soon as the app loads. In a larger, more real-world app, we may use some **external library** for data fectching.
+Now if you check your Network tab of your browser, you will see that the problem with your infinite loop is now gone. This is the very bare bones way of data fetching in simple React app, at least if we want to fetch our data as soon as the app loads. In a larger, more real-world app, we may use some external library for data fectching.
 
 > When we say that we 'register' a side effect, we mean that we want a specific code not to run as the component renders, but after it has been painted on the screen. This is what `useEffect` does.
 
@@ -1450,11 +1453,11 @@ export default function App() {
 
 The `<Loader />` component simply returns a `<p></p>`.
 
-##### **Handling errors**
+##### Handling errors
 
 Whenever we deal with `async` functions to fetch some data from a remote server, we need to take care of errors, because we should always assume that something might go wrong.
 
-**1. Situation 1: user loses internet connection**
+1. Situation 1: user loses internet connection
 
 On of these situations is when the user suddenly loses their connection. This is when your app encounters an error saying 'Failed to fetch'. So if this happens, we want to show something to user, and not keep the app in the loading status.
 
@@ -1518,7 +1521,7 @@ export default function App() {
 
 Note how we used a `finally` block in order to set the loading state to `false` eventually, because whether the data is fetched with no problem or there was an error in the fetching process, we need to remove the 'Loading...' text from the UI.
 
-**2. Situation 2: there is no result for the search query**
+2. Situation 2: there is no result for the search query
 
 Let's say that the user searches for an invalid movie name like 'lauksflabj'. We should also be able to display an appropriate error for this situation. This is when the response object no longer contains the `Search` property, it is basically `undefined', and we get a `Response` property set to the straing 'False'. Remember that this is specific to the OMDB API that you are using for this app.
 
@@ -1580,9 +1583,9 @@ export default function App() {
 }
 ```
 
-##### **Preventing race conditions**
+##### Preventing race conditions
 
-Currently, with each key stroke on the keyboard, the effect the we have introduced is executed again, starting `fetch` requests one after another. This creates a race condition where the results displayed on the UI will be the result of any request that takes longer to be responded with actual data from the API. However, that is not what we want. We only want the result of the last request to be displayed on the UI. So what we need to do now is to **cleanup** the previous `fetch` request each time the effect is going to be executed again.
+Currently, with each key stroke on the keyboard, the effect the we have introduced is executed again, starting `fetch` requests one after another. This creates a race condition where the results displayed on the UI will be the result of any request that takes longer to be responded with actual data from the API. However, that is not what we want. We only want the result of the last request to be displayed on the UI. So what we need to do now is to cleanup the previous `fetch` request each time the effect is going to be executed again.
 
 In this specific example, we are going to use the `AbortController` API that belongs to the browser. We are going to use it in the cleanup function of the effect.
 
@@ -1678,11 +1681,11 @@ useEffect(
 
 > Note that the callback function mentioned in the `removeEventListener()` method should be exactly the same function that was used in the `addEventListener()` method. So we have to define the callback function outside of the methods, and simply refer to them in the methods.
 
-#### **Listening for keypress event on the document object**
+#### Listening for keypress event on the document object
 
 In order to listen for a key press event on the whole document object, we can introduce an effect. Inside this effect we can use the native `addEventListener()` JavaScript method on the `document` object.
 
-### **RECAP**
+### RECAP
 
 We need side effects in all our React apps. It is a good thing, but it is not allowed everywhere. Side effects are not allowed in the render logic at all. We can, however, introduce side effects in two places:
 
@@ -1717,37 +1720,37 @@ So up until now, we can use the dependency array to execute an effect on compone
 
 The cleanup function is an optional part of any effect. It means that we don't have to include this cleanup function in every effect that we create. But if we need to execute some code after a component is unmounted, or if we need to do so right before the effect is executed again, we should use the effect's cleanup function.
 
-So as a practical guideline, remember that using a cleaup function becomes necessary whenever the side effect you introduced is executed again when the component is re-rendered or unmounted. For example, if you have implemented an HTTP request in your effect, this may create a situation in which your component re-renders while your first request is being done, starting a new second HTTP request, leading to the **race condition** bug. So you need to cleanup the previous request in such situations. Other examples include API subscription, starting a timer, or adding an event listener.
+So as a practical guideline, remember that using a cleaup function becomes necessary whenever the side effect you introduced is executed again when the component is re-rendered or unmounted. For example, if you have implemented an HTTP request in your effect, this may create a situation in which your component re-renders while your first request is being done, starting a new second HTTP request, leading to the race condition bug. So you need to cleanup the previous request in such situations. Other examples include API subscription, starting a timer, or adding an event listener.
 
 > Remember a good rule about introducing effects: each effect should do only one thing. use the `useEffect` hook for each side effect seperately. This makes effects easier to cleanup.
 
-## **The Context API**
+## The Context API
 
 Let's start with the problem that the context API solves. Imagine an application where you need to pass state into multiple deeply nested child components.
 
 The first solution that comes to mind is to simply pass the state variable as props all the way down until it reaches the components that need the state. However, this will create a new problem, because passing props down through multiple levels in the tree can become inconvenient. This problem is called prop drilling.
 
-> Remember that we previously mentioned **component composition** as a possible solution. But it is not always possible. Component composition with the `children` prop does not always solve this problem.
+> Remember that we previously mentioned component composition as a possible solution. But it is not always possible. Component composition with the `children` prop does not always solve this problem.
 
 We need a way of directly passing down state from a parent component into a deeply nested child component. React has already thought of that and has provided us with the Context API. The context API allows components everywhere in the tree to read state that a context shares.
 
-First of all, the context API is a system to pass data throughout the app without manually passing props down the component tree. It essentially allows us to **broadcast global state** to the entire app.
+First of all, the context API is a system to pass data throughout the app without manually passing props down the component tree. It essentially allows us to broadcast global state to the entire app.
 
-### **The provider**
+### The provider
 
-The first part of the Context API is the **Provider**. The provider gives all child components access to a `value`. This provider can sit everywhere in the component tree, but it is common to place it at the very top.
+The first part of the Context API is the Provider. The provider gives all child components access to a `value`. This provider can sit everywhere in the component tree, but it is common to place it at the very top.
 
-### **The value**
+### The value
 
-The second part of the Context API is the **value** that the provider provides to the components. The value is the data that we want to broadcast through the provider. We pass this value into the provider. This value usually contains one or more state variables and even some setter functions.
+The second part of the Context API is the value that the provider provides to the components. The value is the data that we want to broadcast through the provider. We pass this value into the provider. This value usually contains one or more state variables and even some setter functions.
 
-### **Consumers**
+### Consumers
 
-Finally, we have the **Consumers**. Consumers are all the components that subscribe to the context, and therefore are able to read the provided context value.
+Finally, we have the Consumers. Consumers are all the components that subscribe to the context, and therefore are able to read the provided context value.
 
 Now you might ask, what happens when the context value changes? When the context value is updated, all consumers of that value will get re-rendered. This means that now we have a new way in which component instances can be re-rendered. We already knew that state updates re-render a component, but now we know that an update to a context value also re-renders a component as long as that component is subscribed to that context.
 
-### **Creating and providing a context**
+### Creating and providing a context
 
 We usually create a context in the top component of our application which is usually the `App` component. Inside this file (or component function), we call the `createContext()` function that is provided to us by React. Make sure that you import it from React first. This function returns a context that we can store in a variable. Into the `createContext` function we could pass a default value for the context. However, we usually never do that becasue that value can never change over time. So we normally leave the function empty or pass `null` into it.
 
@@ -1848,7 +1851,7 @@ function Results() {
 
 But let's now implement an advanced pattern in using the Context API.
 
-### **Advanced pattern: A custom provider and hook**
+### Advanced pattern: A custom provider and hook
 
 The idea is to remove all the state and state updating logic from the main `App` component and place it into our own custom context provider component. It is basically just a refactoring of what we already have at this point. We are just going to have the different parts of implementing a context in different files.
 
@@ -1937,7 +1940,7 @@ function App() {
 }
 ```
 
-> Note how we have wrapped only the components that need to have access to the context and not the whole JSX of the `App` component. However, when you do this you should keep in mind that the context will no longer be accessible in the `App` component itself. It will only be available in the `Header`, `Main`, and only in the components that are placed inside the provider. **So you can only access the context where it is provided**.
+> Note how we have wrapped only the components that need to have access to the context and not the whole JSX of the `App` component. However, when you do this you should keep in mind that the context will no longer be accessible in the `App` component itself. It will only be available in the `Header`, `Main`, and only in the components that are placed inside the provider. So you can only access the context where it is provided.
 
 We are now going to create our custom hook. Why? Right now to consume the context, we use the `useContext` hook and we pass in the `PostContext` object. This works great, but over time, after using it many times you will notice that it becomes anoying. So we are going to create a custom hook in order to get rid of this repetition. So in the `PostContext.jsx` file we go ahead and create a custom hook called `usePosts` and define it like this:
 
@@ -1953,15 +1956,15 @@ export { PostProvider, usePosts };
 
 Then instead of exporting the `PostContext` component, we export our custom hook and import it in the `App` component. Now in the `App` component file we can easily replace all `useContext(PostContext)` with `usePosts()`.
 
-## **Performance Optimization**
+## Performance Optimization
 
 We start by an overview of what can actually be optimized in React apps and how we can do it. There are 3 main areas where we can focus on when we need to optimize performance of React apps.
 
-1. **Prevent wasted renders:** in order to prevent wasted renders we can memoize components with `memo`, or we can memoize objects and functions with `useMemo` and `useCallback` hooks. We can also use a technique in which we pass elements into other elements as children or as a normal prop in order to prevent them from being re-rendered.
-2. **Improve app speed or responsiveness:** We can use the `useMemo` and `useCallback` and also `useTransition` hooks.
-3. **Reduce bundle size:** we can reduce the bundle size simply by using fewer 3rd-party packages in our code base, and we can also implement code splitting and lazy loading.
+1. Prevent wasted renders: in order to prevent wasted renders we can memoize components with `memo`, or we can memoize objects and functions with `useMemo` and `useCallback` hooks. We can also use a technique in which we pass elements into other elements as children or as a normal prop in order to prevent them from being re-rendered.
+2. Improve app speed or responsiveness: We can use the `useMemo` and `useCallback` and also `useTransition` hooks.
+3. Reduce bundle size: we can reduce the bundle size simply by using fewer 3rd-party packages in our code base, and we can also implement code splitting and lazy loading.
 
-## **React Fragments**
+## React Fragments
 
 Basically, a React fragment lets us group elements without leaving any trace in the DOM.
 
@@ -1999,13 +2002,13 @@ function Menu() {
 
 > Sometimes we need to add a `key` to the React fragment, for instance, when we are using it to render a list. Then the fragment would have to be written in a different way. The wrapper element will now be `<React.Fragment>` and then we would be able to add a `key` prop to it.
 
-## **Styling React applications**
+## Styling React applications
 
 There are several ways to style components. React does not really care about how we do it. React is more of a library than a framework.
 
 But why there are so many ways of styling a React app? One fundamental philosophy of React is to be unopinionated in regards to many common aspects of building web apps, and one of them is styling. So React does not really care about how you do it.
 
-### **Inline styling**
+### Inline styling
 
 In HTML, we can style elements using the `style` attribute. But it works a bit different in JSX. We cannot assign a string to the style attribute as we did with the normal HTML syntax. The style attribute in JSX should receive a JavaScript object containing the styles defined as properties.
 
@@ -2027,7 +2030,7 @@ Note how we used the first set of `{}` to enter JavaScript mode in the JSX, and 
 
 > The JavaScript object inserted into the style attribute can be defined separately outisde the JSX.
 
-### **External CSS or Sass**
+### External CSS or Sass
 
 We should first import the external CSS file into the JavaScript file where our components and their JSX are declared.
 
@@ -2055,7 +2058,7 @@ function App() {
 
 > Styles included here as an external CSS file are global styles, they are not scoped to the components where they are used.
 
-### **CSS modules**
+### CSS modules
 
 This option scopes the CSS styles to a single component which is the proper way of applying styles to big React apps.
 
@@ -2120,7 +2123,7 @@ function PageNav() {
 
 > If you inspect the `nav` element in your browser you will see that the class name inserted into the element is not actually just `nav`. A random string is added to it which act as a unique ID for the `nav` class name attached to this specific component. This means that if you have another component, the CSS module of which contains a class also named `nav`, you will not see any conflict in applying CSS styles. This is because the `nav` class name applied to the second component will actually be inserted into the HTML element with another random string attached to it as another unique ID.
 
-#### **Global CSS**
+#### Global CSS
 
 Sometimes, in addition to CSS modules, we need some global CSS settings, such as global reset, or setting some font properties on the `body` element of the document. For this purpose, we can keep including an external CSS file as we have been doing up until now.
 
@@ -2234,29 +2237,29 @@ function Homepage() {
 
 This means that the element with the `active` class name that also has the `nav` class name will get the background color of green.
 
-### **CSS-in-JS**
+### CSS-in-JS
 
 If you want to further with the moduling option, you write your CSS inside a JavaScript file, so in the same file where you define your component. This allows us to create React components that have our styles directly applied to them which we can then use like regular components.
 
 This fully embraces the React philosophy that a component should contain all the information about its appearance, and that includes CSS.
 
-### **Utility-first CSS**
+### Utility-first CSS
 
 This is getting more popular everyday. In this method, you use predefined utility classes to define individual styles, to use flexbox, to make layout responsive, to make hover effects, and to design your entire UI without ever having to leave the JSX markup.
 
-### **No CSS!**
+### No CSS!
 
 You can build your entire project using a fully-fledged UI component library. A component library contains all kinds of pre-built and pre-styled components that are common in most applications. One of the famous libraries that helps us doing this is the _Styled Components_.
 
-## **Separation of concerns in React**
+## Separation of concerns in React
 
 [Notes will be added later.]
 
 Before React we had one technology per file, but with React we have one component per file. So separation of concerns is still there, but in a different paradigm.
 
-## **Routing and Single-Page Applications (SPA)**
+## Routing and Single-Page Applications (SPA)
 
-When we use routing in a web app, we basically match different URLs to different views in the UI. In the specific case of React, we match each URL to a specific React component. We call each match between a URL and a component a **route**. Then when one of the specific URLs gets visited, the corresponding React component will gbeet rendered.
+When we use routing in a web app, we basically match different URLs to different views in the UI. In the specific case of React, we match each URL to a specific React component. We call each match between a URL and a component a route. Then when one of the specific URLs gets visited, the corresponding React component will gbeet rendered.
 
 For instance, we show the homepage of our application at the `www.example.com/` URL which is also called the root URL. Then we render the login page for the `www.example.com/login` URL, and also when the user is logged in, we load the main functionality of our app for the `www.example.com/app` URL.
 
@@ -2265,7 +2268,7 @@ This enable users to navigate between different screens of the app by simply usi
 This type of routing only works this way on the client side. There is also another routing that happens on the server side, but not in client-side React apps that we build during this tutorial.
 Most front-end frameworks have this client-side routing capablities baked right into the framework, but React is different, because it relies on 3rd-party packages for many different functionalities, and routing is one of them.
 
-In React, routing is usually handled by [**React Router**](#react-router) library. This is the most important and most used React 3rd-party library. If you want to learn React development you need to learn React Router. The reason for this is that routing is fundamental for building sing-page applications (SPA).
+In React, routing is usually handled by [React Router](#react-router) library. This is the most important and most used React 3rd-party library. If you want to learn React development you need to learn React Router. The reason for this is that routing is fundamental for building sing-page applications (SPA).
 
 Sing-page apps are web applications that are executed entirely on the client, so only in the user's browser. SPAs rely heavily on the concept of routes where different URLs corresponds to different views.
 
@@ -2281,11 +2284,11 @@ It is quite common that some pages need to display some external data, but that 
 
 Big and complex applications rely on URLs and need the routing capabilities, because only then they can become real SPAs.
 
-# **State, Events and Forms: interactive components**
+# State, Events and Forms: interactive components
 
 In this section, we will be working on a steps component as an example. We initialized the a new project using the `npx create-react-app@5 steps` command, then deleted everything in the `src` folder except the `App.js` and `index.js` files. Inside the `App.js` file we define the `App` component and export it so that the `root` element defined in the `index.js` file can have access to it.
 
-**`App.js`**
+`App.js`
 
 ```js
 const messages = [
@@ -2321,9 +2324,9 @@ export default function App() {
 }
 ```
 
-## **Handling events**
+## Handling events
 
-To handle events in React, we don't use the `.addEventListener()` method, because that is the imperative way of responding to events. But in React, we use a **declarative** approach, meaning that we don't manually select DOM elements. Instead, we use something similar to the **HTML inline event listener**.
+To handle events in React, we don't use the `.addEventListener()` method, because that is the imperative way of responding to events. But in React, we use a declarative approach, meaning that we don't manually select DOM elements. Instead, we use something similar to the HTML inline event listener.
 
 To listen for a click event on a certain element, we use the `on<Event>` prop or attribute on the element in the JSX. This prop accepts a JavaScript function. For instance, if we want to listen for a click event on a button:
 
@@ -2407,9 +2410,9 @@ export default function App() {
 }
 ```
 
-We usually handle events in order to work with **states**.
+We usually handle events in order to work with states.
 
-## **State in React**
+## State in React
 
 State is the most important concept in React. Mastering state is the most difficult part of learning React. Everything revolves around the concept of state in React. Here is what React developers need to learn about state:
 
@@ -2423,9 +2426,9 @@ State is the most important concept in React. Mastering state is the most diffic
    - Where to place state
    - Types of state
 
-We know how to pass data into a component using props, which is data coming from outside the component. But what if a component needs to **hold its own data**, especially **over time**? Also, what if we want to make our application interactive and change the UI as a result of an action? This is where state comes in.
+We know how to pass data into a component using props, which is data coming from outside the component. But what if a component needs to hold its own data, especially over time? Also, what if we want to make our application interactive and change the UI as a result of an action? This is where state comes in.
 
-State is data that a component can hold over time. It is necessary for information that the component needs to remember throughout the application's lifecycle. So we can think of state as the **memory of a component**.
+State is data that a component can hold over time. It is necessary for information that the component needs to remember throughout the application's lifecycle. So we can think of state as the memory of a component.
 
 Examples of state:
 
@@ -2434,51 +2437,51 @@ Examples of state:
 - Active tab in a tabbed component
 - Content of a shopping cart
 
-The common thing between all kinds of state is that the user can easily change the state value in the application. For instance, when they read a notification, the count will decrease. So each component needs to be able to hold this data, which is **a piece of state**, over time.
+The common thing between all kinds of state is that the user can easily change the state value in the application. For instance, when they read a notification, the count will decrease. So each component needs to be able to hold this data, which is a piece of state, over time.
 
 A piece of state or a state variable is a single variable in a component, which is also called a component state.
 
-Keep in mind that **updating** the state triggers React to **re-render** the component in the UI. So state is how React keeps the user interface in sync with data. Therefore, state allows developers to do 2 important things:
+Keep in mind that updating the state triggers React to re-render the component in the UI. So state is how React keeps the user interface in sync with data. Therefore, state allows developers to do 2 important things:
 
 1. Update the component's view by re-rendering the component.
 2. Persist local variables between renders and re-renders
 
-So state is actually a tool. **Mastering the state will unlock the power of React development**.
+So state is actually a tool. Mastering the state will unlock the power of React development.
 
-### **Mechanics of state**
+### Mechanics of state
 
 Let's start from a fundamental React principle that we learned earlier.
 
-1. **PRICIPLE:** In react, we do NOT manipulate the DOM directly when we want to update a component's view. React is declarative, not imperative.
+1. PRICIPLE: In react, we do NOT manipulate the DOM directly when we want to update a component's view. React is declarative, not imperative.
 
 So how do we update a component on the screen when some data changes or when we need to respond to some event like a click?
 
-2. **PRICIPLE:** React updates a component view by re-rendering the entire component whenever the underlying data changes. Re-rendering means that **React calls the component function again**. React removes the entire component view and replaces it with a new view each time a re-render needs to happen. React **preserves the component state throughout re-renders**, unless the component disappears from UI entirely which we call **unmounting**.
+2. PRICIPLE: React updates a component view by re-rendering the entire component whenever the underlying data changes. Re-rendering means that React calls the component function again. React removes the entire component view and replaces it with a new view each time a re-render needs to happen. React preserves the component state throughout re-renders, unless the component disappears from UI entirely which we call unmounting.
 3. It is when the state is updated that a component is automatically re-rendered.
 
 Now here is a flow of what happens in this process in the actual application. Imagine there is an event handler in the view, for instance, on a button that the user can click:
 
-1. The moment that button is clicked, we can update a piece of state using the **setter function** coming from the `useState()` hook.
+1. The moment that button is clicked, we can update a piece of state using the setter function coming from the `useState()` hook.
 2. When React notices that a state has changed, it will automatically re-render the component, which will result in the updated view for the component.
 
-**REACT REAECTS TO STATE CHANGES BY RE-RENDERING THE UI.**
+REACT REAECTS TO STATE CHANGES BY RE-RENDERING THE UI.
 
-### **State guidelines**
+### State guidelines
 
-There is one important technical detail to remember: **Each component has and manages its own state, no matter how many times we render the same component, and no matter if there are multiple components of the same type (like a list) but for different contents.** For instance, imagine a list of score componentes for multiple football teams. State is isolated inside each component.
+There is one important technical detail to remember: Each component has and manages its own state, no matter how many times we render the same component, and no matter if there are multiple components of the same type (like a list) but for different contents. For instance, imagine a list of score componentes for multiple football teams. State is isolated inside each component.
 
 Therefore, we can think of the entire Application (UI) as a function of the state. In other words the entire UI is always a representation of all the current states in all components.
 
-Taking it one step further, we can say that a React application is fundamentally all about **changing state over time**. Instead of viewing a UI as explicit DOM manipulations, with state, we now view a **UI as a reflection of data changing over time**.
+Taking it one step further, we can say that a React application is fundamentally all about changing state over time. Instead of viewing a UI as explicit DOM manipulations, with state, we now view a UI as a reflection of data changing over time.
 
 Here are a few practical guidelines about state:
 
-1. Use a state variable for **any data that the component should keep track of or remember over time**. This is data that will change at some point.
-2. Whenever you want something in the component to be **dynamic**, create a piece of state related to that thing, and update the state when that thing should change. For instance, you can create an `isOpen` state variable that tracks whether a model window is open or not. Then when `isOpen` is `true` we display the window, and if `false`, we hide it.
-3. When building a component, imagine its **view as a reflection of state** changing over time.
+1. Use a state variable for any data that the component should keep track of or remember over time. This is data that will change at some point.
+2. Whenever you want something in the component to be dynamic, create a piece of state related to that thing, and update the state when that thing should change. For instance, you can create an `isOpen` state variable that tracks whether a model window is open or not. Then when `isOpen` is `true` we display the window, and if `false`, we hide it.
+3. When building a component, imagine its view as a reflection of state changing over time.
 4. For data that should not trigger component re-renders, don't use state. Use a regular variable instead.
 
-### **Working with a state variable**
+### Working with a state variable
 
 Following the example mentioned earlier, we now want to implement a functionality that causes the step to change as we click on the next and previous buttons.
 
@@ -2535,9 +2538,9 @@ export default function App() {
 }
 ```
 
-> The `useState()` function is also called a **hook** in React. Hooks are identified with the `use` keyword at the beginning of their name. It is extremely important to remember that we can only call hooks on the top-level of a function, not inside an `if` statement or a function or a loop.
+> The `useState()` function is also called a hook in React. Hooks are identified with the `use` keyword at the beginning of their name. It is extremely important to remember that we can only call hooks on the top-level of a function, not inside an `if` statement or a function or a loop.
 
-> We should only update state using the setter function that is, by default, defined as the second element of the array returned by the `useState()` function. If you attempt to update the state manually using regular JavaScript code, React cannot understand what you are trying to do. The functionality will simply not work. This is true about primitive values. But what if the state variable holds an object and then we update this state manually? This will actually work and React will re-render! But it is definitely a bad practice, especially in React, which is all about **immutablity** and **function state updates**.
+> We should only update state using the setter function that is, by default, defined as the second element of the array returned by the `useState()` function. If you attempt to update the state manually using regular JavaScript code, React cannot understand what you are trying to do. The functionality will simply not work. This is true about primitive values. But what if the state variable holds an object and then we update this state manually? This will actually work and React will re-render! But it is definitely a bad practice, especially in React, which is all about immutablity and function state updates.
 
 ```js
 const [test] = useState({ name: "Jonas" });
@@ -2560,7 +2563,7 @@ function handleNext() {
 }
 ```
 
-> In case we are **updating the state based on the current state**, it is the best practice to implement a callback function inside the state setter function that will handle the upading task. This way we prepare our application for future changes in its state updating mechanism. Again, this is important when we are updating the state based on the current state. It means that the new value of the state variable is derived somehow from the current value of the state variable.
+> In case we are updating the state based on the current state, it is the best practice to implement a callback function inside the state setter function that will handle the upading task. This way we prepare our application for future changes in its state updating mechanism. Again, this is important when we are updating the state based on the current state. It means that the new value of the state variable is derived somehow from the current value of the state variable.
 
 ```js
 function handlePrevious() {
@@ -2574,11 +2577,11 @@ function handleNext() {
 
 > In case the new value of the state variable does not depend on its current value, we can simply ignore using a callback function inside the state setter function.
 
-### **Forms and handling submissions**
+### Forms and handling submissions
 
 One of the most important things that we do on the web is to interact with web applications through forms. We are now going to learn how to use forms in React.
 
-#### **Creating a form**
+#### Creating a form
 
 Take the "Far Away" project as an example. When we build forms in React, we use the normal HTML `<form>` element. So we have a `Form` component, and inside it we write the JSX for a form like this:
 
@@ -2605,7 +2608,7 @@ function Form() {
 
 > Remember to define a `key` prop for any element that is produced through a mapping operation. We will later learn what this key is and why it is important.
 
-#### **Form Events**
+#### Form Events
 
 When we work with a form, we basically want the form to be submitted once we click on a button element. We can then react to the form submission with an event handler.
 
@@ -2635,11 +2638,11 @@ function Form() {
 
 > Note that we have prevented the default behavior of the HTML form element when a submission happens. The default behavior is to perform a full reload for the whole application, but as we have talked about React and its aim to create single-page applications, that is not what we want.
 
-> The input data that is submitted by a form is accessible in the event (`e`) object that is received by the event handler function. Inside this object there is a `target` object that stores all the elements of the form, and their values if they have any. But this is not the way we acquire form input data in React. Instead, we use **Controlled Elements**.
+> The input data that is submitted by a form is accessible in the event (`e`) object that is received by the event handler function. Inside this object there is a `target` object that stores all the elements of the form, and their values if they have any. But this is not the way we acquire form input data in React. Instead, we use Controlled Elements.
 
-#### **Controlled elements**
+#### Controlled elements
 
-An important thing to keep in mind is that, by default, the input fields of a form maintain their own state inside the DOM. This makes it hard to read their values, and it also leaves the state right in the DOM, which is not ideal for many reasons. In React, we want to keep all states in one central place which is inside the React application, and not inside the DOM. In order to do this, we use a technique called **Controlled Elements**.
+An important thing to keep in mind is that, by default, the input fields of a form maintain their own state inside the DOM. This makes it hard to read their values, and it also leaves the state right in the DOM, which is not ideal for many reasons. In React, we want to keep all states in one central place which is inside the React application, and not inside the DOM. In order to do this, we use a technique called Controlled Elements.
 
 With this technique, it is React that will control and own the state of the input fields. So, basically, we need some state in our application.
 
@@ -2707,7 +2710,7 @@ So we have basically defined an event handler function for the `onChange` prop o
 
 > Note that `e.target` is the element to which the event handler function is attached.
 
-> **EXTREMELY IMPORTANT:** Notice how functions are passed differently into `onSubmit` and `onChange` props. The reason behind this difference is that when the `submit` event happens, meaning the form data is being submitted, we call the submit handler function immediately with the `event` object automatically passed into it. On the other hand, when the input `change` event happens, we need to pass the new value into the state setter function. So although the `e` object is automatically passed into the setter function, we need to call the setter function with the new state value which is inside the event object, we don't want to call the setter with the event object itself.
+> EXTREMELY IMPORTANT: Notice how functions are passed differently into `onSubmit` and `onChange` props. The reason behind this difference is that when the `submit` event happens, meaning the form data is being submitted, we call the submit handler function immediately with the `event` object automatically passed into it. On the other hand, when the input `change` event happens, we need to pass the new value into the state setter function. So although the `e` object is automatically passed into the setter function, we need to call the setter function with the new state value which is inside the event object, we don't want to call the setter with the event object itself.
 
 We can implement the same technique for the `select` form field.
 
@@ -2767,43 +2770,43 @@ function handleSubmit(e) {
 
 > Now as the example application is going on in its development phase, we now need to render this new item created through the form submission. Remember that we cannot pass data as props between sibling elements. Data can only flow down the tree, but not sideways. This is where we really need to start thinking about state and state management in React in order to make it possible to pass data between sibling elements.
 
-## **Review: State vs. Props**
+## Review: State vs. Props
 
 | State                                        | Props                                                                                                                            |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Internal data, owned by component            | External data, owned by parent component. Similar to function parameters, as a communication channel between parent and children |
 | Component's memory                           | Read-only, cannot be modified by the component that is receiving them                                                            |
-| Can be updated by the component itself       | **Receiving new props causes components to re-render. Usually when the parent's state has been updated.**                        |
+| Can be updated by the component itself       | Receiving new props causes components to re-render. Usually when the parent's state has been updated.                            |
 | Updating state causes component to re-render |                                                                                                                                  |
 | Used to make components interactive          | Used by parent to configure child component (settings)                                                                           |
 
-# **Thinking in React**
+# Thinking in React
 
 A core skill that every React developer needs to develop, is to think in React. Thinking in React encompasses many aspects:
 
 1. State management
-   - When and where to **create** state?
-   - When and how to **derive** state?
-   - How to communicate between child and parent components by **lifting** state up?
+   - When and where to create state?
+   - When and how to derive state?
+   - How to communicate between child and parent components by lifting state up?
 2. some other aspect
 3. some other aspect
 
-While you are building an application, thinking in React basically means that you have a very good **mental model** of how and when to use all the React tools, like components, state, props, data flow, effects, and many more. It is also always thinking in terms of **state transitions** rather than element mutations.
+While you are building an application, thinking in React basically means that you have a very good mental model of how and when to use all the React tools, like components, state, props, data flow, effects, and many more. It is also always thinking in terms of state transitions rather than element mutations.
 
 Thinking in React can be interpretted as a process that can help us build apps in a more structured way. This process, of course, is not a rigid process. In practice there will be a lot of back and forth between these steps. But here is a good suggestion:
 
-1. Break the desired UI into components and establish **how these components are related** in the component tree. This also includes thinking about **reusablity** and **composiblity** of components.
-2. Build a **static version** in React (without state and interactivity). By doing this, we do most of the coding up front, before having to wory about state and interactivity.
-3. Think about **state**:
+1. Break the desired UI into components and establish how these components are related in the component tree. This also includes thinking about reusablity and composiblity of components.
+2. Build a static version in React (without state and interactivity). By doing this, we do most of the coding up front, before having to wory about state and interactivity.
+3. Think about state:
    - When to use state
    - Types of state: local vs. global
    - Where to place each piece of state
-4. Establish **data flow**:
+4. Establish data flow:
    - One-way data flow
    - Child-to-parent communication
    - Accessing global state
 
-> Steps 3 and 4 are called altogether **state management**.
+> Steps 3 and 4 are called altogether state management.
 
 Once we know how to think in React, we will be able to answer these questions:
 
@@ -2815,15 +2818,15 @@ Once we know how to think in React, we will be able to answer these questions:
 - What types of state can or should I use?
 - How to make data flow through the application?
 
-## **Thinking: State management (Basic)**
+## Thinking: State management (Basic)
 
 Take a look at a complicated web application. How would we know that we need all pieces of state in the application? How do we know where to place them in the code? This is where state management comes to play.
 
-State management is about deciding **when** to create pieces of state, what **types** of state are necessary, **where** to place each piece of state, and how **data flows** through the app. State management is to give each piece of state a home within our code base.
+State management is about deciding when to create pieces of state, what types of state are necessary, where to place each piece of state, and how data flows through the app. State management is to give each piece of state a home within our code base.
 
 Up until this point, we never had to worry about state management. We simply placed each state in a component that needed it. However, as an application grows the need to find the right home to each piece of state starts to become really important.
 
-### **Types of state (accessibility)**
+### Types of state (accessibility)
 
 There are two types of state: Local vs. Global.
 
@@ -2834,33 +2837,33 @@ There are two types of state: Local vs. Global.
 
 > Looking at a complicated application, an example of local state might be the input text in the search bar. An example of global state can be the shopping cart since this piece of data is used all over the place.
 
-The distinction between local and global state matters more in large-scale applications. In small apps, we won't have any truly global state. One important guideline in state management is to **always start with local state**, and only move to global state if you truly need it.
+The distinction between local and global state matters more in large-scale applications. In small apps, we won't have any truly global state. One important guideline in state management is to always start with local state, and only move to global state if you truly need it.
 
-> In practice, we can define global state using React's **Context API** or an external global state management library called **Redux**.
+> In practice, we can define global state using React's Context API or an external global state management library called Redux.
 
-### **When and where?**
+### When and where?
 
-It all starts **when** you realize that **you need to store some data**. When this happens, you have to ask yourself:
+It all starts when you realize that you need to store some data. When this happens, you have to ask yourself:
 
-**Will this data change at some point in time?**
+Will this data change at some point in time?
 
 - No: use a regular `const` variable
-- Yes: **Is it possible to compute this new data from an existing piece of state or props?**
+- Yes: Is it possible to compute this new data from an existing piece of state or props?
   - Yes: _Derive_ state, meaning that you should compute it based on already existing state or prop
-  - No: **Should updating the state re-render the component?**
+  - No: Should updating the state re-render the component?
     - No: `useRef`, which persists data over time, like regular state, but does not re-render a component.
     - Yes: Place a new piece of state in the component. (mentioned earlier: always start with local state.)
 
-**Is the state variable that we just created only used by the current component?**
+Is the state variable that we just created only used by the current component?
 
 - Yes: Leave the state in the component.
-- No: **State variable is also used by a child component?**
+- No: State variable is also used by a child component?
   - Yes: Pass to child via props
-  - No: **Used by one or a few sibling components or a parent component?**
+  - No: Used by one or a few sibling components or a parent component?
     - Yes: _Lift_ state up to first _common parent_.
     - No: Probably _global state_. later...
 
-### **Lifting state**
+### Lifting state
 
 Let's go back to the "Far Away" application as an example. In this application, we are going to set a state variable for all the things that should be listed.
 
@@ -2913,7 +2916,7 @@ function Form() {
 
 > Notice again how we have implemented a callback function inside the `setItems` state setter function because the new state is computed based on the current state.
 
-Up until this point, the state is being updated successfully, but it is not rendered anywhere in the UI. The problem is that the `Form` component in which we have defined the `items` state is actually the sibling of `PackingList` component which is actually responsible for rendering the `items` state to the UI. We cannot pass this data as a prop to the `PackingList`. The solution here is to **lift up state** to the first common parent component, which is the `App` component in this case.
+Up until this point, the state is being updated successfully, but it is not rendered anywhere in the UI. The problem is that the `Form` component in which we have defined the `items` state is actually the sibling of `PackingList` component which is actually responsible for rendering the `items` state to the UI. We cannot pass this data as a prop to the `PackingList`. The solution here is to lift up state to the first common parent component, which is the `App` component in this case.
 
 So we move the state definition to the `App` component. Then we would also have to move the `handleAddItems` function to the `App` component because that is where, now, the `setItems` setter function and the `items` state is defined and therefore usable.
 
@@ -2921,7 +2924,7 @@ Now that we have lifted the state to the `App` component, we can pass the state 
 
 So the `PackingList` component will simply receive the `items` state variable as a prop, and use it to render the `items` state to the UI.
 
-We also need to pass the `handleAddItems` function, responsible for calling the `setItems` setter function to update the state function, to the `Form` component. Passing down a setter function is also called **child-to-parent communication** or **inverse data flow**, because here it is the child that will update the parent state. It seems as if the data is flowing up, which in fact is not true.
+We also need to pass the `handleAddItems` function, responsible for calling the `setItems` setter function to update the state function, to the `Form` component. Passing down a setter function is also called child-to-parent communication or inverse data flow, because here it is the child that will update the parent state. It seems as if the data is flowing up, which in fact is not true.
 
 ```js
 export default function App() {
@@ -3054,7 +3057,7 @@ function Item({ item, onDeleteItem }) {
 }
 ```
 
-> This is, again, the case where we previously mentioned an **EXTREMELY IMPORTANT** note. Keep in mind that we cannot immediately call the `onDeleteItem` function in the `onClick` prop, because in that case, the function will be called with the event (`e`) object passed into it automatically. But here, we don't want to call this function with the event object. Instead, we want the function to be called while the item ID is passed into it. This is why we used a callback function inside the `onClick` prop, in order to be able to pass the necessary data into the `onDeleteItem` handler.
+> This is, again, the case where we previously mentioned an EXTREMELY IMPORTANT note. Keep in mind that we cannot immediately call the `onDeleteItem` function in the `onClick` prop, because in that case, the function will be called with the event (`e`) object passed into it automatically. But here, we don't want to call this function with the event object. Instead, we want the function to be called while the item ID is passed into it. This is why we used a callback function inside the `onClick` prop, in order to be able to pass the necessary data into the `onDeleteItem` handler.
 
 As another example, we now want to implement a checkbox for each item. If the checkbox is checked, we want the item's `packed` property to be updated. It means that we actually want the `items` state variable to be updated.
 
@@ -3144,7 +3147,7 @@ function Item({ item, onDeleteItem, onToggleItem }) {
 }
 ```
 
-### **Derived state**
+### Derived state
 
 This is pretty straight forward. Derived state is state that is computed from an existing piece of state of from props.
 
@@ -3197,7 +3200,7 @@ function Stats({ items }) {
 }
 ```
 
-## **Thinking: State management (Advanced)**
+## Thinking: State management (Advanced)
 
 In this advanced section of state management, we are going to talk about:
 
@@ -3205,20 +3208,20 @@ In this advanced section of state management, we are going to talk about:
 2. Where to place each piece of state
 3. Tools to manage all types of state
 
-### **Types of state**
+### Types of state
 
 We can classify state in terms of state accessibility and state domain.
 
-1. **Accessibility:** in this categorization we have local state and global state. Local state is needed only by one or few components, and it is only accessible in component and child components. However, global state is state that might be needed by many components, and is accessible to every component in the application.
+1. Accessibility: in this categorization we have local state and global state. Local state is needed only by one or few components, and it is only accessible in component and child components. However, global state is state that might be needed by many components, and is accessible to every component in the application.
 
-> If you need to create a state variable in a component but you are not sure if it should be local or global, there is nice trick you can use. All you need to do is to ask yourself **if this component was rendered twice, should a state update in one of them reflect in the other one?** If the answer is no, then it means that it should be a local state, but if it is a yes, you should implement a global state.
+> If you need to create a state variable in a component but you are not sure if it should be local or global, there is nice trick you can use. All you need to do is to ask yourself if this component was rendered twice, should a state update in one of them reflect in the other one? If the answer is no, then it means that it should be a local state, but if it is a yes, you should implement a global state.
 
-2. **Domain:** we can classify each piece of state in 2 categories: When you have a piece of state, it is extremely important to know whether you are dealing with remote state or UI state, because they should be managed in complete different ways.
+2. Domain: we can classify each piece of state in 2 categories: When you have a piece of state, it is extremely important to know whether you are dealing with remote state or UI state, because they should be managed in complete different ways.
 
    - Remote state: this is all application data that is loaded from a remote server, usually using an API. It is state that lives on a server that can be loaded into the application. Remote state is usually acquired asynchronously, and might need to be re-fetched and updated frequently. Therefore, in a large-scale app, remote state should be cached, revalidated and so on, which needs some special tools.
    - UI state: basically everything else, such as theme, list filters, form data, etc. In other words, all state that is not core application data that we usually fetch from an API is UI state. UI state is usually synchronous and stored right in the application and does not interact with any server at all. UI state is very easy to handle with the tools that we know of, such as `useState` and `useReducer`.
 
-### **Where to place state**
+### Where to place state
 
 When we want to create a piece of state, we basically have 6 different options on where we can place it.
 
@@ -3233,7 +3236,7 @@ When we want to create a piece of state, we basically have 6 different options o
 
 > Context API on its own is not a state management feature of React. We almost always use it with `useState` and `useReducer`.
 
-### **State management tool options**
+### State management tool options
 
 If we combine all classifications of state according to accessibility and domain, we end up with these combinations:
 
@@ -3246,14 +3249,14 @@ Let's now take a look at the tools that we can use to manage each variation.
 
 | State classification | Local state                                     | Global state                                                                                                                                                  |
 | -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **UI state**         | `useState`, `useReducer`, `useRef`              | using Context API + `useState`/`useReducer` or using Redux, Zustand, Recoil, etc. or using React Router                                                       |
-| **Remote state**     | `fetch` + `useEffect` + `useState`/`useReducer` | General solutions: using Context API + `useState`/`useReducer` or using Redux, Zustand, Recoil, etc. Highly specialized solution: React Query, SWR, RTK Query |
+| UI state             | `useState`, `useReducer`, `useRef`              | using Context API + `useState`/`useReducer` or using Redux, Zustand, Recoil, etc. or using React Router                                                       |
+| Remote state         | `fetch` + `useEffect` + `useState`/`useReducer` | General solutions: using Context API + `useState`/`useReducer` or using Redux, Zustand, Recoil, etc. Highly specialized solution: React Query, SWR, RTK Query |
 
 > In large-scale applications using the combination of `fetch` + `useEffect` + `useState` to manage local remote state is not simply enough. This brings us to the tools that we need to manage global remote state.
 
 > The specialized methods included in managing global remote state involve built-in mechanisms like caching and re-fetching in order to deal with the asynchronous nature of remote state. These solutions are highly recommended.
 
-## **Thinking: Components**
+## Thinking: Components
 
 We will now learn:
 
@@ -3265,16 +3268,16 @@ We will now learn:
 
 It is important to first understand how to split a UI into components and what type of components we can use.
 
-### **Splitting a UI into components**
+### Splitting a UI into components
 
 When it comes to components these are the important questions that we should ask:
 
 1. How to split a UI into components?
 2. When should we create new components?
 
-One important factor that helps us answer these questions is the **component size**. A component, at its extremes, can be huge or small. Many times none of these extremes are ideal.
+One important factor that helps us answer these questions is the component size. A component, at its extremes, can be huge or small. Many times none of these extremes are ideal.
 
-A huge component is identified when it has a lot of responsibilities. Components are just like JavaScript functions, in the sense that if a function **does too many different things**, we should break it up into multiple functions. Another sign of a huge component is that it might **receive too many props**, like 10 or 15! These make the component very **hard to reuse**. It also makes the code complex and hard to understand.
+A huge component is identified when it has a lot of responsibilities. Components are just like JavaScript functions, in the sense that if a function does too many different things, we should break it up into multiple functions. Another sign of a huge component is that it might receive too many props, like 10 or 15! These make the component very hard to reuse. It also makes the code complex and hard to understand.
 
 But this does not mean that we should switch to the other extreme and build small components, splitting every single functionality into its own component.
 
@@ -3287,47 +3290,47 @@ Most of the time the goal is to create components that strike the right balance 
 
 Here are 4 criteria for splitting a UI into comonents:
 
-1. **Logical separation** of content/layout
-2. **Reusability**
-3. Each component has **a single well-defined responsibility** to avoid complexity
-4. **Personal coding style:** some people prefer smaller components, while others prefer larger components
+1. Logical separation of content/layout
+2. Reusability
+3. Each component has a single well-defined responsibility to avoid complexity
+4. Personal coding style: some people prefer smaller components, while others prefer larger components
 
-#### **When to create a new component?**
+#### When to create a new component?
 
 When you are creating a new component and you are in doubt about what the component should include, just start with a relatively big component, but not a huge component. Then split the big component into smaller components as it is necessary. But when does it become necessary?
 
 Here is a framework based on the 4 criteria mentioned above to help you decide when to create a new component:
 
-1. **Logical separation of content/layout:** Does the component contain pieces of content or layout that don't belong together? If yes, Then you might need a new component.
-2. Is it possible to **reuse parts of the component?** Do you want or need to reuse it? If yes, then you should probably take that code and extract it into its new component.
-3. Is the component **doing too many different things?** Does the component **rely on too many props?** Does the component **have too many pieces of state and/or effects?** Is the code, including JSX, **too complex/confusing?** If yes, then you might need a new smaller component.
-4. **Personal coding style:** Do you prefer smaller functions/components? If yes, you might need a new component.
+1. Logical separation of content/layout: Does the component contain pieces of content or layout that don't belong together? If yes, Then you might need a new component.
+2. Is it possible to reuse parts of the component? Do you want or need to reuse it? If yes, then you should probably take that code and extract it into its new component.
+3. Is the component doing too many different things? Does the component rely on too many props? Does the component have too many pieces of state and/or effects? Is the code, including JSX, too complex/confusing? If yes, then you might need a new smaller component.
+4. Personal coding style: Do you prefer smaller functions/components? If yes, you might need a new component.
 
-#### **General guidelines**
+#### General guidelines
 
-- Creating a new component creates a new abstraction. Abstractions have a cost, because **more abstractions require more mental energy to switch back and forth between components.** So try not to create new components too early.
-- **Name a component according to what it does** or what it displays. Don't be afraid of using long names.
-- **Never declare a new component inside another component.** Instead, co-locate related components inside the same file. Don't separate components into different files too early.
-- It's completely normal that **an application has components of many different sizes**, including very small and huge ones: we always need some very small components in any application, because they are highly reusable and have very low complexity. For instance, you can imagine the like button component in an application.
-- Most apps will have a **few huge components that are not meant to be reused.** For instance, a `Page` component of an application that contains the layout of the entire application or the page.
+- Creating a new component creates a new abstraction. Abstractions have a cost, because more abstractions require more mental energy to switch back and forth between components. So try not to create new components too early.
+- Name a component according to what it does or what it displays. Don't be afraid of using long names.
+- Never declare a new component inside another component. Instead, co-locate related components inside the same file. Don't separate components into different files too early.
+- It's completely normal that an application has components of many different sizes, including very small and huge ones: we always need some very small components in any application, because they are highly reusable and have very low complexity. For instance, you can imagine the like button component in an application.
+- Most apps will have a few huge components that are not meant to be reused. For instance, a `Page` component of an application that contains the layout of the entire application or the page.
 
-> The reusability range is pretty similar to the size range. **Generally, the smaller the components are, the more reusable they will be,** but not all components are meeant to be reusable. These are usually the huge components.
+> The reusability range is pretty similar to the size range. Generally, the smaller the components are, the more reusable they will be, but not all components are meeant to be reusable. These are usually the huge components.
 
-### **Component categories**
+### Component categories
 
 Most of your components will naturally fall into one of these three categories. We say naturally, because we should not force our components into one of these categories.
 
-1. **Stateless/presentational:** They don't have any state. They are usually components that receive some props and then they simply present the received data or other content. These are usually small and reusable components, like logo, number of results, and one single item component.
-2. **Stateful:** They do have state. Just because they have state, it does not mean they cannot be reusable. For instance, a search component does have state and we can reuse it as many times as we need.
-3. **Structural:** These include pages, layouts, or screens of the application, which are oftentimes the result of componsing smaller components together. Structural components can be **large and non-reusable components,** but they don't have to. Structural components can also be small. What matters is that they are responsible for providing some sort of structure to applications, such as pages or layouts. So these components might not be used in small applications.
+1. Stateless/presentational: They don't have any state. They are usually components that receive some props and then they simply present the received data or other content. These are usually small and reusable components, like logo, number of results, and one single item component.
+2. Stateful: They do have state. Just because they have state, it does not mean they cannot be reusable. For instance, a search component does have state and we can reuse it as many times as we need.
+3. Structural: These include pages, layouts, or screens of the application, which are oftentimes the result of componsing smaller components together. Structural components can be large and non-reusable components, but they don't have to. Structural components can also be small. What matters is that they are responsible for providing some sort of structure to applications, such as pages or layouts. So these components might not be used in small applications.
 
-### **Component's API**
+### Component's API
 
 When we build a reusable component, we should think about what props the component needs.
 
-Any component is always created by someone, and always consumed by someone. Obviously, when you are working on your own, the creator and consumer of a component is the same person, but on a team they might very well be different people. In any case, it is always a good idea to think in terms of there being a **creator** and a **consumer**.
+Any component is always created by someone, and always consumed by someone. Obviously, when you are working on your own, the creator and consumer of a component is the same person, but on a team they might very well be different people. In any case, it is always a good idea to think in terms of there being a creator and a consumer.
 
-The creator is the person who builds a component and **defines what props** the component can accept. The consumer uses the component by **specifying values for the props**. The reason for separation between consumer and creator is that if we have this mindset, we can think of component props as the **public API** of the component.
+The creator is the person who builds a component and defines what props the component can accept. The consumer uses the component by specifying values for the props. The reason for separation between consumer and creator is that if we have this mindset, we can think of component props as the public API of the component.
 
 As a component creator, when we choose what the component consumer is allowed to pass in, we are actually defining the public interface of our component. At the same time, we are choosing how much complexity of the component we want to expose to the consumer of the API. In the end, a component is just an abstraction. It encapsulates a part of the UI and the associated logic into a component and allows consumers to interact with that component via props.
 
@@ -3341,7 +3344,7 @@ When we decide about what props to allow in the component, we need to find a goo
 
 It is best to try to find the right balance between too little and too many props, that works for both the consumer and the creator. In case you need to expose so many props, make sure you provide some good default values for many of them.
 
-# **How React works behind the scenes**
+# How React works behind the scenes
 
 As the first topic in this section, it is nice to know the difference between three key concepts:
 
@@ -3351,9 +3354,9 @@ As the first topic in this section, it is nice to know the difference between th
 
 This will help you understand what actually happens with your components as you use them.
 
-## **Know more about React components, component instances and React elements**
+## Know more about React components, component instances and React elements
 
-### **React Component**
+### React Component
 
 Components are what we write to describe a piece of the user interface. A component is a regular JavaScript function, but it returns React elements. It actually returns an element tree and we usually write these elements using the JSX syntax.
 
@@ -3377,16 +3380,16 @@ This will make it so that the `Tab` component would be included three times in y
 >
 > will make the component's state end up in the parent component. They will no longer be inside the `TabContent` component, so it won't be able to manage it's own state. Also, React will not even consider this function call to be a component. You cannot see it in the component tree diagram in React dev tools.
 
-### **Component Instance**
+### Component Instance
 
 A physical manifestation of a component that holds its own states and props and it also has its own life cycle. It can 'be born', 'live' for some time, and 'die' finally.
 As React executes the code in each of the instances, each instance will return one or more React elements. Behind the scenes, JSX will get converted to multiple `React.createElement()` function calls. Then as React calls these functions, the result will be a React element. So, essentially, a React element is the result of using a component in your code.
 
-### **React element**
+### React element
 
 It is a big immutable JavaScript object that React keeps in memory. It contains all the information necessaray to create DOM elements for the current component instance. So the React element will eventually be converted into an actual DOM element, and then painted on to the screen by the browser. So the DOM elements are the actualy, final and visual representation of the component's instance in the browser. Again, it is not React elements that are rendered to the DOM. React elements just live inside the React app and have nothing to do with the DOM. They are converted to DOM elements when they are printed on the screen.
 
-## **How rendering works**
+## How rendering works
 
 In summary, as you build your application, you are actually building a bunch of components. You then use these components as many times as you want, which will cause React to create one or more component instances, which are the actual physical components that live in our application, holding their own state and props.
 
@@ -3394,20 +3397,20 @@ Each component instance returns a JSX, which in turn will produce a bunch of `Re
 
 We currently have a good understanding about the initial part of this process; that is, transforming components to React elements. But we don't know yet, how the second part of this process is carried out, which is transforming React elements into DOM elements and then being displayed in the UI.
 
-### **How components are displayed on the screen**
+### How components are displayed on the screen
 
 We are now going to take a quick look at each of the phases involved in displaying components on the screen. Then we will zoom into each phase to understand how the entire process works internally.
 
 The process that we are interested in starts by React each time that a new render is triggered, most of the time by updating the state somewhere in the app. So we can now list the phases as:
 
-1. **Render is triggered:** There are only 2 ways in which a render can be triggered:
+1. Render is triggered: There are only 2 ways in which a render can be triggered:
 
    - Initial render of the application, which is the very first time that the app runs.
    - Re-render which happens when state is updated in one or more component instances.
 
 > The render process is triggered for the entire application, not just for one single component. However, this does not mean that the entire DOM is updated. In React, rendering is only about calling the component functions, and later figuring out what needs to change in the DOM. This might seem confusing because in practice, it looks like React only re-renders the component where the state update happens, but that is not how it works behind the scenes. Actually, React looks at the entire tree whenever a render happens.
 
-> A render is not triggered immediately, but **scheduled** for when JS engine has some 'free time'. This, however, means a few miliseconds that we don't even notice. There are also some situations like multiple `setState` function calls in the same function, like event handlers, where renders will be **batched**. Take this code as an example:
+> A render is not triggered immediately, but scheduled for when JS engine has some 'free time'. This, however, means a few miliseconds that we don't even notice. There are also some situations like multiple `setState` function calls in the same function, like event handlers, where renders will be batched. Take this code as an example:
 >
 > ```js
 > const [answer, setAnswer] = useState("");
@@ -3440,33 +3443,33 @@ The process that we are interested in starts by React each time that a new rende
 
 > We can opt out of automatic batching by wrapping a state update in `ReactDOM.flushSync()`. This is almost never used.
 
-2. **Render phase:** React calls component functions and figures out how it should update the DOM, in order to reflect the latest state changes. However, it will not update the DOM in this phase. So React's definition of render is different than what we usually refer to by using the word 'render'. It is important to consider that **in React, rendering is NOT updating the DOM or displaying elements on the screen. Rendering only happens internally inside React. It does not produce visual changes.** In the common sense, the meaning of the word 'render' will actually involve this and the next phase; that is the Commit phase. But let's see the stages that happen in this phase in detail:
+2. Render phase: React calls component functions and figures out how it should update the DOM, in order to reflect the latest state changes. However, it will not update the DOM in this phase. So React's definition of render is different than what we usually refer to by using the word 'render'. It is important to consider that in React, rendering is NOT updating the DOM or displaying elements on the screen. Rendering only happens internally inside React. It does not produce visual changes. In the common sense, the meaning of the word 'render' will actually involve this and the next phase; that is the Commit phase. But let's see the stages that happen in this phase in detail:
 
-In the beginning of the render phase, React goes through the entire component tree, take all the component instances that triggered a re-render and actually render them, which means calling the corresponding component functions written in the code. This creates updated React elements which altogether make up the new **Virtual DOM**.
+In the beginning of the render phase, React goes through the entire component tree, take all the component instances that triggered a re-render and actually render them, which means calling the corresponding component functions written in the code. This creates updated React elements which altogether make up the new Virtual DOM.
 
-> What is a Virtual DOM? Let's see when it was first created. On the initial render, React takes the entire component tree, and transform it into one big React Element, which is the React Element Tree, which is what we call the **Virtual DOM**. So the Virtual DOM is a tree of all React elements created from all instances in the component tree. It is cheap and fast to create a tree like this, even if we need many iterations of it, because it is just a JavaScript object.
+> What is a Virtual DOM? Let's see when it was first created. On the initial render, React takes the entire component tree, and transform it into one big React Element, which is the React Element Tree, which is what we call the Virtual DOM. So the Virtual DOM is a tree of all React elements created from all instances in the component tree. It is cheap and fast to create a tree like this, even if we need many iterations of it, because it is just a JavaScript object.
 
-Now if a state update happens in a component, like D, it will trigger a re-render. This means that React will call the component function again, and place the new React element in the new React Element Tree or the new Virtual DOM. It is now important to remember that **re-rendering a component will cause all of its child components to be re-rendered as well** no matter the props passed into them has changed or not. So again, if the updated component returns one or more other components, those nested components will be re-rendered all the way down the component tree. Remember that re-rendering means that a new Virtual DOM is created.
+Now if a state update happens in a component, like D, it will trigger a re-render. This means that React will call the component function again, and place the new React element in the new React Element Tree or the new Virtual DOM. It is now important to remember that re-rendering a component will cause all of its child components to be re-rendered as well no matter the props passed into them has changed or not. So again, if the updated component returns one or more other components, those nested components will be re-rendered all the way down the component tree. Remember that re-rendering means that a new Virtual DOM is created.
 
 > If you update the highest component in the component tree, the entire application will be re-rendered. React uses this strategy because it does not know beforehand whether an update in a component will affect the child components or not. Remember that this does not mean that the entire DOM is updated. It is just the Virtual DOM that will be recreated, which is not a problem in small or medium-sized apps.
 
-The new Virtual DOM that was created after the state update, will get **Reconciled** with the **current Fiber tree** as it exists before the state update. The reconsiliation happens in React's reconciler, which is called **Fiber**. The result of the reconciliation process is an **updated fiber tree** that will be used to write to the DOM.
+The new Virtual DOM that was created after the state update, will get Reconciled with the current Fiber tree as it exists before the state update. The reconsiliation happens in React's reconciler, which is called Fiber. The result of the reconciliation process is an updated fiber tree that will be used to write to the DOM.
 
 > Now what is the reconciliation process? Let's answer some questions before that. Why do we even need stuff like the Virtual DOM, a reconciler, and the fiber trees? why not simply update the entire DOM whenever state changes somewhere in the app? The answer is easy. We previously mentioned that creating the Virtual DOM is cheap and fast because it is just a JavaScript object. However, writing to the DOM is not cheap and fast. It is actually relatively slow. It is extremely inefficient to always write the entire virtual DOM to the actual DOM each time that a render was triggered. Also when state is updated in the app, usually only a small part of the DOM needs to be updated, and this is what React tries to do. Whenever a render is triggered, React tries to be as efficient as possible by reusing as much of the existing DOM tree as possible. But how does React do this? How does it know what changed from one render to the next one? This is where reconciliation comes to play.
 >
 > Reconciliation is the process of deciding which DOM elements actually need to be inserted, deleted, or updated, in order to reflect the latest state changes. The result of this process is a list of DOM operations that are necessary to update the current DOM with the new state.
 >
-> Reconciliation is processed by a reconciler. We can say that the reconciler is the engine of React. This reconciler allows us to never touch the DOM directly. It tells React simply what the next snapshot of the UI should look like based on state. The current reconciler in React is called **Fiber**.
+> Reconciliation is processed by a reconciler. We can say that the reconciler is the engine of React. This reconciler allows us to never touch the DOM directly. It tells React simply what the next snapshot of the UI should look like based on state. The current reconciler in React is called Fiber.
 >
-> Let's now see how Fiber works. During the initial render of the app, Fiber takes the entire React element tree (Virtual tree), and based on it, builds yet another tree which is the **Fiber tree**. It is a special internal tree where for each component instance and DOM element in the app there is one Fiber. The special thing about this tree is that unlike React elements in the virtual DOM, Fibers are not recreated on every render. The Fiber tree is never destroyed. Instead, it is a mutable data structure and once it has been created during the initial render, it is mutated over and over again in future reconciliation steps. This makes Fibers the perfect place for keeping track of things like the current component state, props, side effects, list of used hooks, and so on. So the actual state and props of any component instance that we see on the screen, are internally stored inside the corresponding fiber in the Fiber tree. Additionally, each fiber contains a queue of works, like updating state, updating refs, running registered side effects, performing DOM updates, and so on. This is why a Fiber is also defined as a unit of work.
+> Let's now see how Fiber works. During the initial render of the app, Fiber takes the entire React element tree (Virtual tree), and based on it, builds yet another tree which is the Fiber tree. It is a special internal tree where for each component instance and DOM element in the app there is one Fiber. The special thing about this tree is that unlike React elements in the virtual DOM, Fibers are not recreated on every render. The Fiber tree is never destroyed. Instead, it is a mutable data structure and once it has been created during the initial render, it is mutated over and over again in future reconciliation steps. This makes Fibers the perfect place for keeping track of things like the current component state, props, side effects, list of used hooks, and so on. So the actual state and props of any component instance that we see on the screen, are internally stored inside the corresponding fiber in the Fiber tree. Additionally, each fiber contains a queue of works, like updating state, updating refs, running registered side effects, performing DOM updates, and so on. This is why a Fiber is also defined as a unit of work.
 >
-> Taking a look at the Fiber tree, you can notice that it's structure is different from the Virtual DOM. Instead of a normal parent-child relationship, each first child has a link to its parent, and all the other children then have a link to their previous sibling. This structure is called a **linked list**, and it makes it easier for React to process the work associated with each fiber. Also note that both trees (Virtual DOM and Fiber tree) include not only React elements or components, but also regular DOM elements. So both trees are a complete representation of the entire DOM representation.
+> Taking a look at the Fiber tree, you can notice that it's structure is different from the Virtual DOM. Instead of a normal parent-child relationship, each first child has a link to its parent, and all the other children then have a link to their previous sibling. This structure is called a linked list, and it makes it easier for React to process the work associated with each fiber. Also note that both trees (Virtual DOM and Fiber tree) include not only React elements or components, but also regular DOM elements. So both trees are a complete representation of the entire DOM representation.
 >
-> Returning to the idea of considering each fiber a unit of work, one important characteristic of the Fiber reconciler is that **work can be performed asynchronously**. This means that the rendering process, which is what the reconciler does, can be split into chunks, some tasks can be prioritized, and work can be paused, reused, or thrown away. All this happens behind the scenes, but there are some practical uses of this asynchronous rendering. It enables modern concurrent features, like suspense and transitions, starting in React V18. It also allows the rendering process to pause and resume later so that it won't block the browser's JS engine with too long renders which can be problematic for performance in large apps. This is only possible because the render phase does not produce any visible output to the DOM yet.
+> Returning to the idea of considering each fiber a unit of work, one important characteristic of the Fiber reconciler is that work can be performed asynchronously. This means that the rendering process, which is what the reconciler does, can be split into chunks, some tasks can be prioritized, and work can be paused, reused, or thrown away. All this happens behind the scenes, but there are some practical uses of this asynchronous rendering. It enables modern concurrent features, like suspense and transitions, starting in React V18. It also allows the rendering process to pause and resume later so that it won't block the browser's JS engine with too long renders which can be problematic for performance in large apps. This is only possible because the render phase does not produce any visible output to the DOM yet.
 >
-> So now that we now what the reconciler is, and how the fiber tree works, it is time to talk about what Fiber actually does, which is the reconciliation process in action. Imagine a certain Virtual DOM and the corresponding Fiber tree. In the imaginary `App` component, there is a piece of state called `showModal` which determines whether a `Modal` window should be visible in the app or not. This state is currently set to `true`. But now we change this state to `false`. This triggers a re-render which will, in turn, create a new Virtual DOM where there is no sign of the `Modal` component and its children anymore. In this new Virtual DOM all remaining children of the `App` component are re-rendered because the `App` component itself is re-rendered due to the `showModal` state change. Now this new Virtual DOM needs to be reconciled with the current Fiber tree, which will then result in an updated Fiber tree, which is internally called the `workInProgress` tree. Whenever reconciliation needs to happen, Fiber walks through this updated tree step-by-step and analyses exactly what needs to change between the current fiber tree and the updated fiber tree based on the new Virtual DOM. This process of comparing elements step-by-step based on their position in the tree is called **Diffing**. Once this process is over, all these DOM mutations will be placed into a list called **List of Effects** which will be used in the Commit phase to actually mutate the DOM.
+> So now that we now what the reconciler is, and how the fiber tree works, it is time to talk about what Fiber actually does, which is the reconciliation process in action. Imagine a certain Virtual DOM and the corresponding Fiber tree. In the imaginary `App` component, there is a piece of state called `showModal` which determines whether a `Modal` window should be visible in the app or not. This state is currently set to `true`. But now we change this state to `false`. This triggers a re-render which will, in turn, create a new Virtual DOM where there is no sign of the `Modal` component and its children anymore. In this new Virtual DOM all remaining children of the `App` component are re-rendered because the `App` component itself is re-rendered due to the `showModal` state change. Now this new Virtual DOM needs to be reconciled with the current Fiber tree, which will then result in an updated Fiber tree, which is internally called the `workInProgress` tree. Whenever reconciliation needs to happen, Fiber walks through this updated tree step-by-step and analyses exactly what needs to change between the current fiber tree and the updated fiber tree based on the new Virtual DOM. This process of comparing elements step-by-step based on their position in the tree is called Diffing. Once this process is over, all these DOM mutations will be placed into a list called List of Effects which will be used in the Commit phase to actually mutate the DOM.
 
-Up until this point, React hasn't written anything to the DOM yet, but it has figured out the so-called **List of Effects**, which is actually a list of DOM updates.
+Up until this point, React hasn't written anything to the DOM yet, but it has figured out the so-called List of Effects, which is actually a list of DOM updates.
 
 > Diffing is based on 2 fundamental assumptions:
 >
@@ -3477,41 +3480,41 @@ Up until this point, React hasn't written anything to the DOM yet, but it has fi
 >
 > Diffing is comparing elements step-by-step between two renders based on their position in the tree. They are basically 2 different situations that need to be considered:
 >
-> 1. **Two different elements at the same position in the tree between two renders:** imagine a JSX syntax where a type `<div>` element is changed to type `<header>`, but its child component `<SearchBar>` is the same. In this situation React assumes the element and all its children are no longer valid. So old components are destroyed and removed from the DOM, including their state. This will include the `<SearchBar>` in the re-render process, so it will also be replaced with a new `<SearchBar>` and its state will not be recovered. This scenario works this way no matter the change happened on a DOM element or a React component instance.
-> 2. **Same element at the same position in the tree:** if after a render an element at a certain position in the tree is the same as before, the element will simply be kept in the DOM, and that includes all child elements and more importantly, the component's state. This scenario works no matter it is a DOM element or a React component instance that has remained the same. It is important to remember that for this scenario to happen, only the DOM element or React component instance itself needs to stay the same, but their props or attributes can change. If attributes or props are changed, React will simply mutate the DOM element attributes or pass in the new props. **Sometimes we don't want this standard behavior, but instead, we want to create a new component instance with the new state, and this is where the `key` prop comes to play.**
+> 1. Two different elements at the same position in the tree between two renders: imagine a JSX syntax where a type `<div>` element is changed to type `<header>`, but its child component `<SearchBar>` is the same. In this situation React assumes the element and all its children are no longer valid. So old components are destroyed and removed from the DOM, including their state. This will include the `<SearchBar>` in the re-render process, so it will also be replaced with a new `<SearchBar>` and its state will not be recovered. This scenario works this way no matter the change happened on a DOM element or a React component instance.
+> 2. Same element at the same position in the tree: if after a render an element at a certain position in the tree is the same as before, the element will simply be kept in the DOM, and that includes all child elements and more importantly, the component's state. This scenario works no matter it is a DOM element or a React component instance that has remained the same. It is important to remember that for this scenario to happen, only the DOM element or React component instance itself needs to stay the same, but their props or attributes can change. If attributes or props are changed, React will simply mutate the DOM element attributes or pass in the new props. Sometimes we don't want this standard behavior, but instead, we want to create a new component instance with the new state, and this is where the `key` prop comes to play.
 
-1. **Commit phase:** in this phase, new elements might be placed in the DOM and already existing elements might get updated or deleted so as to correctly reflect the current state of the application. It is this phase that is responsible for what we traditionally call rendering. After all this, the browser will notice that the DOM has been updated and so it repaints the screen. Of course, this final step has nothing to do with React, but this is where the user will actually see the visual change on their screen.
+1. Commit phase: in this phase, new elements might be placed in the DOM and already existing elements might get updated or deleted so as to correctly reflect the current state of the application. It is this phase that is responsible for what we traditionally call rendering. After all this, the browser will notice that the DOM has been updated and so it repaints the screen. Of course, this final step has nothing to do with React, but this is where the user will actually see the visual change on their screen.
 
 Continuing from the previous phase, technically, the current `workInProgress` Fiber tree also goes into this phase but let's just keep it simple here.
 
-In this phase, the DOM gets updated. React writes to the DOM. This involves insertions, deletions, and updates. This is sometimes referred to as 'React **flushes** the list of DOM updates to the DOM'. React goes through the effects list that was created during rendering, and applies them one-by-one to the actual DOM elements that were already existing in the DOM tree.
+In this phase, the DOM gets updated. React writes to the DOM. This involves insertions, deletions, and updates. This is sometimes referred to as 'React flushes the list of DOM updates to the DOM'. React goes through the effects list that was created during rendering, and applies them one-by-one to the actual DOM elements that were already existing in the DOM tree.
 
-> It is important to note that comitting is **synchronous** unlike the rendering phase which can be paused. It means that DOM is updated in one go, it can't be interrupted. This is necessary so that the DOM never shows partial results, ensuring a consistent UI that is in sync with state at all times. Actually, this is the whole point of dividing the entire process into the render phase and commit phase in the first place.
+> It is important to note that comitting is synchronous unlike the rendering phase which can be paused. It means that DOM is updated in one go, it can't be interrupted. This is necessary so that the DOM never shows partial results, ensuring a consistent UI that is in sync with state at all times. Actually, this is the whole point of dividing the entire process into the render phase and commit phase in the first place.
 
-After the commit phase completes, the `workInProgress` fiber tree becomes the current tree **for the next render cycle**. Fiber trees are never discarded, as we mentioned earlier. They are reused in order to save precious rendering time. Now the commit phase is closed, and the browser will notice that the DOM has changed, and it will re-pain the screen when it has some idle time. This is when the DOM updates are finally made visible to the user in the form of an updated UI.
+After the commit phase completes, the `workInProgress` fiber tree becomes the current tree for the next render cycle. Fiber trees are never discarded, as we mentioned earlier. They are reused in order to save precious rendering time. Now the commit phase is closed, and the browser will notice that the DOM has changed, and it will re-pain the screen when it has some idle time. This is when the DOM updates are finally made visible to the user in the form of an updated UI.
 
-> So the next phase in this whole process is the Browser paint phase, which is performed by whatever browser the user is using. The rendering phase is performed by the React library. But what about the commit phase? We would think that it is performed by React, but that is not true. It is actually the `ReactDOM` that writes to the DOM. React never touches the DOM. React actually has no idea where the result of the render phase will be commited and painted. The reason for this is that React was designed to be used independantly from the platform where elements will be shown, therefore React can be used on different platforms (hosts). Up until this point, we have only thought of React in conjunction with the DOM, because we usually use it to build web apps, and that is mostly the case. But React is used with other hosts as well. For instance, you can build native mobile apps for iOS or Android using **React Native**. You can also create videos with React using a package called **Remotion**. We can even make all kinds of documents, like Microsoft Word, PDF docs, and Figma designs, and many more using different **Renderers**.
+> So the next phase in this whole process is the Browser paint phase, which is performed by whatever browser the user is using. The rendering phase is performed by the React library. But what about the commit phase? We would think that it is performed by React, but that is not true. It is actually the `ReactDOM` that writes to the DOM. React never touches the DOM. React actually has no idea where the result of the render phase will be commited and painted. The reason for this is that React was designed to be used independantly from the platform where elements will be shown, therefore React can be used on different platforms (hosts). Up until this point, we have only thought of React in conjunction with the DOM, because we usually use it to build web apps, and that is mostly the case. But React is used with other hosts as well. For instance, you can build native mobile apps for iOS or Android using React Native. You can also create videos with React using a package called Remotion. We can even make all kinds of documents, like Microsoft Word, PDF docs, and Figma designs, and many more using different Renderers.
 >
 > According to React's terminology, renderers do not render, but they commit the results of the render phase. Some believe that the 'renderer' name comes from before React divided the render and the commit phase into separate phases. Anyway, in all these situations, the result of the render phase is not a list of DOM updates, but a list of updates of whatever elements are used in the host that is being used. So looking at this process from this point of view, the 'Virtual DOM' term also does not make much sense. All you need to keep in mind from what is said here, is that the React library is not responsible for writing to the DOM, because a DOM is just one of many hosts to which React apps can be commited. For each host, we have a package that we can use. That is why we have always imported `react` and `react-DOM` in `index.js` files.
 
-4. **Browser Paint phase**
+4. Browser Paint phase
 
-#### **REACAP**
+#### REACAP
 
 1. The whole process of rendering and displaying a React app, starts with a trigger, which can either be the initial render of the app, or a state update in one of the component instances.
 2. This then triggers the Render phase which does not produce any visual output. This phase starts by rendering all component instances that need a re-render. Rendering in React means to call the component functions. This will create one or more updated React elements placed in a new virtual DOM, which is actually a tree of React elements. You should remember that re-rendering a component will cause all of its child components to render no matter if props changed or not. The new Virtual DOM needs to be reconciled with the current Fiber tree. This is necessary becasue it would be inefficient and slow to destroy and rebuild the entire DOM tree each time that something on the screen must be updated. Instead, reconciliation tries to reuse as much of the DOM as possible by finding the smallest number of DOM updates that reflect the lates state update on the screen. The reconciliation process is done using a reconciler called Fiber, which works with a mutable data structure called the Fiber tree. In this tree, for each React element and DOM element there is a fiber. This fiber holds the actual component state, props, and a queue of work. After reconciliation, the queue of work will contain the DOM updates needed for that element. The computation of these DOM updates is performed by a Diffing algorithm, which step-by-step compares the elements in the new Virtual DOM with the elements in the current Fiber tree to see what has changed. The final result of the render phase (Reconciliation + Diffing) is a second updated fiber tree as well as a list if all necessary DOM updates. Note that the render phase is asynchronous. So Fiber can prioritize and split work into chunks and pause and resume some work later. This is neccessary for concurrent features, and also to prevent the JS engine from being blocked by complex render processes. The output of the render phase will finally be written to the DOM in the commit phase.
 3. In the commit phase, a renderer like ReactDOM will insert, delete, and update DOM elements, so that we end up with an updated DOM that reflects the new state of the app. Unlike the render phase, this phase is synchronous. So all the DOM updates are performed in one go so as to ensure a consistent UI over time.
 4. Once the browser realized that the DOM is updated, it starts a new browser paint in order to print a new UI on to the screen.
 
-### **What is the `key` prop?**
+### What is the `key` prop?
 
 It is a special prop that we use to tell the diffing algorithm that an element is unique. This works for both DOM elements and React component instances. It means that we can give each component instance a unique identification, which allows React to distinguish between multiple instances of the same type. But why we need this?
 
 Remember what the second assumption of the diffint algorithm?
 
-> **Same element at the same position in the tree.**
+> Same element at the same position in the tree.
 
-1. Whenever an element has a stable key across renders, the element will be kept in the DOM even if the position in the tree has changed. **This is why we should always use the `key` prop in lists.** Imagine we have a list with two `Question` items but with no key props.
+1. Whenever an element has a stable key across renders, the element will be kept in the DOM even if the position in the tree has changed. This is why we should always use the `key` prop in lists. Imagine we have a list with two `Question` items but with no key props.
 
 ```js
 <ul>
@@ -3542,9 +3545,9 @@ The two previous list items is obviously the same, but their position in the Vir
 
 This way `Question` instances with `q1` and `q2` keys will not be destroyed and recreated. This makes a huge impact on performance when you render long lists with thousands of elements.
 
-**Always use the `key` prop when you have multiple child elements of the same type.**
+Always use the `key` prop when you have multiple child elements of the same type.
 
-2. On the other hand, when an element's key changes between renders, the element will be destroyed and a new one will be created even if the position in the tree is the same as before. **This is great to reset state in component instances**, which is the second big use case of the `key` prop. Whenever you need to reset state, make sure you give the element a key, and the key changes across renders.
+2. On the other hand, when an element's key changes between renders, the element will be destroyed and a new one will be created even if the position in the tree is the same as before. This is great to reset state in component instances, which is the second big use case of the `key` prop. Whenever you need to reset state, make sure you give the element a key, and the key changes across renders.
 
 For instance, in this code:
 
@@ -3587,7 +3590,7 @@ We now need to make sure that the `key` prop changes for the next question.
 </QuestionBox>
 ```
 
-### **Rules for render logic**
+### Rules for render logic
 
 In order for the rendering process to work in the way that we learned, your render logic needs to follow some simple rules. But what is render logic?
 
@@ -3596,17 +3599,17 @@ There are 2 types of logic in React components:
 1. Render logic: it is all the code living at the top level of the component function, and participates in descibing how the component view looks like. For instance, state declarations and JSX return statements are considered render logic. Render logic is all the code that is executed as soon as the component is rendered, so each time that the function is called.
 2. Event handler functions: these are pieces of code that are executed as a consequence of the event that the handler is listening to.
 
-It is important to differentiate between these 2 different types of logic since they do fundamentally different things. While render logic is code that renders the component, event handlers contain code that actually **does things**, so that is code that makes things happen in the app. Event handlers contain things like state updates, HTTP requests, reading input fields, page navigation, and so on. These are things that manipulate the app in some way.
+It is important to differentiate between these 2 different types of logic since they do fundamentally different things. While render logic is code that renders the component, event handlers contain code that actually does things, so that is code that makes things happen in the app. Event handlers contain things like state updates, HTTP requests, reading input fields, page navigation, and so on. These are things that manipulate the app in some way.
 
-This is important to understand because React requires that components are **pure** when it comes to render logic, in order for everything to work as expected.
+This is important to understand because React requires that components are pure when it comes to render logic, in order for everything to work as expected.
 
 What does pure mean? we must remind ourselves of some functional programming principles.
 
-#### **Functional programming principles**
+#### Functional programming principles
 
-**Side effects:** this happens when a function depends on any data that is outside the function scope, or even more importantly, when a function modifies data that is outside its scope. Side effect is the function's interaction with the outside world. Examples of side effects are HTTP requests, writing to the DOM, setting timers and more.
+Side effects: this happens when a function depends on any data that is outside the function scope, or even more importantly, when a function modifies data that is outside its scope. Side effect is the function's interaction with the outside world. Examples of side effects are HTTP requests, writing to the DOM, setting timers and more.
 
-**Pure functions:** these are functions without side effects. They do not change any variable outside their scope. Also, when they are given the same input, they always return the same output.
+Pure functions: these are functions without side effects. They do not change any variable outside their scope. Also, when they are given the same input, they always return the same output.
 
 Here is an example of a pure function:
 
@@ -3633,9 +3636,9 @@ function circleArea(r) {
 
 Now it may seem that it is bad to have functions with side effects, but it is not. Actually, a program can only be useful if it has some interaction with the outside world at some point. However, in order to make useful and bug-free apps, we need to know when and how to create side effects, which brings us back to React rules for render logic.
 
-Essentially, there is just one big rule which is that **components must be pure functions when it comes to render logic**. It means that if we give a component instance the same props the component should always return the same output in the form of JSX.
+Essentially, there is just one big rule which is that components must be pure functions when it comes to render logic. It means that if we give a component instance the same props the component should always return the same output in the form of JSX.
 
-This practically means that **render logic is not allowed to produce any side effects**. So the logic that runs at the top level and is responsible for rendering the component should have no interaction with the outside world. This means that render logic is not allowed to perform:
+This practically means that render logic is not allowed to produce any side effects. So the logic that runs at the top level and is responsible for rendering the component should have no interaction with the outside world. This means that render logic is not allowed to perform:
 
 1. Network requests (API calls)
 2. Start timers
@@ -3645,11 +3648,11 @@ This practically means that **render logic is not allowed to produce any side ef
 
 > Keep in mind that all this stuff are only forbidden inside render logic. It means that you have other options for running your side effects. For instance, side effects are allowed (and even encouraged) in event handler functions. There is also a special hook to register side effects `useEffect`. This is used if we need to create a side effect as soon as the component function is first executed.
 
-## **How events work in React**
+## How events work in React
 
 [There is a useful review on events and their behavior in JavaScript in the tutorial video.]
 
-### **Synthetic events**
+### Synthetic events
 
 Let's now see how event objects actually work behind the scenes. When we declare an event handler like the code example below...
 
@@ -3661,21 +3664,21 @@ Let's now see how event objects actually work behind the scenes. When we declare
 
 Synthetic events have the same interface as native event objects, such as `stopPropagation()` and `preventDefault()`. The special thing about synthetic events is that they fix some browser inconsistencies, making it so that events work in the same way in all browsers. The React team also decided most of the synthetic events bubble, including _focus_, _blur_, and _change_ events which usually do not bubble. There is one exception, and that is the _scroll_ event, which does not bubble in React also.
 
-### **How event handlers bahave in vanilla JavaScript and React**
+### How event handlers bahave in vanilla JavaScript and React
 
 1. In React, the prop name to attach an event handler is named in camelCase. So that is `onClick` instead of `onclick` or `click`.
 2. In vanilla JavaScript, when we want to stop the default behavior of the browser in response to an event, we can return `false` from the event handler function. The big example of this, is the browser's automatic reload in response to a form submission. However, returning `false` in a React event handler would simply not work. The only way in React is to call the `preventDefault()` on the synthetic event object.
 3. In rare situations where you need to handle an event in the capturing phase rather in the bubbling phase, you can simply attach 'Capture' to the event handler name. For instance, you would write `onClickCapture` instead of `onClick`. However, you will probably never use this.
 
-### **Component lifecycle**
+### Component lifecycle
 
 The lifecycle of a component encompasses the different phases that a component can go through over time. Here is a list of these phases:
 
-#### **Phase 1: mounting - initial render**
+#### Phase 1: mounting - initial render
 
 This is when the component is rendered for the very first time. This is also when fresh state and props are created for the component instance, and therefore we can say that this is when the component is born. Once the component is rendered and is on the screen, it can be rendered an unlimited number of times.
 
-#### **Phase 2: re-rendering**
+#### Phase 2: re-rendering
 
 A React application is re-rendered whenever there is a state update. However, when we mentioned this, we were talking about the entire application, not about one specific component instance.
 
@@ -3686,9 +3689,9 @@ Here we can go deeper in detail and say that a component instance also re-render
 3. Parent component re-renders
 4. Context changes [more about this later...]
 
-This phase is **optional**. It does not always happen in all components. Some components are mounted and then unmounted right away, which brings us to the next phase.
+This phase is optional. It does not always happen in all components. Some components are mounted and then unmounted right away, which brings us to the next phase.
 
-#### **Phase 3: unmounting**
+#### Phase 3: unmounting
 
 This is when a component instance dies, meaning that it is completely destroyed and removed from the screen along with its state and props. This can happen when users navigate to a new section or new page of the app, or they close the app.
 
@@ -3696,7 +3699,7 @@ This is when a component instance dies, meaning that it is completely destroyed 
 
 > It is important to know about the lifecycle of a componenta instance, because you can hook into different phases of this lifecycle. You can basically define code to be executed at these specific points in time, which can be extremely useful. We do this using the `useEffect()` hook
 
-## **Hooks**
+## Hooks
 
 React hooks are special built-in functions that allow us to hook into some of React internal mechanisms. In other words, hooks are APIs that expose some internal React functionality such as creating and accessing state from the fiber tree, or registering side effects in the fiber tree.
 
@@ -3730,11 +3733,11 @@ Some others also exist, but only for library authors:
 1. `useSyncExternalStore`
 2. `useInsertionEffect`
 
-### **Rules of hooks**
+### Rules of hooks
 
 In order for hooks to work as intended there are 2 simple rules that we must follow:
 
-- **RULE 1:** Hooks can only be called at the **top level**. We cannot call hooks inside conditionals, loops, functions nested inside the component, or after an early return because that is also similar to a condition. Why this rule exists? Hooks only work if they are always called in the same exact order, which can only be ensured if they are called at the top level. But why do hooks need to be called in the same order on every render? Let's dive deeper into the reasons behind this rule.
+- RULE 1: Hooks can only be called at the top level. We cannot call hooks inside conditionals, loops, functions nested inside the component, or after an early return because that is also similar to a condition. Why this rule exists? Hooks only work if they are always called in the same exact order, which can only be ensured if they are called at the top level. But why do hooks need to be called in the same order on every render? Let's dive deeper into the reasons behind this rule.
 
 Remember that when an app is rendered, React creates a tree of React elements (Virtual DOM). On the initial render, React also builds a Fiber tree out of the virtual DOM where each element is a fiber. Each fiber contains a lot of stuff, like the received props, list of work, and more importantly, a linked list of all the hooks that were used in the component instance. Let's build ourselves a linked list of used hooks based on the hypothetical code example below to understand how hooks work behind the scenes. It is hypothetical because it won't actually work. It even violates the rule that we just mentioned. By breaking this rule we are trying to understand why hooks rely on the order in which they are called.
 
@@ -3754,7 +3757,7 @@ Speaking of the order, our linked list will be built based on the call order of 
 
 So this is the list of our hooks, but how are they linked? It means that the first list element contains a reference to the second list element, which in turn, has a link to the third list element. Linked list is a common data structure in computer science.
 
-Moving back to our code example, let's imagine that a re-render happened because state A updated from 23 to 7. This creates a huge problem. Notice how state B was only created initially because the condition `A === 23` was true. However, after the re-render the condition is false, which means that the `useState` hook for state B would not be called, and therefore, it would no longer exist in the linked list of hooks after the re-render. Now the problem is that the first hook is still pointing to the original second hook. But that link is now broken. So state A is now linked to a hook that no longer exists, and nothing is pointing to the effect hook Z, meaning that the linked list is now destroyed. It works this way because **fibers are not recreated on every render**. So the linked list is also not recreated. So if one of the hooks just disappears from the list, then the order of the list is completely broken. So if we conditionally use a hook, it would completely mess up the linked list of hooks between renders, which will leave React confused and unable to correctly track all the hooks that are used. So this is why hooks need to be called in the same order on every render. Following this rule, the code example above should be corrected to:
+Moving back to our code example, let's imagine that a re-render happened because state A updated from 23 to 7. This creates a huge problem. Notice how state B was only created initially because the condition `A === 23` was true. However, after the re-render the condition is false, which means that the `useState` hook for state B would not be called, and therefore, it would no longer exist in the linked list of hooks after the re-render. Now the problem is that the first hook is still pointing to the original second hook. But that link is now broken. So state A is now linked to a hook that no longer exists, and nothing is pointing to the effect hook Z, meaning that the linked list is now destroyed. It works this way because fibers are not recreated on every render. So the linked list is also not recreated. So if one of the hooks just disappears from the list, then the order of the list is completely broken. So if we conditionally use a hook, it would completely mess up the linked list of hooks between renders, which will leave React confused and unable to correctly track all the hooks that are used. So this is why hooks need to be called in the same order on every render. Following this rule, the code example above should be corrected to:
 
 ```js
 const [A, setA] = useState(23);
@@ -3764,15 +3767,15 @@ useEffect(fnZ, []);
 
 > Why even bother having the linked list? A linked list which relies on the hook call order is the simplest way to associate each hook with its value. The order in which the hook is called, uniquely identifies the hook. This is very convenient, because by using the call order, we developers don't have to manually assign names to each hook.
 
-- **RULE 2:**Hooks can only be called from **React functions**. This means that hooks can only be called from **function components** or from **custom hooks**, but not from regular functions or class components.
+- RULE 2:Hooks can only be called from React functions. This means that hooks can only be called from function components or from custom hooks, but not from regular functions or class components.
 
 > You don't have to worry about these rules if you are using a linter. These rules are automatically enforced by React's ESLint rules.
 
-### **The `useState` hook**
+### The `useState` hook
 
 We use the `useState` hook to create a state, and then the setter function to update state.
 
-#### **Creating state**
+#### Creating state
 
 We can creat state in its simple way which is to pass a value into the `useState` hook.
 
@@ -3780,7 +3783,7 @@ We can creat state in its simple way which is to pass a value into the `useState
 const [count, setCount] = useState(23);
 ```
 
-We can also create state by passing a callback function into the `useState` hook which makes it so that the initial value of the state would be computed. This second option is also called _Lazy Evaluation_. The callback is only called by the `useState` hook on the **initial render**. On subsequent renders, this callback function will simply be ignored. The callback function needs to fulfill 2 requirements:
+We can also create state by passing a callback function into the `useState` hook which makes it so that the initial value of the state would be computed. This second option is also called _Lazy Evaluation_. The callback is only called by the `useState` hook on the initial render. On subsequent renders, this callback function will simply be ignored. The callback function needs to fulfill 2 requirements:
 
 1. It should be a pure function
 2. It should require no arguments in order to work
@@ -3789,7 +3792,7 @@ We can also create state by passing a callback function into the `useState` hook
 const [count, setCount] = useState(() => localStorage.getItem("count"));
 ```
 
-#### **Updating state**
+#### Updating state
 
 We can update state in a simple way just by passing a value into the setter function.
 
@@ -3805,7 +3808,7 @@ setCount((c) => c + 1);
 
 > It is very important to remember that we should not mutate objects or arrays, but to replace them with a new object or array which incorporates your changes.
 
-#### **`useState`: some useful details**
+#### `useState`: some useful details
 
 Up until now we have always used the `useState` hook. But let's now take a deeper look inside.
 
@@ -3813,7 +3816,7 @@ Up until now we have always used the `useState` hook. But let's now take a deepe
 const [movie, setMovie] = useState({});
 ```
 
-##### **Initial state value only matters for initial render**
+##### Initial state value only matters for initial render
 
 The initial value passed into the `useState` hook only matters for the initial render. Let's take this code as an example:
 
@@ -3844,7 +3847,7 @@ useEffect(
 );
 ```
 
-But let's now take a look at the bigger picture. If this is what we want to do, we can simply use a **derived state**. We don't need the `useState` hook.
+But let's now take a look at the bigger picture. If this is what we want to do, we can simply use a derived state. We don't need the `useState` hook.
 
 ```js
 // This code is inside a component which asynchronously loads movie data from an external API
@@ -3856,7 +3859,7 @@ console.log(isTop);
 
 This solution works seamlessly, because `isTop` variable is regenerated each time that the component is rendered. So as the component is mounted, the `imdbRating` variable is `undefined` and we will see in the console that `isTop` is `false`. But when the movie data arrives, the component function is called again to render the data to the UI, and therefore `imdbRating` becomes available, and therefore `isTop` will become true since the exmample movie is rated 9. So we have used the power of derived state which is that it updates as the component gets re-rendered.
 
-##### **State is always updated asynchronously**
+##### State is always updated asynchronously
 
 Another important thing to remember about the `useState` hook is that the state updating process really happes asynchronously. We need to use a callback function to update state in certain situations. So we cannot access the updated state variable right after updating it.
 
@@ -3893,7 +3896,7 @@ setAvgRating(Number(imdbRating));
 setAvgRating((avgRating) => (avgRating + userRating) / 2);
 ```
 
-##### **Initialize state with a callback function: Lazy evaluation**
+##### Initialize state with a callback function: Lazy evaluation
 
 There is just one final thing to learn about the `useState` hook, which is, besides using a callback function to update state, as we did in the example above, we can use callback functions to initialize state. This is particularly needed when the initial value of the `useState` hook depends on some sort of computaion.
 
@@ -3924,7 +3927,7 @@ useEffect(
 const [watched, setWatched] = useState(localStorage.getItem("watched"));
 ```
 
-### **`useRef` hook**
+### `useRef` hook
 
 Imagine we want a search bar in our application to become focused once the `Search` component is mounted. We can implement an effect in the component like this:
 
@@ -3949,7 +3952,7 @@ function Search({ query, setQuery }) {
 
 However, we know that React is all about being declarative. So manually selecting a DOM element is not the React way of doing things. So what should we do? We should use the `useRef` hook.
 
-We use the `useRef` hook to create something called a ref. But what is a ref? Ref stands for reference, and it is like a box into which we can put any data that we want to be preserved between renders. In practice, when we use the `useRef` hook, React gives us an object with a **mutable** `current` property, into which we can write any data, and we can read from it.
+We use the `useRef` hook to create something called a ref. But what is a ref? Ref stands for reference, and it is like a box into which we can put any data that we want to be preserved between renders. In practice, when we use the `useRef` hook, React gives us an object with a mutable `current` property, into which we can write any data, and we can read from it.
 
 ```js
 const myRef = useRef(23);
@@ -3966,9 +3969,9 @@ This `current` property is actually mutable unlike everything else in React. The
 
 > Refs are usually only used for data that is NOT rendered. Refs usually only appear in event handlers or effects, not in JSX. We can use them in JSX but usually that is not the place for them. So if you need data that participates in the visual output of the component, that is usually a good sign that you need a state, not a ref.
 
-> You are not allowed to read the `.current` property or write to it in the render logic as it will create an undesirable side effect. Instead, we usually perform these mutations inside a `useEffect` hook. So keep in mind that **whenever you are planning to use a `useRef` hook, you would very likely want to use a `useEffect` hook to update the ref**.
+> You are not allowed to read the `.current` property or write to it in the render logic as it will create an undesirable side effect. Instead, we usually perform these mutations inside a `useEffect` hook. So keep in mind that whenever you are planning to use a `useRef` hook, you would very likely want to use a `useEffect` hook to update the ref.
 
-#### **`useState` vs. `useRef`**
+#### `useState` vs. `useRef`
 
 Let's now compare the two in order to fully understand their similarities and differences.
 
@@ -4069,7 +4072,7 @@ function Search({ query, setQuery }) {
 }
 ```
 
-#### **`useRef` to count something behind the scenes**
+#### `useRef` to count something behind the scenes
 
 We now want to use the `useRef` hook to create a variable that persists across renders without triggering a re-render.
 
@@ -4091,11 +4094,11 @@ useEffect(
 );
 ```
 
-### **`useReducer` hook**
+### `useReducer` hook
 
 The `useReducer` hook is a more advanced and more complex way of managing state instead of `useState`. We usually use the `useReducer` hook when we have a complex state to manage. It means that we usually don't use the `useReducer` hook for managing a state that includes only one single value. Instead, we use it when the state actually holds an object.
 
-The `useReducer` hook works with a **reducer** function, which is a pure function that will always take in the previous state and an action, and will return the next state. Note that the reducer function must always **return** something. The `useReducer` hook itself receives not only the initial state, but also the reducer function we just described.
+The `useReducer` hook works with a reducer function, which is a pure function that will always take in the previous state and an action, and will return the next state. Note that the reducer function must always return something. The `useReducer` hook itself receives not only the initial state, but also the reducer function we just described.
 
 > What the reducer function returns must be similar in shape to the initial state we passed into the `useReducer` hook. This is especially important when we pass an object of states into the the reducer hook, which is what we actully use this hook for.
 
@@ -4123,7 +4126,7 @@ function DateCounter() {
 }
 ```
 
-Now as we click on the `+` button to increment the date, we see the console shows `0 1` in response. So the state is `0` and the action is `1`. So what is happening here? The reducer function has access to the **current state**, and then it also gets access to the **action**, which currently is the `1` value we passed into the `dispatch` function. So whatever we pass into the `dispatch` function will be received in the reducer function as the action. **The idea in the reducer function is to take the current state and the action and, based on these, return the next state**.
+Now as we click on the `+` button to increment the date, we see the console shows `0 1` in response. So the state is `0` and the action is `1`. So what is happening here? The reducer function has access to the current state, and then it also gets access to the action, which currently is the `1` value we passed into the `dispatch` function. So whatever we pass into the `dispatch` function will be received in the reducer function as the action. The idea in the reducer function is to take the current state and the action and, based on these, return the next state.
 
 Now to implement a simlir functionality to decrease the date. So we now need to call the `dispatch` function again. In terms of `useReducer` is considered as dispatching an action.
 
@@ -4406,7 +4409,7 @@ If you take a look at your handler functions now, you will see that what we are 
 
 So basically, we have all the possible state updates that can happen in our application in one central place which is the reducer function. This makes it a lot easier to understand the entire app without having to go over all the components and functions. As we proceed, the advantages of the `useReducer` hook start to emerge.
 
-#### **Reducers in detail**
+#### Reducers in detail
 
 Let's now see how reducers can make our application a lot better in certain situations.
 
@@ -4446,18 +4449,18 @@ So in conclusion there are different parts that should fit together in the whole
 
 Behind the scenes the dispatch function has access to the reducer function because we passed it into the `useReducer` hook. So dispatch function coordinates the whole thing and also gives the reducer access to the current state.
 
-#### **`useReducer` vs. `useState`**
+#### `useReducer` vs. `useState`
 
-| `useState`                                                                                                        | `useReducer`                                                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ideal for single, independent pieces of state (numbers, strings, single arrays, etc.)                             | Ideal for multiple related pieces of state and comples state (object with many values and nested objects or arrays)                                                                          |
-| Logic to update state is placed directly in event handlers or effects, spread all over one or multiple components | Logic to update state lives in one central place, decoupled from components: the reducer function.                                                                                           |
-| State is updated by calling the state setter function, which makes it a lot more imparative.                      | State is updated by _dispatching_ an **action** to the reducer function. Essentially, reducers map state transitions to actions with well-defined names, making them a lot more declarative. |
-| Easy to understand and use                                                                                        | More difficult to understand and implement                                                                                                                                                   |
+| `useState`                                                                                                        | `useReducer`                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ideal for single, independent pieces of state (numbers, strings, single arrays, etc.)                             | Ideal for multiple related pieces of state and comples state (object with many values and nested objects or arrays)                                                                      |
+| Logic to update state is placed directly in event handlers or effects, spread all over one or multiple components | Logic to update state lives in one central place, decoupled from components: the reducer function.                                                                                       |
+| State is updated by calling the state setter function, which makes it a lot more imparative.                      | State is updated by _dispatching_ an action to the reducer function. Essentially, reducers map state transitions to actions with well-defined names, making them a lot more declarative. |
+| Easy to understand and use                                                                                        | More difficult to understand and implement                                                                                                                                               |
 
 > Most of the time, using `useState` is perfectly fine.
 
-#### **When to use `useReducer`**
+#### When to use `useReducer`
 
 We would have to think about answers to a couple of questions in order to figure out when we do need to use the `useReducer` hook.
 
@@ -4486,14 +4489,14 @@ We would have to think about answers to a couple of questions in order to figure
 
 > The `useState` hook should remain your default choice for managing state. But if `useState` is causing one of the problems mentioned above, you may want to opt for the `useReducer` hook.
 
-### **custom hooks**
+### custom hooks
 
 Custom hooks are all about reusablity. In React, we have 2 types of things that we can reuse:
 
 1. A piece of UI: we use a component
 2. A piece of Logic: In this case we should first ask ourselves that does the logic contain any hook? If not, all you need is a regular function, which can live either inside or outside any component. But if the logic does contain any React hook, you cannot extract the logic into a regular function. Instead, what you need is a custom hook.
 
-Custom hooks allow us to reuse stateful logic in multiple components, and actually not only stateful logic, but any logic that contains one or more React hooks. In more general terms, custom hooks allow us to reuse **non-visual logic**.
+Custom hooks allow us to reuse stateful logic in multiple components, and actually not only stateful logic, but any logic that contains one or more React hooks. In more general terms, custom hooks allow us to reuse non-visual logic.
 
 One hook should only have one purpose. It should only do one specific, well-defined thing. The idea is not to simply put all the hooks of a component into one custom hooks, but it is to make custom hooks reusable and portable, so that you can reuse them across different projects.
 
@@ -4666,19 +4669,19 @@ const { movies, isLoading, error } = useMovies(query, handleCloseMovie);
 
 > Remember that a custom hook can be called and used anywhere in our logic code. So it can act like the `useState` hook that returns a state variable and its setter function, or it can be used like a `useEffect` hook which performs some logic in an abstracted way. We can say, in a sense, that a custom hook can be based on either a `useState` or a `useEffect` hook, although a custome hook can use more than one React hooks.
 
-# **React 3rd party libraries**
+# React 3rd party libraries
 
-## **React developer tools**
+## React developer tools
 
 Since developer tools are so helpful for developers, the React team built dev-tools specific to React, which can be extremely helpful when working with [state](#state-in-react).
 
 Install React's Chrome dev-tools.
 
-## **React Router**
+## React Router
 
 To implement routing, we start by creating the file structure for the components that correspond to different URLs. Usually, we create a folder in the `src` folder and call it `pages`. This folder will basically include our structural components. So inside the `pages` folder, we now create a file, for instance, called `Product.jsx`, and remember to write `jsx` as the file's extension.
 
-### **Basic implementation**
+### Basic implementation
 
 In the beginning of this process, we normally don't write any specific code in each component file, but just a simple React component function:
 
@@ -4819,9 +4822,9 @@ function App() {
 }
 ```
 
-Up until this point, we have half of our routing implemented. We have our routes, but we cannot transition between them without a page reload. We currently need to change the URL manually, and then our app goes to that page. This is not what we want though. So we need to stablish some sort of **linking** between the routes.
+Up until this point, we have half of our routing implemented. We have our routes, but we cannot transition between them without a page reload. We currently need to change the URL manually, and then our app goes to that page. This is not what we want though. So we need to stablish some sort of linking between the routes.
 
-### **Linking between routes**
+### Linking between routes
 
 To start, let's follow an example. Let's say that on our `Homepage` we want a link to the `Pricing` page. We would traditionally and obviously create an anchor element in the `Homepage` component.
 
@@ -4950,7 +4953,7 @@ This means that the element with the `active` class name that also has the `nav`
 
 > Just remember that the `active` class is given to us by React Router as a result of using the `<Navlink>` element. Otherwise, if we just want to define some global classes we would not do it inside a module, but we would do it in a normal CSS file. Refer to [global CSS](#global-css).
 
-### **Nested routes and index route**
+### Nested routes and index route
 
 We need nested routes when we want a part of the UI to be controlled by a part of the URL. In our exmaple, we want to show a list of cities in the app layout, and we want the URL to be like:
 
@@ -4999,7 +5002,7 @@ function Sidebar() {
 
 So when React detects a nested route in the URL, it goes through the `<Route />` elements defined inside the parent `<Route>` element and selects the one corresponding to the nested route. Then it takes the related JSX from the corresponding component file and puts it in the place of the `<Outlet />` element defined in the parent component JSX. This is pretty similar to the concept of children prop, but in this case for the routes.
 
-> In this example, as it would be the case with many examples of nested routes, we may actually not want the bare parent route empty of any of the possible child components corresponding to the defined nested routes. This means that we show a list of `Cities` in the `App` layout component for the `app/cities` route, and we show a list of `Countries` in the `App` layout component for the `app/countries` route, but we actually don't want the page to render empty for the `/app` URL. So we want to display, for instance, the list of cities or any other content as a default render. This is where the **index route** comes to play. To implement an index route, we should use another nested route in the parent route and pass an `index` prop to it in order to define it as an index route. See the code exmaple below:
+> In this example, as it would be the case with many examples of nested routes, we may actually not want the bare parent route empty of any of the possible child components corresponding to the defined nested routes. This means that we show a list of `Cities` in the `App` layout component for the `app/cities` route, and we show a list of `Countries` in the `App` layout component for the `app/countries` route, but we actually don't want the page to render empty for the `/app` URL. So we want to display, for instance, the list of cities or any other content as a default render. This is where the index route comes to play. To implement an index route, we should use another nested route in the parent route and pass an `index` prop to it in order to define it as an index route. See the code exmaple below:
 
 ```js
 <Route path="app" element={<AppLayout />}>
@@ -5033,7 +5036,7 @@ Having implemented such rounting along with some buttons on the UI that will cha
 
 > We still build components like tabbed or accordion components with the `useState` hook all the time. But from now on, the overall navigation of the application is controlled by the React Router. This includes a small sub-navigation as mentioned in the example code above.
 
-### **Storing state in the URL**
+### Storing state in the URL
 
 We can now take the usefulness of React Router to the next level. Storing state in the URL enables us to use the state in different places of the app.
 
@@ -5053,7 +5056,7 @@ www.example.com/app/cities/lisbon?lat=38.72&lng=-9.14
 
 we know that we have a path which is `/app/cities`, and we can consider this part a state becasue it corresponds to the component that is being displayed. But this is not useful for state management in the way that we have been describing.
 
-For storing state in the URL we use **params** or **query strings**.
+For storing state in the URL we use params or query strings.
 
 - Params: stands for parameters and it is very useful to pass data to the next page
 - Query string: is useful to store some global state that should be accessible everywhere.
@@ -5062,7 +5065,7 @@ To understand it a bit better, let's look at this example in more detail. The UR
 
 We also have the query string which works in a very similar way. In this example, we store the `lat` and `lng` pieces of state in the query string which corresponds to a certain position on the map. So the location of the city is reflected right in the URL. In this example, we leveraged the power of the URL to manage state in an effective way by reading the city name and the GPS location from the URL instead of using application state inside React.
 
-#### **Dynamic routes with URL parameters**
+#### Dynamic routes with URL parameters
 
 To use `params` with React Router we do it in 3 steps:
 
@@ -5142,7 +5145,7 @@ localhost:3000/app/cities/30498573
 
 variable `x` will now be an object with the `id` property holding `30498573` as value. Why is this property called `id`? Because we defined the `path` prop of the `<Route />` component with `path="cities/:id"`.
 
-#### **Reading and setting a query string**
+#### Reading and setting a query string
 
 In the `Link` element we inserted for each `CityItem` component where we tried to form the URL with the city ID, we can now go on and set a query string.
 
@@ -5228,7 +5231,7 @@ function Map() {
 }
 ```
 
-### **Programmatic navigation with `useNavigate`**
+### Programmatic navigation with `useNavigate`
 
 Programmatic navigation means to move to a new URL without the user having to click on any link. A common usecase of this behavior is right after submitting a form. Many times, when the user submites a form, we want them to move to a new page on the application automatically. This is programmatic navigation.
 
@@ -5324,9 +5327,9 @@ function Form() {
 
 > Including a button element inside a form element will make it so that whenever we click on the button, a page reload will happen as a default behavior. So if you have your button inside the form element, remember to `preventDefault` behavior from happening.
 
-This time we pass `-1` to the `navigate` function. `-1` basically refers to the **number of steps that we want to go back in the browser's history**. We can also use `1` or `-2` or any other number if necessary! Usually we only need `-1`.
+This time we pass `-1` to the `navigate` function. `-1` basically refers to the number of steps that we want to go back in the browser's history. We can also use `1` or `-2` or any other number if necessary! Usually we only need `-1`.
 
-### **Programmatic navigation with `Navigate`**
+### Programmatic navigation with `Navigate`
 
 There is also a declarative way of programmatic navigation. Let's now check out the `<Navigate />` component. It is not so much used anymore, but it is still important to learn because one important usecase of it is inside nested routes. Let's see what that means.
 
@@ -5437,11 +5440,11 @@ function App() {
 
 > Note that we have inserted a `replace` keyword into the `Navigate` component. This keyword will replace the current element in the history stack of the browser. Otherwise, the browser's back button won't work.
 
-### **Data loading with React Router**
+### Data loading with React Router
 
-## **React Query**
+## React Query
 
-With this library, we will let **React Query** to take over all fetching and storing of remote data. We implement an integration of React Query for all data fetching and remote state management.
+With this library, we will let React Query to take over all fetching and storing of remote data. We implement an integration of React Query for all data fetching and remote state management.
 
 React Query is a powerful library for managing remote (server) state. This is state that is stored on a server that we need to load into our application. This library has many features that allow us to write a lot less code, while also making the UX a lot better.
 
@@ -5460,7 +5463,7 @@ React Query also supports when the user becomes offline. In this situation, sinc
 
 We need a library with all these features because remote state is fundamentally different from UI state. It is asynchronous and usually shared by many users of the app. Applications running in different browsers can very easily get out of sync with the remote data that is stored on the server.
 
-### **Setting up React Query**
+### Setting up React Query
 
 You first need to install the library using the terminal:
 
@@ -5515,7 +5518,7 @@ function App() {
 }
 ```
 
-#### **React Query Dev tools**
+#### React Query Dev tools
 
 you need to install this NPM package:
 
@@ -5553,7 +5556,7 @@ function App() {
 }
 ```
 
-#### **Fetching data**
+#### Fetching data
 
 We basically want to replace this piece of code:
 
@@ -5687,7 +5690,7 @@ const queryClient = new QueryClient({
 });
 ```
 
-#### **Mutations**
+#### Mutations
 
 We now want to mutate our remote server state and automatically re-render the UI. To do this we first define a function that is responsible for deleting a cabin in our `apiCabins.js` file, where we previously define an async function for fetching cabins data.
 
@@ -5758,7 +5761,7 @@ const { isLoading: isDeleteing, mutate } = useMutation({
 
 The `useMutation` hook can also receive an `onError` property in its object, where we can use the error that we throw in the mutation function to display an error to the user.
 
-#### **Mutations (adding data to remote server state)**
+#### Mutations (adding data to remote server state)
 
 Just like what we did in order to be able to delete a cabin data, we now have to implement a handler function for adding a cabin to the `apiCabins.js` function.
 
@@ -5882,7 +5885,7 @@ function CreateCabinForm() {
 
 We should now think about validing the data that is being submitted through the form. So let's now learn about the React Hook Form library.
 
-## **React Hook Form**
+## React Hook Form
 
 We use the React Hook Form library in order to simplify handling forms in React SPAs. First we need to set up the form in our JSX in the UI. The library is only about handling form submissions and errors, etc. So it does not give us any pre-built components. Take this form as an example:
 
@@ -6031,7 +6034,7 @@ Going into the React Query dev tools, we now see that the input fields now have 
 
 Note that we also need to pass an `onSubmit` prop to the `Form` component. In this prop, we need to immediately call the `handleSubmit` function returned by the React Hook Form and pass into it a handler function that we define. This makes it so that whenever the form is submitted, our handler function will be called while having access to the form data, so to the values passed into input fields that we registered for the React Hook Form.
 
-### **Handling form errors**
+### Handling form errors
 
 This probably where the React Hook Form shines the most. We can use its features and also create a reusable form row. As we mentioned earlier, the `register` function that we passed as prop to the input fields, can get a bit more complex with data validation.
 
@@ -6167,7 +6170,7 @@ function CreateCabinForm() {
 
 Now in order to be able to get the defined error messages and display them in the UI we can use another feature of the React Hook Form, which is a function also returned by the `useForm` hook called `formState`. This would an object that includes an `errors` property, which we can extract by destructuring.
 
-### **Uploading images through form**
+### Uploading images through form
 
 We can basically upload files to our remote server using the `FileInput` component defined in the form. Remember that in order to store this image in the new object that is sent to the remote server, we need to only include the image's file name since that is usually the data structure that we define in managing a database in Supabase.
 
@@ -6329,7 +6332,7 @@ export async function createCabin(neWCabin) {
 
 Remember that in order to be able to upload images to the Supabase bucket, you need to enable the related RLS.
 
-### **Filling in a form with default values**
+### Filling in a form with default values
 
 In case we want to display a form to enable the user to edit the data of a cabin, we would reuse the `CreateCabinForm` component, but this time making the component able to receive default values. To do this, we first need to make the component ready to receive data cabin's already exisiting data as an argument, for exmaple, called `cabinToEdit`. Then inside the component we need to destructure the values of this `cabinToEdit` and also figure out if the form is displayed to _edit_ or to _create_ cabin data. Then based on one of the two situations, we need to pass an object of options to the `useForm` hook in which we define a property called `defaultValues`. This default values property, of course, should only be used if the form is actually created to edit a cabin's data. This would be the situation where we would need to prefill the form with the already exisiting data of the cabin.
 
@@ -6465,7 +6468,7 @@ Then we should update the `apiCabins.js` file to update a cabin data.
 "Add code here";
 ```
 
-## **React Hot Toast**
+## React Hot Toast
 
 This 3rd-party library is used to display toast notifications in React applications. We should first install its library:
 
@@ -6536,7 +6539,7 @@ const { isLoading: isDeleteing, mutate } = useMutation({
 });
 ```
 
-## **Styled Component library**
+## Styled Component library
 
 The styled component library allow us to write CSS right inside our JavaScript component files. The way it works is that we take a regular HTML element and then, using the `styled` function, we create a brand new React component with some CSS styles applied to it. We can then use and reuse that new component instead of using the regular HTML element.
 
@@ -6656,7 +6659,7 @@ function App() {
 
 Now you might ask, how we can include global styles with styled components, for instance, for CSS resets that should be applied to the entire page.
 
-#### **Introducing global styles**
+#### Introducing global styles
 
 Inside the `styles` folder, we create a new file called `GlobalStyles.js`, and what we basically do is to create a new styled component which will become our global style component. In this file, we use the `createGlobalStyle` function and pass our global styles into it:
 
@@ -6831,7 +6834,7 @@ function App() {
 
 > Instead of using all the CSS variables that we defined manually, the Styled Component library actually also gives us its own way of providing variables to our entire application. This is done using a mechanism called _Themes_. However, it is a lot better to stick to the native CSS.
 
-#### **Styled Component props and CSS function**
+#### Styled Component props and CSS function
 
 We are now going to use Styled Component library to create more reusable components. For instance, we want to have this styled component for primary heading:
 
@@ -6972,9 +6975,27 @@ function App() {
 }
 ```
 
-# **Project deployment**
+# Optimization and advanced useEffect
 
-## **First, build the application**
+In this section we are going deep into some inner workings of React We will analyze renders in practical terms using the Atmoic Blog app, and learn how to optimize wasted renders and performance in general using some more advanced React tools. This way you will understand React apps even better and make them as as fast and snappy as possible.
+
+We will also go even deeper into `useEffect` because there is still a few more things that we need to learn.
+
+## Performance optimization and wasted renders
+
+We are now going to get a quick overview of what can actually be optimized in React applications and how we can do it.
+
+### Performance optimization tools
+
+There are 3 main areas that we can focus on when we need to optimize performance of React apps.
+
+1. Prevent wasted renders: to do this, we can memoize components with `memo` or we can memoize objects and functions with `useMemo` and `useCallback` hooks. We can also pass elements as `children` or regular `prop` in order to prevent them from being re-rendered.
+2. Improve the overall app speed and responsiveness to make sure the app is fully fluid and without delays: We can use the `useMemo` and `useCallback` hooks, and we can also use the modern `useTransition` hook.
+3. Reduce the bundle size: We can use fewer 3rd-party packages in our code base and we can also implement code splitting and lazy loading.
+
+# Project deployment
+
+## First, build the application
 
 In order to deploy our applications we first need to build our actual application bundle. This is where Vite takes all the files that we have created during development and bundle them into one single file. That file is what we then deploy to production.
 
@@ -6996,7 +7017,7 @@ along with some other files in the `dist` folder like `index.html` and other fil
 
 You may see that your bundle is pretty huge in size. We actually do code splitting to avoid such a problem, but some applications are fully hidden behind a login and some applications are only ever used by few users, which is the reason that we don't implement server-side rendering. In this situation it is perfectly fine to have a bit larger bundle size.
 
-## **Second, deploy to Netlify**
+## Second, deploy to Netlify
 
 Before deploying to Netlify, we need to create a file in the `dist` folder called `netlify.toml`. In this file, you need to insert the code below:
 
@@ -7013,7 +7034,7 @@ We are now ready to deploy this build to a hosting provider like Netlify. In Net
 
 You can take this process to the next level by implementing continious integration. This is done, basically, by connecting your GitHub account to Netlify.
 
-## **Deploying to Vercel**
+## Deploying to Vercel
 
 To deploy to Vercel with continious integration, we should use a Git and GitHub repository. In fact, connecting your GitHub account to Vercel is among the first steps in signing up to Vercel.
 
