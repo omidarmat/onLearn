@@ -160,6 +160,9 @@
     - [Understanding Memo](#understanding-memo)
       - [The `memo` function](#the-memo-function)
       - [`memo` in practice](#memo-in-practice)
+    - [Understanding `useMemo` and `useCallback`](#understanding-usememo-and-usecallback)
+      - [`useMemo` in practice](#usememo-in-practice)
+      - [`useCallback` in practice](#usecallback-in-practice)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7144,6 +7147,12 @@ Let's analyse why that is.
 2. Wasted renders are only a problem when the re-rendering happens too frequently or when the component is slow in rendering. Therefore, if the component only renders from time to time, or if the component is lightweight and fast anyway, then memoizing brings no benefit at all.
 
 #### `memo` in practice
+
+### Understanding `useMemo` and `useCallback`
+
+#### `useMemo` in practice
+
+#### `useCallback` in practice
 
 # Project deployment
 
