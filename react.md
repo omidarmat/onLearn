@@ -154,6 +154,9 @@
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
     - [Performance optimization tools](#performance-optimization-tools)
+    - [Optimizing wasted renders](#optimizing-wasted-renders)
+    - [The profiler developer tool](#the-profiler-developer-tool)
+      - [Optimizing with `children`](#optimizing-with-children)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -6991,7 +6994,94 @@ There are 3 main areas that we can focus on when we need to optimize performance
 
 1. Prevent wasted renders: to do this, we can memoize components with `memo` or we can memoize objects and functions with `useMemo` and `useCallback` hooks. We can also pass elements as `children` or regular `prop` in order to prevent them from being re-rendered.
 2. Improve the overall app speed and responsiveness to make sure the app is fully fluid and without delays: We can use the `useMemo` and `useCallback` hooks, and we can also use the modern `useTransition` hook.
-3. Reduce the bundle size: We can use fewer 3rd-party packages in our code base and we can also implement code splitting and lazy loading.
+3. Reduce the bundle size: We can use fewer 3rd-party packages in our code base and we can also implement **code splitting** and **lazy loading**.
+
+> **Note:** this list of tools and techniques is, by no means, exhaustive. You are already doing many optimizations by following the best practices you been learning.
+
+### Optimizing wasted renders
+
+To understand what wasted renders are, we first need to review when exactly a component instance gets re-rendered.
+
+In React, a component instance only gets re-rendered in 3 different situations:
+
+1. When the component's **state** changes.
+2. When there is a change in the **context** that the component is subscribed to.
+3. When a **parent component** re-renders.
+
+> **Note:** But what about prop changes? Doesn't updaing props also re-render a component? That is technically not the case. This is a common misconception. It is true that it does look as if components re-render when their props change, but what actually happens is that **props only change when the parent re-renders**. When the parent re-renders, the children who receive the prop will re-render anyway. The real reason why a component re-renders when a props change, is that a parent has re-rendered.
+
+It is important to remember that rendering a component **does not mean that the DOM actually gets updated**, it just means the component function gets called. But this can be an expensive operation. Because when the component function gets called, React will create a new Virtual DOM and do all the diffing and reconciliation that we have already talked about before. This brings us to the topic of this section which is **wasted renders**.
+
+A wasted render is a render that did not produce any change in the DOM. It is a waste because all the diffing calculations still had to be done, but it did not result in any new DOM, and therefore, all the calculations were for nothign. Most of the time this is actually no problem at all because React is very fast. However, it can become a problem when re-renders happen way too frequently or when a component is very slow in rendering. This can then make the application feel laggy and unresponsive. We want to avoid situations like this at all costs.
+
+### The profiler developer tool
+
+We have used the React developer tools all the time until now, but actually we have used only half of it. Let's now meet the other half which is the.
+
+With the profiler we can analyze renders and re-renders. We can see which components have rendered, why they are rendered, and also how long each render took.
+
+We can go to the profiler settings and in the `Profiler` tab, check the option that says 'Record why each component rendered while profiling.' This gives us one of the 3 reasons that we talked about recently (state update, context update, parent re-rendering).
+
+To make the profiler work, we click on the blue recording button, then update the application state somehow, and then click on the red recording button to stop and execute the profiling process.
+
+In the profile graph, we see that some components are colored, and others are gray. Gray ones are the components that did not render while the application re-rendered. Among the colored ones, the more yellow they are, the more it took the components to re-render. Also, thanks to the settings we activated in the settings, we can see why each component re-rendered.
+
+#### Optimizing with `children`
+
+This is a performance optimization technique that leverages the `children` prop in order to prevent some components from re-rendering. This is not the most used technique out in the real-world apps, but it gives us a surprising insights into how React works internally.
+
+Imagine this code in our app:
+
+```jsx
+function SlowComponent() {
+  const words = Array.from({ length: 100_000 }, () => "WORD");
+  return (
+    <ul>
+      {words.map((word, i) => {
+        <li key={i}>
+          {i} : {word}
+        </li>;
+      })}
+    </ul>
+  );
+}
+
+export default function Test() {
+  const [count, setCount] = useState(0);
+  return (
+    <div>
+      <h1>Slow counter?!?</h1>
+      <button onClick={() => setCount((c) => c + 1)}>Increase: {count}</button>
+      <SlowComponent />
+    </div>
+  );
+}
+```
+
+Now as we include the `<Test />` component inside a `List` component as below:
+
+```jsx
+function List() {
+  const { posts } = usePosts();
+
+  return (
+    <>
+      <ul>
+        {posts.map((post, i) => {
+          <li key={i}>
+            <h3>{post.title}</h3>
+            <p>{post.body}</p>
+          </li>;
+        })}
+      </ul>
+
+      <Test />
+    </>
+  );
+}
+```
+
+we see that as we press the increase button, there is a delay in the counter variable inside the button to appear in its updated state. What happens here is that once we click on the button, the `count` state variable in `Test` is updated and therefore the the entire `Test` component needs to re-render. So the `SlowComponent` is also re-rendered each time that we click on the button, although the `SlowComponent` is not in any way dependant on the state variable of `Test` component. The `SlowComponent` is being re-rendered simply because it is placed inside the `Test` component.
 
 # Project deployment
 
