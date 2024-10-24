@@ -157,6 +157,8 @@
     - [Optimizing wasted renders](#optimizing-wasted-renders)
     - [The profiler developer tool](#the-profiler-developer-tool)
       - [Optimizing with `children`](#optimizing-with-children)
+    - [Understanding Memo](#understanding-memo)
+      - [The `memo` function](#the-memo-function)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7082,6 +7084,58 @@ function List() {
 ```
 
 we see that as we press the increase button, there is a delay in the counter variable inside the button to appear in its updated state. What happens here is that once we click on the button, the `count` state variable in `Test` is updated and therefore the the entire `Test` component needs to re-render. So the `SlowComponent` is also re-rendered each time that we click on the button, although the `SlowComponent` is not in any way dependant on the state variable of `Test` component. The `SlowComponent` is being re-rendered simply because it is placed inside the `Test` component.
+
+This situation is where you can use this optimization technique in which you utilize the `children` prop.
+
+So we take the counter functionality out:
+
+```jsx
+function Counter({ children }) {
+  const [count, setCount] = useState(0);
+  return (
+    <div>
+      <h1>Slow counter?!?</h1>
+      <button onClick={() => setCount((c) => c + 1)}>Increase: {count}</button>
+      {children}
+    </div>
+  );
+}
+
+export default function Test() {
+  return (
+    <div>
+      <h1>Slow counter?!?</h1>
+      <Counter>
+        <SlowComponent />
+      </Counter>
+    </div>
+  );
+}
+```
+
+Not that delay is gone. So this means that the `SlowComponent` component is no longer re-rendered. The profiler also proves this, while `Counter` component is.
+
+Why does this work this way? The `SlowComponent` is now passed in as a `children` prop. This means that the `SlowComponent` component was created actually before the `Counter` component re-rendered. So there is no way that the `SlowComponent` could have been affected by the state change in the `Counter` component. So React first creates the `SlowComponent` and then passes it as a child to the `Counter` component.
+
+The same thing is applied to context and context providers.
+
+### Understanding Memo
+
+Memoization is an optimization technique that executes a pure function once, and saves the result in memory (cache). If we try to execute the function again with the **same arguments as before**, the previously saved result will be returned, **without executing the function again**.
+
+But what this has to do with React? We can use this technique to optimize our applications. We can use the `memo` function to memoize components, and wen can use the `useMemo` to memoize objects. We can also use the `useCallback` hook to memoize functions. Doing so will help us prevent wasted renders, and improve app speed and responsiveness.
+
+Let's now see an example of how to do this.
+
+#### The `memo` function
+
+React has a `memo` function. It is used to create a component that will **not re-render** when its parent re-renders, **as long as the props stay the same between renders**. In other words, we use `memo` to create a memoized component. So the function (component) inputs are props and calling the function multiple times is equivalent to re-rendering in React. Therefore, **memoizing a React component, means to not re-render it if props stay the same across renderes**.
+
+The regular behavior in React without using the `memo` function is that when a component re-renders the child component re-renders as well. On the other hand, if we memoize the child component, it will not re-render as long as the props are the same as in the previous render. If the props do chanage, then the child component will need to re-render as well in order to reflect the new data that it received.
+
+> **Note:** It is really important to keep in mind that memoizing a component really only affects **props**. A memoized component will still re-render when its own state changes or when a context that it's subscribed to changes.
+
+Memo sounds greate, but it does not mean that we should go on and memo all our components. Memo is only useful when dealing with a **heavy component**, which creates a visible lag or a delay when it is rendered. Also in order for memo to make sense, the component should **re-render often**, and does so with the **same props**.
 
 # Project deployment
 
