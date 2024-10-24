@@ -159,6 +159,7 @@
       - [Optimizing with `children`](#optimizing-with-children)
     - [Understanding Memo](#understanding-memo)
       - [The `memo` function](#the-memo-function)
+      - [`memo` in practice](#memo-in-practice)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7136,6 +7137,13 @@ The regular behavior in React without using the `memo` function is that when a c
 > **Note:** It is really important to keep in mind that memoizing a component really only affects **props**. A memoized component will still re-render when its own state changes or when a context that it's subscribed to changes.
 
 Memo sounds greate, but it does not mean that we should go on and memo all our components. Memo is only useful when dealing with a **heavy component**, which creates a visible lag or a delay when it is rendered. Also in order for memo to make sense, the component should **re-render often**, and does so with the **same props**.
+
+Let's analyse why that is.
+
+1. If the props are usually different between re-renders, `memo` has no effect anyway, and then there is absolutely no need to use it.
+2. Wasted renders are only a problem when the re-rendering happens too frequently or when the component is slow in rendering. Therefore, if the component only renders from time to time, or if the component is lightweight and fast anyway, then memoizing brings no benefit at all.
+
+#### `memo` in practice
 
 # Project deployment
 
