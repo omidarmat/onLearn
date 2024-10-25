@@ -164,6 +164,7 @@
       - [When to use `useMemo` and `useCallback`](#when-to-use-usememo-and-usecallback)
       - [`useMemo` in practice](#usememo-in-practice)
       - [`useCallback` in practice](#usecallback-in-practice)
+  - [Optimizing bundle size and code splitting](#optimizing-bundle-size-and-code-splitting)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7325,6 +7326,48 @@ const handleAddPost = useCallback(function handleAddPost(post) {
   setPosts((posts) => [posts, ...posts]);
 }, []);
 ```
+
+## Optimizing bundle size and code splitting
+
+The most important thing that we can optimize is the bundle size. We first need to understand what that bundle actually is.
+
+When a user navigates to our application, they are visiting the website that is hosted on some server. Once the user actually navigates to the app, the server will send back a huge JavaScript file to the client that is requesting it. This file is called the bundle. So the bundle is a JavaScript file **containing the entire application code**. Downloading the bundle will load **the entire app at once**, turning it into a SPA running entirely on the client. So when the URL changes in the app, the client just renders a new React component but without loading any new files from the server since all the JavaScript code is already in the client-side.
+
+The bundle size is the amount of JavaScript code users have to download to start using the app. One of the most important things to be optimized, so that the bundle takes less time to download.
+
+To optimize the bundle size we can use a technique called **code splitting**. It means splitting the bundle into multiple parts that can be downloaded over time, which is also called **lazy loading**. By code splitting, instead of having one huge bundle, we will have multiple smaller bundles that can be downloaded over time as they become necessary for the application. This process of loading code sequentially is called lazy loading.
+
+There are actually many ways in which we can split bundles, but the most common one is to split the bundle at the route level, or in other words, at the page level. So what we do is to take all the components that represent a page, and load each of them separately. However, this is not the only way to go, and the feature that we are introducing here has nothing to do with React Router. Any component can be lazy loaded.
+
+In order to implement code splitting in practice we should perform 2 main steps. First we should implement the `import` statement via the `lazy()` function call. The `lazy()` function receives a callback function in which we can import the component. So instead of this:
+
+```jsx
+import Homepage from "./pages/Homepage";
+```
+
+we write a dynamic import function which is actually a part of JavaScript.
+
+```jsx
+const Homepage = lazy(() => import("./pages/Homepage"));
+```
+
+The next step is usually to show a loading spinner while navigating from one page to another. This is where Reacts **Suspence API** comes into play. Suspence is a concurrent feature that is part of modern React. It allows certain components to suspend, meaning that it allows them to wait for something to happen. In our case, the lazy-loaded components are going to be suspended while they are loading. We can then use the `<Suspence>` component to show a _fallback_, which in our case is going to be the loading spinner. So inside the `App` JSX we usually do something like this this:
+
+```jsx
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspence fallback={<Spinner />}>
+        <Routes>
+          <Route path='/' element={<Homepage />} />
+        </Routes>
+      <Suspence/>
+    <BrowserRouter/>
+  )
+}
+```
+
+And we are good to go. Remember that in this example, we wanted to split our bundle based on routes, and therefore we wanted to show a spinner as a fallback for the entire page components. This is why we wrapped the whole `<Routes>` in a `<Suspense>` component. In other approaches, suspense can be implemented in different ways.
 
 # Project deployment
 
