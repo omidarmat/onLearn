@@ -52,12 +52,28 @@ function List() {
   );
 }
 
-const Archive = memo(function Archive({ archiveOptions }) {
+const Archive = memo(function Archive({ archiveOptions, onAddPosts }) {
   const [posts] = useState(() =>
     Array.from({ length: 30000 }, () => createRandomPost())
   );
 
   const [showArchive, setShowArchive] = useState(archiveOptions.show);
 
-  return <h2>{archiveOptions.title}</h2>;
+  return (
+    <aside>
+      <h2>{archiveOptions.title}</h2>
+      <button onClick={() => setShowArchive((s) => !s)}>
+        {showArchive ? "Hide archived posts" : "Show archived posts"}
+      </button>
+
+      {showArchive && (
+        <ul>
+          <p>
+            <strong>{post.title}:</strong> {post.body}
+          </p>
+          <button onClick={() => onAddPosts(post)}>Add as new post</button>
+        </ul>
+      )}
+    </aside>
+  );
 });
