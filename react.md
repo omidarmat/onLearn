@@ -7171,12 +7171,13 @@ We call `memo` with a component as an argument, and the function will return a n
 > **Note:** Something that can break this memoization, is to pass an object as prop to the `Archive` component, instead of a simple primitive boolean value (we passed `show={false}` as prop before). It means that we update the code above to something like this:
 
 ```jsx
+// inside a fcuntion component
 const archiveOptions: {
   show: false,
   title: 'Post archive in addition to main posts'
 }
 
-return <Archive archiveOptions={archiveOptions}>
+return <Archive archiveOptions={archiveOptions} />
 ```
 
 ```jsx
