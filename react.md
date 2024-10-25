@@ -7231,9 +7231,11 @@ The solution to the problem that we created for the `memo` function recently, is
 const archiveOptions = useMemo(() => {
   return {
     show: false,
-    title: "Post archive in addition to main posts",
+    title: `Post archive in addition to ${posts.length} main posts`,
   };
-}, []);
+}, [posts.length]);
+
+return <Archive archiveOptions={archiveOptions} />;
 ```
 
 Now passing the `archivedOptions` object as prop to the `Archive` component is not a problem since we have memoized this component before:
@@ -7250,7 +7252,79 @@ const Archive = memo(function Archive({ archiveOptions }) {
 });
 ```
 
+The problem with passing an object as prop to this component is now resolved and the lag is gone. So the value (object) that is returned from the `useMemo` callback function is a stable value and will be read from cache.
+
+Now you should note that the value is dependent on the `posts` state variable inside the `app` component. This is why we mentioned this in the dependency array of the `useMemo` hook. Otherwise, the value will not be updated, but instead, it will be read from cache. If we didn't give `posts.length` in the dependency array, the `useMemo` hook would have no way of knowing when to recalculate the value (object).
+
+> **Note:** It is a lot better to mention `posts.length` in the dependency array, instead of just `posts`. It is better to include **primitive** values in the dependency array. We will learn more about this later.
+
 #### `useCallback` in practice
+
+As we know, the goal of `useCallback` is to memoize functions. Back to the `Archive` component, if we now add another prop and pass a callback function to it, again we will have the lag on the whole page on every state update and re-render. This is because the `handleAddPost` function passed as a prop to the `Archive` will now have to be applied 30000 times.
+
+```jsx
+// inside app component
+return (
+  <Archive
+    archiveOptions={archiveOptions}
+    // We solved the issue of the archiveOptions object by memoizing and stablizing the object.
+    onAddPost={handleAddPost}
+    // We should now solve the same issue with this callback function using the useCallback hook
+  />
+);
+```
+
+```jsx
+const Archive = memo(function Archive({ archiveOptions, onAddPost }) {
+  const [posts] = useState(() =>
+    Array.from({ length: 30000 }, () => createRandomPost())
+  );
+
+  const [showArchive, setShowArchive] = useState(archiveOptions.show);
+
+  return (
+    <aside>
+      <h2>{archiveOptions.title}</h2>
+      <button onClick={() => setShowArchive((s) => !s)}>
+        {showArchive ? "Hide archived posts" : "Show archived posts"}
+      </button>
+
+      {showArchive && (
+        <ul>
+          <p>
+            <strong>{post.title}:</strong> {post.body}
+          </p>
+          <button onClick={() => onAddPost(post)}>Add as new post</button>
+        </ul>
+      )}
+    </aside>
+  );
+});
+```
+
+We can solve this problem by using the `useCallback` function and memoizing the callback function passed to the component as prop.
+
+```jsx
+// inside app component
+const handleAddPost = useCallback(function handleAddPost(post) {
+  setPosts((posts) => [posts, ...posts]);
+}, []);
+```
+
+So you see that `useMemo` and `useCallback` are pretty similar, but the difference is that `useCallback` will not immediately call the callback function passed into it, but instead, it will simply memoize the function. However, `useMemo` memoizes the result of calling the callback function passed into it.
+
+> **Note:** We have left the dependency array of the `useCallback` hook because the callback function passed into it only needs to be executed on the initial render.
+
+> **Note:** In the future, the need to do any of the stuff we mentioned about `useMemo` and `useCallback` might disappear completely, since the React team is currently researching a compilet that would automatically memoize all the values that need memoization behind the scenes.
+
+> **Note:** If we pass a state setter function returned by the `useState` hook as a prop to the `Archive` component, we don't need to memoize the function in order to prevent the lag, as we did with the `handleAddPost` function. React guarantees that the setter functions of the `useState` hook always have a stable identity, meaning that they will not change on renders. We can think of state setter functions as being automatically memoized. This is the reason that it is completely ok to omit state setter functions from the dependency arrays of all the hooks like `useEffect`, `useCallback`, and `useMemo`. For instance, in the `handleAddPosts` function that we memoized before, we see that we are using the `setPosts` state setter function but we didn't need to mention it in the dependency array.
+
+```jsx
+// inside app component
+const handleAddPost = useCallback(function handleAddPost(post) {
+  setPosts((posts) => [posts, ...posts]);
+}, []);
+```
 
 # Project deployment
 
