@@ -33,6 +33,11 @@
       - [void](#void)
     - [object](#object)
   - [Object Types](#object-types-1)
+    - [Property Modifiers](#property-modifiers)
+      - [Optional Properties](#optional-properties-1)
+      - [readonly Properties](#readonly-properties)
+    - [Extending Types](#extending-types)
+    - [Intersection Types](#intersection-types)
   - [Found in codebase](#found-in-codebase)
     - [Tables](#tables)
     - [React function component](#react-function-component)
@@ -705,6 +710,179 @@ function greet(person: Person) {
 ```
 
 In all three examples above, we’ve written functions that take objects that contain the property `name` (which must be a `string`) and `age` (which must be a `number`).
+
+### Property Modifiers
+
+Each property in an object type can specify a couple of things:
+
+1. The type
+2. Whether the property is optional
+3. Whether the property can be written to
+
+#### Optional Properties
+
+Much of the time, we’ll find ourselves dealing with objects that might have a property set. In those cases, we can mark those properties as optional by adding a question mark (?) to the end of their names.
+
+```ts
+interface PaintOptions {
+  shape: Shape;
+  xPos?: number;
+  yPos?: number;
+}
+ 
+function paintShape(opts: PaintOptions) {
+  // ...
+}
+ 
+const shape = getShape();
+paintShape({ shape });
+paintShape({ shape, xPos: 100 });
+paintShape({ shape, yPos: 100 });
+paintShape({ shape, xPos: 100, yPos: 100 });
+```
+
+In this example, both `xPos` and `yPos` are considered optional. We can choose to provide either of them, so every call above to `paintShape` is valid. All optionality really says is that if the property is set, it better have a specific type.
+
+We can also read from those properties - but when we do under `strictNullChecks`, TypeScript will tell us they’re potentially `undefined`.
+
+In JavaScript, even if the property has never been set, we can still access it - it’s just going to give us the value `undefined`. We can just handle `undefined` specially by checking for it.
+
+```js
+function paintShape(opts: PaintOptions) {
+  let xPos = opts.xPos === undefined ? 0 : opts.xPos;
+       
+let xPos: number
+  let yPos = opts.yPos === undefined ? 0 : opts.yPos;
+       
+let yPos: number
+  // ...
+}
+```
+
+Note that this pattern of setting defaults for unspecified values is so common that JavaScript has syntax to support it.
+
+```js
+function paintShape({ shape, xPos = 0, yPos = 0 }: PaintOptions) {
+  console.log("x coordinate at", xPos);
+  console.log("y coordinate at", yPos);
+}
+```
+
+#### readonly Properties
+
+Properties can also be marked as `readonly` for TypeScript. While it won’t change any behavior at runtime, a property marked as `readonly` can’t be written to during type-checking.
+
+```ts
+interface SomeType {
+  readonly prop: string;
+}
+ 
+function doSomething(obj: SomeType) {
+  // We can read from 'obj.prop'.
+  console.log(`prop has the value '${obj.prop}'.`);
+ 
+  // But we can't re-assign it.
+  obj.prop = "hello";
+// Cannot assign to 'prop' because it is a read-only property.
+}
+```
+
+### Extending Types
+
+It’s pretty common to have types that might be more specific versions of other types. For example, we might have a `BasicAddress` type that describes the fields necessary for sending letters and packages in the U.S.
+
+```ts
+interface BasicAddress {
+  name?: string;
+  street: string;
+  city: string;
+  country: string;
+  postalCode: string;
+}
+```
+
+In some situations that’s enough, but addresses often have a unit number associated with them if the building at an address has multiple units. We can then describe an `AddressWithUnit`.
+
+```ts
+interface AddressWithUnit {
+  name?: string;
+  unit: string;
+  street: string;
+  city: string;
+  country: string;
+  postalCode: string;
+}
+```
+
+This does the job, but the downside here is that we had to repeat all the other fields from `BasicAddress` when our changes were purely additive. Instead, we can extend the original `BasicAddress` type and just add the new fields that are unique to `AddressWithUnit`.
+
+```ts
+interface BasicAddress {
+  name?: string;
+  street: string;
+  city: string;
+  country: string;
+  postalCode: string;
+}
+ 
+interface AddressWithUnit extends BasicAddress {
+  unit: string;
+}
+```
+
+The extends keyword on an interface allows us to effectively copy members from other named types, and add whatever new members we want. This can be useful for cutting down the amount of type declaration boilerplate we have to write, and for signaling intent that several different declarations of the same property might be related. For example, `AddressWithUnit` didn’t need to repeat the `street` property, and because `street` originates from `BasicAddress`, a reader will know that those two types are related in some way.
+
+interfaces can also extend from multiple types.
+
+```ts
+interface Colorful {
+  color: string;
+}
+ 
+interface Circle {
+  radius: number;
+}
+ 
+interface ColorfulCircle extends Colorful, Circle {}
+ 
+const cc: ColorfulCircle = {
+  color: "red",
+  radius: 42,
+};
+```
+
+### Intersection Types
+
+`interfaces` allowed us to build up new types from other types by extending them. TypeScript provides another construct called intersection types that is mainly used to combine existing object types.
+
+An intersection type is defined using the `&` operator.
+
+```ts
+interface Colorful {
+  color: string;
+}
+interface Circle {
+  radius: number;
+}
+ 
+type ColorfulCircle = Colorful & Circle;
+```
+
+Here, we’ve intersected `Colorful` and `Circle` to produce a new type that has all the members of `Colorful` and `Circle`.
+
+```ts
+function draw(circle: Colorful & Circle) {
+  console.log(`Color was ${circle.color}`);
+  console.log(`Radius was ${circle.radius}`);
+}
+ 
+// okay
+draw({ color: "blue", radius: 42 });
+ 
+// oops
+draw({ color: "red", raidus: 42 });
+// Object literal may only specify known properties, but 'raidus' does not exist in type 'Colorful & Circle'. Did you mean to write 'radius'?
+```
 
 ## Found in codebase
 
