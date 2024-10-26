@@ -5618,7 +5618,7 @@ function CabinTable() {
 }
 ```
 
-Into this hook, we need to pass an object with 2 properties. First, `queryKey`, which is usually an array containing a string, but can be a complex array too. This query key that we define here will uniquely identify this data that we are going to query here. So if later, we use the `useQuery` hook on another page, with this exact query key, then the data would be read from the cash. Second, the actual query function named `queryFn` as property. This is the function that is responsible for actually fetching the data from the API. The function that we insert here, needs to return a promise. So we can use the `async` function that we previously defined in the `apiCabins.js` file:
+Into this hook, we need to pass an object with 2 properties. First, `queryKey`, which is usually an array containing a string, but can be a complex array too. This query key that we define here will uniquely identify this data that we are going to query here. So if later, we use the `useQuery` hook on another page, with this exact query key, then the data would be read from the cash. Second, the actual query function named `queryFn` as property. This is the function that is responsible for actually fetching the data from the API. The function that we insert here, needs to return a **promise**. So we can use the `async` function that we previously defined in the `apiCabins.js` file:
 
 ```js
 // apiCabins.js
