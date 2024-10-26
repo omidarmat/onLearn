@@ -38,6 +38,9 @@
       - [readonly Properties](#readonly-properties)
     - [Extending Types](#extending-types)
     - [Intersection Types](#intersection-types)
+    - [Interface Extension vs. Intersection](#interface-extension-vs-intersection)
+    - [Generic Object Types](#generic-object-types)
+      - [The Array Type](#the-array-type)
   - [Found in codebase](#found-in-codebase)
     - [Tables](#tables)
     - [React function component](#react-function-component)
@@ -882,6 +885,140 @@ draw({ color: "blue", radius: 42 });
 // oops
 draw({ color: "red", raidus: 42 });
 // Object literal may only specify known properties, but 'raidus' does not exist in type 'Colorful & Circle'. Did you mean to write 'radius'?
+```
+
+### Interface Extension vs. Intersection
+
+We just looked at two ways to combine types which are similar, but are actually subtly different. With interfaces, we could use an `extends` clause to extend from other types, and we were able to do something similar with intersections and name the result with a type alias. The principal difference between the two is how conflicts are handled, and that difference is typically one of the main reasons why you’d pick one over the other between an interface and a type alias of an intersection type.
+
+If interfaces are defined with the same name, TypeScript will attempt to merge them if the properties are compatible. If the properties are not compatible (i.e., they have the same property name but different types), TypeScript will raise an error.
+
+In the case of intersection types, properties with different types will be merged automatically. When the type is used later, TypeScript will expect the property to satisfy both types simultaneously, which may produce unexpected results.
+
+For example, the following code will throw an error because the properties are incompatible:
+
+```ts
+interface Person {
+  name: string;
+}
+interface Person {
+  name: number;
+}
+```
+
+In contrast, the following code will compile, but it results in a never type:
+
+```ts
+interface Person1 {
+  name: string;
+}
+ 
+interface Person2 {
+  name: number;
+}
+ 
+type Staff = Person1 & Person2
+ 
+declare const staffer: Staff;
+staffer.name;
+// (property) name: never
+```
+
+In this case, Staff would require the name property to be both a string and a number, which results in property being of type `never`.
+
+### Generic Object Types
+
+Let’s imagine a Box type that can contain any value - `strings`, `numbers`, `Giraffes`, whatever.
+
+```ts
+interface Box {
+  contents: any;
+}
+```
+
+Right now, the contents property is typed as any, which works, but can lead to accidents down the line.
+
+We could instead use `unknown`, but that would mean that in cases where we already know the type of `contents`, we’d need to do precautionary checks, or use error-prone type assertions.
+
+```ts
+interface Box {
+  contents: unknown;
+}
+ 
+let x: Box = {
+  contents: "hello world",
+};
+ 
+// we could check 'x.contents'
+if (typeof x.contents === "string") {
+  console.log(x.contents.toLowerCase());
+}
+ 
+// or we could use a type assertion
+console.log((x.contents as string).toLowerCase());
+```
+
+One type safe approach would be to instead scaffold out different `Box` types for every type of `contents`.
+
+```ts
+interface NumberBox {
+  contents: number;
+}
+ 
+interface StringBox {
+  contents: string;
+}
+ 
+interface BooleanBox {
+  contents: boolean;
+}
+```
+
+But that means we’ll have to create different functions, or overloads of functions, to operate on these types.
+
+```ts
+function setContents(box: StringBox, newContents: string): void;
+function setContents(box: NumberBox, newContents: number): void;
+function setContents(box: BooleanBox, newContents: boolean): void;
+function setContents(box: { contents: any }, newContents: any) {
+  box.contents = newContents;
+}
+```
+
+That’s a lot of boilerplate. Moreover, we might later need to introduce new types and overloads. This is frustrating, since our box types and overloads are all effectively the same.
+
+Instead, we can make a generic `Box` type which declares a type parameter.
+
+```ts
+interface Box<Type> {
+  contents: Type;
+}
+```
+
+You might read this as “A `Box` of `Type` is something whose contents have type `Type”`. Later on, when we refer to `Box`, we have to give a type argument in place of `Type`.
+
+```ts
+let box: Box<string>;
+```
+
+[to be continued...]
+
+#### The Array Type
+
+Generic object types are often some sort of container type that work independently of the type of elements they contain. It’s ideal for data structures to work this way so that they’re re-usable across different data types.
+
+It turns out we’ve been working with a type just like that throughout this handbook: the Array type. Whenever we write out types like number[] or string[], that’s really just a shorthand for `Array<number>` and `Array<string>`.
+
+```ts
+function doSomething(value: Array<string>) {
+  // ...
+}
+ 
+let myArray: string[] = ["hello", "world"];
+ 
+// either of these work!
+doSomething(myArray);
+doSomething(new Array("hello", "world"));
 ```
 
 ## Found in codebase
