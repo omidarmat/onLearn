@@ -22,6 +22,8 @@
     - [Interfaces](#interfaces)
     - [Differences Between Type Aliases and Interfaces](#differences-between-type-aliases-and-interfaces)
     - [Type Assertions](#type-assertions)
+      - [With `as`](#with-as)
+      - [With angle-bracket](#with-angle-bracket)
     - [Literal Types](#literal-types)
       - [Literal interfaces](#literal-interfaces)
   - [Functions (advanced)](#functions-advanced)
@@ -100,7 +102,7 @@ To specify the type of an array like `[1, 2, 3]`, you can use the syntax `number
 
 ### `any`
 
-TypeScript also has a special type, any, that you can use whenever you don’t want a particular value to cause typechecking errors.
+TypeScript also has a special type, `any`, that you can use whenever you don’t want a particular value to cause typechecking errors.
 
 When a value is of type `any`, you can access any properties of it (which will in turn be of type `any`), call it like a function, assign it to (or from) a value of any type, or pretty much anything else that’s syntactically legal:
 
@@ -115,7 +117,7 @@ obj = "hello";
 const n: number = obj;
 ```
 
-The any type is useful when you don’t want to write out a long type just to convince TypeScript that a particular line of code is okay.
+The `fi` type is useful when you don’t want to write out a long type just to convince TypeScript that a particular line of code is okay.
 
 ### Type Annotations on Variables
 
@@ -128,7 +130,7 @@ let myName: string = "Alice";
 > **Note:** TypeScript doesn’t use “types on the left”-style declarations like int x = 0; Type annotations will always go after the thing being typed.
 >
 
-In most cases, though, this isn’t needed. Wherever possible, TypeScript tries to automatically *infer* the types in your code. For example, the type of a variable is inferred based on the type of its initializer:
+**In most cases, though, this isn’t needed**. Wherever possible, TypeScript tries to automatically *infer* the types in your code. For example, the type of a variable is inferred based on the type of its initializer:
 
 ```ts
 // No type annotation needed -- 'myName' inferred as type 'string'
@@ -170,7 +172,7 @@ function getFavoriteNumber(): number {
 }
 ```
 
-Much like variable type annotations, you usually don’t need a return type annotation because TypeScript will infer the function’s return type based on its return statements. The type annotation in the above example doesn’t change anything. Some codebases will explicitly specify a return type for documentation purposes, to prevent accidental changes, or just for personal preference.
+Much like variable type annotations, you usually don’t need a return type annotation because TypeScript will infer the function’s return type based on its `return` statements. The type annotation in the above example doesn’t change anything. Some codebases will explicitly specify a return type for documentation purposes, to prevent accidental changes, or just for personal preference.
 
 ##### Functions Which Return Promises
 
@@ -204,7 +206,7 @@ Even though the parameter `s` didn’t have a type annotation, TypeScript used t
 
 ### Object Types
 
-Apart from primitives, the most common sort of type you’ll encounter is an object type. This refers to any JavaScript value with properties, which is almost all of them! To define an object type, we simply list its properties and their types.
+Apart from primitives, the most common sort of type you’ll encounter is an object type. This refers to any JavaScript value with **properties**, which is almost all of them! To define an object type, we simply list its properties and their types.
 
 For example, here’s a function that takes a point-like object:
 
@@ -284,7 +286,7 @@ function printId(id: number | string) {
 }
 ```
 
-The solution is to narrow the union with code, the same as you would in JavaScript without type annotations. Narrowing occurs when TypeScript can deduce a more specific type for a value based on the structure of the code.
+The solution is to **narrow** the union with code, the same as you would in JavaScript without type annotations. Narrowing occurs when TypeScript can deduce a more specific type for a value based on the structure of the code.
 
 For example, TypeScript knows that only a string value will have a `typeof` value "string":
 
@@ -314,7 +316,7 @@ function welcomePeople(x: string[] | string) {
 }
 ```
 
-Notice that in the else branch, we don’t need to do anything special - if `x` wasn’t a `string[]`, then it must have been a `string`.
+Notice that in the `else` branch, we don’t need to do anything special - if `x` wasn’t a `string[]`, then it must have been a `string`.
 
 Sometimes you’ll have a union where all the members have something in common. For example, both arrays and strings have a `slice` method. If every member in a union has a property in common, you can use that property without narrowing:
 
@@ -397,9 +399,6 @@ interface Window {
 interface Window {
   ts: TypeScriptAPI;
 }
-
-const src = 'const a = "Hello World"';
-window.ts.transpileModule(src, {});
 ```
 
 ```ts
@@ -434,7 +433,9 @@ Sometimes you will have information about the type of a value that TypeScript ca
 
 For example, if you’re using `document.getElementById`, TypeScript only knows that this will return some kind of `HTMLElement`, but you might know that your page will always have an `HTMLCanvasElement` with a given ID.
 
-In this situation, you can use a *type assertion* to specify a more specific type:
+#### With `as`
+
+In this situation, you can use a *type assertion* with `as` to specify a more specific type:
 
 ```ts
 const myCanvas = document.getElementById("main_canvas") as HTMLCanvasElement;
@@ -442,13 +443,15 @@ const myCanvas = document.getElementById("main_canvas") as HTMLCanvasElement;
 
 Like a type annotation, type assertions are removed by the compiler and won’t affect the runtime behavior of your code.
 
-You can also use the angle-bracket syntax (except if the code is in a .tsx file), which is equivalent:
+#### With angle-bracket
+
+You can also use the angle-bracket syntax (except if the code is in a `.tsx` file), which is equivalent:
 
 ```ts
 const myCanvas = <HTMLCanvasElement>document.getElementById("main_canvas");
 ```
 
-> **Note:** Because type assertions are removed at compile-time, there is no runtime checking associated with a type assertion. There won’t be an exception or null generated if the type assertion is wrong.
+> **Note:** Because type assertions are removed at compile-time, there is no runtime checking associated with a type assertion. There won’t be an exception or `null` generated if the type assertion is wrong.
 
 TypeScript only allows type assertions which convert to a more specific or less specific version of a type. This rule prevents “impossible” coercions like:
 
@@ -460,7 +463,7 @@ const x = "hello" as number;
 
 In addition to the general types `string` and `number`, we can refer to specific strings and numbers in type positions.
 
-One way to think about this is to consider how JavaScript comes with different ways to declare a variable. Both var and let allow for changing what is held inside the variable, and const does not. This is reflected in how TypeScript creates types for literals.
+One way to think about this is to consider how JavaScript comes with different ways to declare a variable. Both `var` and `let` allow for changing what is held inside the variable, and const does not. This is reflected in how TypeScript creates types for literals.
 
 ```ts
 let changingString = "Hello World";
