@@ -11,10 +11,11 @@
       - [Optional properties](#optional-properties)
       - [Type aliases](#type-aliases)
       - [Interfaces](#interfaces)
+      - [Generic object type](#generic-object-type)
     - [Function type](#function-type)
       - [Type aliases](#type-aliases-1)
   - [Define return types](#define-return-types)
-  - [Generic functions](#generic-functions)
+  - [Generic types](#generic-types)
 - [Defining variables](#defining-variables)
   - [Type aliases](#type-aliases-2)
 - [Asserting types?](#asserting-types)
@@ -51,7 +52,7 @@
   - [Function Type Expressions](#function-type-expressions)
   - [Call Signatures](#call-signatures)
   - [Construct Signatures](#construct-signatures)
-  - [Generic Functions](#generic-functions-1)
+  - [Generic Functions](#generic-functions)
   - [Other types to know about](#other-types-to-know-about)
   - [void](#void)
   - [object](#object)
@@ -179,6 +180,32 @@ function printCoord(pt: Point) {}
 printCoord({ x: 100, y: 100 });
 ```
 
+#### Generic object type
+
+You can make a generic `Box` type which declares a type parameter.
+
+```ts
+interface Box<Type> {
+  contents: Type;
+}
+```
+
+You might read this as “A `Box` of `Type` is something whose contents have type `Type”`. Later on, when we refer to `Box`, we have to give a type argument in place of `Type`. It means that whenever you define a variable of type `Box` and pass a generic type to it, the `content` property of that variable will have the type that you just passed.
+
+```ts
+let box: Box<string>;
+```
+
+This means that the type of `box.contents` is `string` and you would have to mutate it with a string type. Think of Box as a template for a real type, where Type is a placeholder that will get replaced with some other type. When TypeScript sees `Box<string>`, it will replace every instance of Type in `Box<Type>` with `string`, and end up working with something like `{ contents: string }`.
+
+This also means that we can avoid overloads entirely by instead using generic functions.
+
+```tsx
+function setContents<Type>(box: Box<Type>, newContents: Type) {
+  box.contents = newContents;
+}
+```
+
 ### Function type
 
 If your function receives another function as argument, to define the type of the argument you can use **type expression**. This is syntactically similar to arrow functions.
@@ -228,7 +255,7 @@ If a function should return nothing, you use `void`:
 async function getFavoriteNumber(): void {}
 ```
 
-## Generic functions
+## Generic types
 
 It’s common to write a function where the types of the input relate to the type of the output, or where the types of two inputs are related in some way. Let’s consider for a moment a function that returns the first element of an array:
 
@@ -238,7 +265,7 @@ function firstElement(arr: any[]) {
 }
 ```
 
-This function does its job, but unfortunately has the return type any. It’d be better if the function returned the type of the array element.
+This function does its job, but unfortunately has the return type any. It would be better if the function returned the type of the array element.
 
 In TypeScript, _generics_ are used when we want to describe a correspondence between two values. We do this by declaring a _type parameter_ in the function signature:
 
@@ -248,7 +275,7 @@ function firstElement<Type>(arr: Type[]): Type | undefined {
 }
 ```
 
-By adding a type parameter `Type` to this function and using it in two places, we’ve created a link between the input of the function (the array) and the output (the return value). Now when we call it, a more specific type comes out:
+By adding a type parameter `Type` to the function declaration between the function's name and arguments, you are basically defining a reference which will be used by TypeScript to relate the argument type and return type altogether. In other words, using `Type` in argument type and return type, we have created a link between the input of the function (the array) and the output (the return value). Now when we call it, a more specific type comes out:
 
 ```ts
 // s is of type 'string'
