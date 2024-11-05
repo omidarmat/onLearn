@@ -3899,7 +3899,7 @@ This will return a wrong average value, since the updated value of `avgRating` i
 We know how to go around this. We should use a callback function in the state setter function. This callback function has access to the current value of the state variable.
 
 ```js
-const [avgRating, setIsRating] = useState(0);
+const [avgRating, setAvgRating] = useState(0);
 
 // Some other handler function code...
 
