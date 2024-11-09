@@ -12,6 +12,7 @@
       - [Type aliases](#type-aliases)
       - [Interfaces](#interfaces)
       - [Generic object type](#generic-object-type)
+    - [Array Type](#array-type)
     - [Function type](#function-type)
       - [Type aliases](#type-aliases-1)
   - [Define return types](#define-return-types)
@@ -182,6 +183,8 @@ printCoord({ x: 100, y: 100 });
 
 #### Generic object type
 
+Generic object types are often some sort of container type that work independently of the type of elements they contain. It’s ideal for data structures to work this way so that they’re re-usable across different data types.
+
 You can make a generic `Box` type which declares a type parameter.
 
 ```ts
@@ -204,6 +207,20 @@ This also means that we can avoid overloads entirely by instead using generic fu
 function setContents<Type>(box: Box<Type>, newContents: Type) {
   box.contents = newContents;
 }
+```
+
+### Array Type
+
+It turns out we’ve been working with a type just like that throughout this handbook: the Array type. Whenever we write out types like `number[]` or `string[]`, that’s really just a shorthand for `Array<number>` and `Array<string>`.
+
+```ts
+function doSomething(value: Array<string>) {}
+
+let myArray: string[] = ["hello", "world"];
+
+// either of these work!
+doSomething(myArray);
+doSomething(new Array("hello", "world"));
 ```
 
 ### Function type
