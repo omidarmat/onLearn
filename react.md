@@ -4527,7 +4527,7 @@ function useFetch(url) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(function () {
-    fetch("<URL>")
+    fetch(url)
       .then((res) => res.json())
       .then((data) => setData(data));
   }, []);
