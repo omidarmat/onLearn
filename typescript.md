@@ -17,7 +17,7 @@
       - [Type aliases](#type-aliases-1)
   - [Define return types](#define-return-types)
   - [Generic types](#generic-types)
-- [Defining variables](#defining-variables)
+- [Defining variables?](#defining-variables)
   - [Type aliases](#type-aliases-2)
 - [Asserting types?](#asserting-types)
   - [With `as`](#with-as)
@@ -79,6 +79,8 @@ This markdown file is written based on TypeScript official website documentation
 Types are used to determine both reading and writing behavior.
 
 # Defining functions?
+
+If you are declaring a function, you can use these instructions to introduce types.
 
 ## Define argument types
 
@@ -199,7 +201,7 @@ You might read this as “A `Box` of `Type` is something whose contents have typ
 let box: Box<string>;
 ```
 
-This means that the type of `box.contents` is `string` and you would have to mutate it with a string type. Think of Box as a template for a real type, where Type is a placeholder that will get replaced with some other type. When TypeScript sees `Box<string>`, it will replace every instance of Type in `Box<Type>` with `string`, and end up working with something like `{ contents: string }`.
+This means that the type of `box.contents` is `string` and you would have to mutate it with a string type. Think of Box as a template for a real type, where `Type` is a placeholder that will get replaced with some other type. When TypeScript sees `Box<string>`, it will replace every instance of Type in `Box<Type>` with `string`, and end up working with something like `{ contents: string }`.
 
 This also means that we can avoid overloads entirely by instead using generic functions.
 
@@ -320,7 +322,7 @@ function map<Input, Output>(
 const parsed = map(["1", "2", "3"], (n) => parseInt(n));
 ```
 
-# Defining variables
+# Defining variables?
 
 When you declare a variable using `const`, `var`, or `let`, you can optionally add a type annotation to explicitly specify the type of the variable:
 
