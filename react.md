@@ -151,6 +151,7 @@
   - [Styled Component library](#styled-component-library)
     - [Introducing global styles](#introducing-global-styles)
     - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+  - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
     - [Performance optimization tools](#performance-optimization-tools)
@@ -6985,6 +6986,37 @@ function App() {
   return <Heading as="h2">Heading text</Heading>;
 }
 ```
+
+## JSON Web Server
+
+This library is used to establish a fake API server to simulate data loading. You first need to install it using this command:
+
+```bash
+npm install json-server
+```
+
+For this library to work, you will need to include a JSON file in your project where you have stored your data. You can actually place this file in a separate folder at the root of your project.
+
+After this, you need to add a new NPM script to the `package.json` file of your project.
+
+```json
+"scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    // This line is for the json-server package
+    "server": "json-server --watch data/questions.json --port 8000"
+  },
+```
+
+You would then run this command in the terminal so as to run your fake server:
+
+```bash
+npm run server
+```
+
+This will run the fake server on port 8000, but you would have to navigate to `localhost:8000/questions` in order to receive your fake data. Obviously, you would have to use, for instance, the `fetch()` function with the same URL to receive data.
 
 # Optimization and advanced useEffect
 
