@@ -2475,7 +2475,7 @@ Now here is a flow of what happens in this process in the actual application. Im
 1. The moment that button is clicked, we can update a piece of state using the setter function coming from the `useState()` hook.
 2. When React notices that a state has changed, it will automatically re-render the component, which will result in the updated view for the component.
 
-REACT REAECTS TO STATE CHANGES BY RE-RENDERING THE UI.
+**REACT REAECTS TO STATE CHANGES BY RE-RENDERING THE UI.**
 
 ### State guidelines
 
