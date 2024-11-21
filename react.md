@@ -371,13 +371,13 @@ To establish a professional order in your file structure, so that you will be ab
 -utils
 ```
 
-1. Features: this is for all the feature categories that we identify while planning the app, such as authentication, bookings, cabins, etc.
-2. Hooks: this is for truly reusable custom hooks, which we need in multiple features
-3. Pages: in big projects it is helpful to have this folder. Here we will have one component file per route. The important convention here is that each of these pages will not have any side effect. Instead, they will delegate their functionalities to the components that are associated with the feature. We need to create these pages once, and then we can completely forget about them.
-4. Services: this contains some code for interacting with APIs.
-5. Styles: this contains code regarding CSS.
-6. UI: this is for all the components that don't belong to any of the features or those that we want to reuse in many different features, like inputs, forms, buttons, tables, etc.
-7. Utils: usually contains some helper code.
+1. **Features**: this is for all the feature categories that we identify while planning the app, such as authentication, bookings, cabins, etc. So components that are intrinsically related to a feature will be stored here in a separate folder. These components are certainly different from components that are related to the UI in general which should be stored in the UI folder. For intance, a button component will not be stored here since it generally belongs to the UI.
+2. **Hooks**: this is for truly reusable custom hooks, which we need in multiple features
+3. **Pages**: in big projects it is helpful to have this folder. Here we will have one component file per route. The important convention here is that each of these pages will not have any side effect. Instead, they will delegate their functionalities to the components that are associated with the feature. We need to create these pages once, and then we can completely forget about them.
+4. **Services**: this contains some code for interacting with APIs.
+5. **Styles**: this contains code regarding CSS.
+6. **UI**: this is for all the components that don't belong to any of the features or those that we want to reuse in many different features, like inputs, forms, buttons, tables, etc.
+7. **Utils**: usually contains some helper code.
 
 # Core concepts of building React apps
 
