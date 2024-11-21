@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -5947,7 +5947,7 @@ function CreateCabinForm() {
 }
 ```
 
-> Note that we have not made any of the input elements of this form a controlled element. We don't have a state variable for any of them. This will be handled using the React Hook Form library.
+> Note that we have not made any of the input elements of this form a **controlled element**. We don't have a state variable for any of them. This will be handled using the React Hook Form library.
 
 And we want to display this form at the bottom of our cabins table.
 
