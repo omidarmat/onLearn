@@ -305,8 +305,6 @@ const n = firstElement([1, 2, 3]);
 const u = firstElement([]);
 ```
 
-<!-- I DON'T UNDERSTAND THIS PART -->
-
 We can use multiple type parameters as well. For example, a standalone version of `map` would look like this:
 
 ```ts
@@ -321,6 +319,13 @@ function map<Input, Output>(
 // 'parsed' is of type 'number[]'
 const parsed = map(["1", "2", "3"], (n) => parseInt(n));
 ```
+
+This example defines a `map` function that receives two arguments listed below, and returns an array that includes elements of generic type `Output`:
+
+1. An array which includes items of generic type `Input`.
+2. A function that receives each element of the array as argument and returns an output with generic type `Output`.
+
+So when we pass an array like `['1', '2', '3']` as the first argument, the `map` function is actually receiving an array where each element of the array is a `string`. So the `Input` generic type would be `string`. The function that we pass as the second argument, therefore receives a `string` element as input, do something on it, which is `parseInt`, and therefore returns a `number` type as output. So `Output` would be `number`. Therefore, the `map` function will finally return an array where each element would be of type `number`.
 
 # Defining variables?
 
