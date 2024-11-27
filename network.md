@@ -387,3 +387,5 @@ The shortened version of the IPv6 example is `2001:db8::8a2e:370:7334`. Notice t
 DNS is a **decentralized lookup service** that translates a human-readable domain name or URL into the **IP address of the server that's hosting the site or service**. The worldwide distributed nature of DNS is a vital component of the internet. DNS has been in use since its inception in 1985.
 
 A DNS server serves two purposes. The first is to **maintain a cache of recently searched-for domain names**, which improves performance and reduces network traffic. The second is to **act as the start of authority (SOA) for all the domains under it**. When a DNS server is looking to resolve a domain name that isn't held in its cache, it starts with the highest level, the dot. It then works down the subdomains until it finds the DNS server acting as the SOA. Once found, it stores the IP address of the domain in its local cache.
+
+The DNS also holds specific records that relate to the domain. These records include the SOA, IP addressing (A and AAAA), SMTP email (MX), name servers (NS), and domain name alias (CNAME) records.
