@@ -1,3 +1,39 @@
+- [What is computer networking?](#what-is-computer-networking)
+- [Key networking components and devices](#key-networking-components-and-devices)
+  - [IP address](#ip-address)
+  - [Nodes](#nodes)
+  - [Routers](#routers)
+  - [Switches](#switches)
+    - [Circuit switching](#circuit-switching)
+    - [Message switching](#message-switching)
+    - [Packet switching](#packet-switching)
+  - [Ports](#ports)
+  - [Gateways](#gateways)
+- [Types of computer networks](#types-of-computer-networks)
+  - [Network types by geographical area](#network-types-by-geographical-area)
+    - [Local area network (LAN)](#local-area-network-lan)
+    - [Wide area network (WAN)](#wide-area-network-wan)
+    - [Metropolitan area network (MAN)](#metropolitan-area-network-man)
+    - [Personal area network (PAN)](#personal-area-network-pan)
+  - [Network types by transmission medium](#network-types-by-transmission-medium)
+    - [Wired networks](#wired-networks)
+    - [Wireless networks](#wireless-networks)
+  - [Network types by communication type](#network-types-by-communication-type)
+    - [Multipoint networks](#multipoint-networks)
+    - [Point-to-point networks](#point-to-point-networks)
+    - [Broadcast networks](#broadcast-networks)
+    - [Virtual private networks (VPNs)](#virtual-private-networks-vpns)
+- [Network architectures](#network-architectures)
+  - [Peer-to-peer (P2P) architectures](#peer-to-peer-p2p-architectures)
+  - [Client-server architectures](#client-server-architectures)
+  - [Hybrid architectures](#hybrid-architectures)
+- [Network topology](#network-topology)
+- [Network communication protocols](#network-communication-protocols)
+  - [Network access layer](#network-access-layer)
+  - [Internet layer](#internet-layer)
+  - [Transport layer](#transport-layer)
+  - [Application layer](#application-layer)
+- [How does a computer network work?](#how-does-a-computer-network-work)
 - [Network protocols to use when you implement a network](#network-protocols-to-use-when-you-implement-a-network)
   - [Network protocols](#network-protocols)
   - [What is a network address?](#what-is-a-network-address)
@@ -6,7 +42,7 @@
   - [What is a data packet?](#what-is-a-data-packet)
   - [What is routing?](#what-is-routing)
   - [Protocol categories](#protocol-categories)
-    - [Network communication protocols](#network-communication-protocols)
+    - [Network communication protocols](#network-communication-protocols-1)
       - [Transmission Control Protocol (TCP)](#transmission-control-protocol-tcp)
       - [Internet Protocol (IP)](#internet-protocol-ip-1)
       - [User Datagram Protocol (UDP)](#user-datagram-protocol-udp)
@@ -24,21 +60,21 @@
     - [Network management protocols](#network-management-protocols)
       - [Simple Network Management Protocol (SNMP)](#simple-network-management-protocol-snmp)
       - [Internet Control Message Protocol (ICMP)](#internet-control-message-protocol-icmp)
-    - [Ports](#ports)
+    - [Ports](#ports-1)
       - [Well-known port numbers](#well-known-port-numbers)
   - [Internet Protocol Suit](#internet-protocol-suit)
-    - [Application layer](#application-layer)
-    - [Transport layer](#transport-layer)
-    - [Internet layer](#internet-layer)
-    - [Network access layer](#network-access-layer)
+    - [Application layer](#application-layer-1)
+    - [Transport layer](#transport-layer-1)
+    - [Internet layer](#internet-layer-1)
+    - [Network access layer](#network-access-layer-1)
 - [IP address standards and services](#ip-address-standards-and-services)
   - [What is the Address Resolution Protocol (ARP)?](#what-is-the-address-resolution-protocol-arp)
   - [What is TCP/IP?](#what-is-tcpip)
     - [TCP/IP model layers](#tcpip-model-layers)
-      - [Application layer](#application-layer-1)
-      - [Transport layer](#transport-layer-1)
+      - [Application layer](#application-layer-2)
+      - [Transport layer](#transport-layer-2)
       - [Internet layer (also called network layer)](#internet-layer-also-called-network-layer)
-      - [Network access layer](#network-access-layer-1)
+      - [Network access layer](#network-access-layer-2)
   - [What are the Internet Protocol standards?](#what-are-the-internet-protocol-standards)
     - [IPv4](#ipv4)
       - [Structure of an IPv4 address](#structure-of-an-ipv4-address)
@@ -50,6 +86,185 @@
     - [IPv6](#ipv6)
       - [Structure of an IPv6 address](#structure-of-an-ipv6-address)
   - [DNS](#dns)
+
+
+# What is computer networking?
+
+Networking, or computer networking, is the process of **connecting two or more computing devices**, such as desktop computers, mobile devices, routers or applications, **to enable the transmission and exchange of information and resources**.
+
+Networked devices rely on **communications protocols**—rules that describe how to transmit or exchange data across a network—to share information over physical or wireless connections.
+
+Before contemporary networking practices, engineers would have to physically move computers to share data between devices, which was an unpleasant task at a time when computers were large and unwieldy. To simplify the process (especially for government workers), the Department of Defense funded the creation of the first functioning computer network (eventually named ARPANET) in the late 1960s.
+
+Since then, networking practices—and the computer systems that drive them—have evolved tremendously. Today’s computer networks facilitate large-scale inter-device communication for every business, entertainment and research purpose. The internet, online search, email, audio and video sharing, online commerce, live-streaming and social media all exist because of advancements in computer networking.
+
+# Key networking components and devices
+
+Before we delve into more complex networking topics, it’s important to understand fundamental networking components, including:
+
+## IP address
+
+An IP address is the **unique number assigned to every network device** in an Internet Protocol (IP) network; each IP address identifies the **device’s host network** and its **location on the network**. When one device sends data to another, the data includes a **“header”** that includes the **IP addresses of both the sending and receiving devices**.
+
+## Nodes
+
+A node is a **network connection point** that can **receive**, **send**, **create** or **store** data. It’s essentially **any network device**—**computers**, **printers**, **modems**, **bridges** or **switches**—that can recognize, process and transmit information to another network node. Each node requires some form of **identification** (such an **IP** or **MAC** address) to receive access to the network.
+
+## Routers
+
+A router is a **physical or virtual device** that **sends data “packets” between networks**. Routers **analyze the data within packets to determine the best transmission path** and use sophisticated routing algorithms to forward data packets until they reach their destination node.
+
+## Switches
+
+A switch is a device that **connects network devices** and **manages node-to-node communication** across a network, **making sure that data packets reach their intended destination**. Unlike *routers*, which send information between networks, *switches* send information between nodes within a network.
+
+Consequently, “switching” refers to how data is transferred between devices on a network. Networks rely on three main types of switching:
+
+### Circuit switching
+
+ Establishes a dedicated data communication path between nodes in a network, so no other traffic can traverse the same path. Circuit switching sees to it that full bandwidth is available during every transmission.
+
+### Message switching
+
+Sends whole messages from the source node to the destination node, with the message traveling from switch to switch until it reaches the destination.
+
+### Packet switching
+
+Involves breaking down data into independent components to make data transmission less demanding of network resources. With packet switching, packets—instead of entire data streams—travel through the network to their end destination.
+
+## Ports
+
+A port indicates a specific connection between network devices, with each port identified by a number. If an IP address is analogous to a hotel address, then ports are the suites and room numbers. Computers use port numbers to **determine which application, service or process should receive which messages**.
+
+## Gateways
+
+Gateways are hardware devices that **facilitate communication between two different networks**. Routers, firewalls and other gateway devices use rate converters, protocol translators and other technologies to make inter-network communication possible between otherwise incompatible devices.
+
+# Types of computer networks
+
+Typically, computer networks are defined by **geographical area**:
+- Local area network (LAN) connects computers in a defined physical space
+- Wide area network (WAN) can connect computers across continents.
+
+However, networks are also defined by the **protocols** they use to communicate, the **physical arrangement** of their components, how they **manage network traffic** and the **purpose** they serve in their respective environments.
+
+Here, we’ll discuss the most common and widely used computer network types in three broad categories.
+
+## Network types by geographical area
+
+The network types in this category are distinguished by the geographical area the network covers.
+
+### Local area network (LAN)
+
+A LAN connects computers over a relatively short distance, such as those within an office building, school or hospital. LANs are typically privately owned and managed.
+
+### Wide area network (WAN)
+
+As the name implies, a WAN connects computers across large geographical areas, such as regions and continents. WANs often have collective or distributed ownership models for network management purposes. Cloud networks serve as one example, since they’re hosted and delivered by public and private cloud infrastructures across the globe.
+
+### Metropolitan area network (MAN)
+
+MANs are larger than LANs but smaller than WANs. Cities and government entities typically own and manage MANs.
+
+### Personal area network (PAN)
+
+A PAN serves one person. If a user has multiple devices from the same manufacturer (an iPhone and a MacBook, for instance), it’s likely they've set up a PAN that shares and syncs content—text messages, emails, photos and more—across devices.
+
+## Network types by transmission medium
+
+Network nodes can send and receive messages using either wired or wireless links (connections).
+
+### Wired networks
+
+Wired network devices are connected by physical wires and cables, including copper wires and Ethernet, twisted pair, coaxial or fiber optic cables. Network size and speed requirements typically dictate the choice of cable, the arrangement of network elements and the physical distance between devices.
+
+### Wireless networks
+
+Wireless networks forgo cables for infrared, radio or electromagnetic wave transmission across wireless devices with built-in antennae and sensors.
+
+## Network types by communication type
+
+Computing networks can transmit data using a range of transmission dynamics, including: 
+
+### Multipoint networks
+
+In a multipoint network, multiple devices share channel capacity and network links.
+
+### Point-to-point networks
+
+Network devices establish a direct node-to-node link to transmit data.
+
+### Broadcast networks
+
+On broadcast networks, several interested “parties” (devices) can receive one-way transmissions from a single sending device. Television stations are a great example of broadcast networks.
+
+### Virtual private networks (VPNs)
+
+A VPN is a secure, point-to-point connection between two network endpoints. It establishes an encrypted channel that keeps a user’s identity and access credentials, as well as any data transferred, inaccessible to hackers.
+
+# Network architectures
+
+Computer network architecture establishes the theoretical framework of a computer network, including design principles and communications protocols.
+
+Primary types of network architectures are:
+
+## Peer-to-peer (P2P) architectures
+
+In a P2P architecture, two or more computers are connected as “peers,” meaning they have equal power and privileges on the network. A P2P network doesn’t require a central server for coordination. Instead, each computer on the network acts as both a client (a computer that needs to access a service) and a server (a computer that provides services to clients). Every peer on the network makes some of its resources available to other network devices, sharing storage, memory, bandwidth and processing power across the network.
+
+## Client-server architectures
+
+In a client-server network, a central server (or group of servers) manages resources and delivers services to client devices on the network; clients in this architecture don’t share their resources and only interact through the server. Client-server architectures are often called tiered architectures because of their multiple layers.
+
+## Hybrid architectures
+
+Hybrid architectures incorporate elements of both the P2P and client-server models.
+
+# Network topology
+
+Whereas architecture represents the theoretical framework of a network, topology is the practical implementation of the architectural framework. Network topology describes the physical and logical arrangement of nodes and links on a network, including all hardware (routers, switches, cables), software (apps and operating systems) and transmission media (wired or wireless connections).
+
+Common network topologies include **bus**, **ring**, **star** and **mesh**.
+
+In a **bus** network topology, every network node is directly connected to a main cable. In a **ring** topology, nodes are connected in a loop, so each device has exactly two neighbors. Adjacent pairs are connected directly and nonadjacent pairs are connected indirectly through intermediary nodes. **Star** network topologies feature a single, central hub through which all nodes are indirectly connected. 
+
+**Mesh** topologies are a bit more complex, defined by overlapping connections between nodes. There are two types of mesh networks—**full** mesh and **partial** mesh. In a full mesh topology, every network node connects to every other network node, providing the highest level of network resilience. In a partial mesh topology, only some network nodes connect, typically those that exchange data most frequently.
+
+Full mesh topologies can be expensive and time-consuming to run, which is why they’re often reserved for networks that require high redundancy. Partial mesh, on the other hand, provides less redundancy but is more cost-effective and simpler to run.
+
+Regardless of subtype, mesh networks have self-configuration and self-organization capabilities; they automate the routing process, so the network always finds the fastest, most reliable data path.
+
+# Network communication protocols
+
+Whether it’s the internet protocol (IP) suite, Ethernet, wireless LAN (WLAN) or cellular communication standards, all computer networks follow **communication protocols**—sets of rules that every node on the network must follow in order to share and receive data. Protocols also rely on **gateways** to **enable incompatible devices** to communicate (a Windows computer attempting to access Linux servers, for instance).
+
+Many modern networks run on TCP/IP models, which include **four network layers**.
+
+## Network access layer
+
+Also called the *data link layer* or the *physical layer*, the network access layer of a TCP/IP network includes the **network infrastructure** (hardware and software components) necessary for interfacing with the network medium. It handles physical data transmission—using Ethernet and protocols such as the address resolution protocol (ARP)—between devices on the same network.
+
+## Internet layer
+
+The internet layer is responsible for logical addressing, routing and packet forwarding. It primarily relies on the **IP** protocol and the **Internet Control Message Protocol (ICMP)**, which manages addressing and routing of packets across different networks.
+
+## Transport layer
+
+The TCP/IP transport layer **enables data transfer between upper and lower layers** of the network. Using **TCP** and **UDP** protocols, it also provides mechanisms for error checking and flow control.
+
+TCP is a connection-based protocol that is generally slower but more reliable than UDP. UDP is a connectionless protocol that is faster than TCP but does not provide guaranteed transfer. UDP protocols facilitate packet transmission for time-sensitive apps (such as video streaming and gaming platforms) and DNS lookups.
+
+## Application layer
+
+TCP/IP’s application layer uses HTTP, FTP, Post Office Protocol 3 (POP3), SMTP, domain name system (DNS) and SSH protocols to provide network services directly to applications. It also manages all the protocols that support user applications. 
+
+# How does a computer network work?
+
+Using email as an example, let’s walk through an example of how data moves through a network.
+
+If a user wants to send an email, they first write the email and then press the “send” button.  When the user presses “send,” an **SMTP** or **POP3** protocol uses the sender’s wifi to direct the message from the sender node and **through the network switches**, where it’s **compressed and broken down into smaller and smaller segments** (and ultimately into bits, or strings of 1s and 0s).
+
+Network **gateways** direct the bit stream to the **recipient’s network**, converting data and communication protocols as needed. When the bit stream reaches the recipient’s computer, the **same protocols direct the email data through the network switches on the receiver’s network**. In the process, the network **reconstructs the original message until the email arrives**, in human-readable form, in the recipient’s inbox (the receiver node).
 
 
 # Network protocols to use when you implement a network
