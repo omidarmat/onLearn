@@ -40,6 +40,7 @@
     - [Lossy Compression](#lossy-compression)
       - [For example](#for-example-1)
 - [Network protocols to use when you implement a network](#network-protocols-to-use-when-you-implement-a-network)
+  - [The protocol system](#the-protocol-system)
   - [Network protocols](#network-protocols)
   - [What is a network address?](#what-is-a-network-address)
     - [Media Access Control (MAC)](#media-access-control-mac)
@@ -307,6 +308,19 @@ However, if we wanted to put that same image on a website, it has far more infor
 So we can compress the image and lose some of the quality, but not enough that we can notice.e. However, if we tried to expand it again to billboard size we would see an issue, but for now, it's fine.
 
 # Network protocols to use when you implement a network
+
+## The protocol system
+
+The protocol system is a set of steps used to send information over the internet.
+
+There are four layers in a protocol system that any functionality on a network should follow:
+
+| Layer order | Layer name | Layer description |
+| ----------- | ---------- | ----------------- |
+| 1 TOP | Application | Converts user's command into a message to be sent over the internet |
+| 2 | TCP | Splits information into packets and numbers them |
+| 3 | IP | Assigns IP addresses of start and end to packets | 
+| 4 BOTTOM | Hardware | Routes packets over internet |
 
 ## Network protocols
 
