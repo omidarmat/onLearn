@@ -34,6 +34,11 @@
   - [Transport layer](#transport-layer)
   - [Application layer](#application-layer)
 - [How does a computer network work?](#how-does-a-computer-network-work)
+  - [About compression](#about-compression)
+    - [Lossless Compression](#lossless-compression)
+      - [For example](#for-example)
+    - [Lossy Compression](#lossy-compression)
+      - [For example](#for-example-1)
 - [Network protocols to use when you implement a network](#network-protocols-to-use-when-you-implement-a-network)
   - [Network protocols](#network-protocols)
   - [What is a network address?](#what-is-a-network-address)
@@ -52,6 +57,9 @@
       - [Simple Mail Transfer Protocol (SMTP)](#simple-mail-transfer-protocol-smtp)
       - [Interactive Mail Access Protocol (IMAP)](#interactive-mail-access-protocol-imap)
     - [Network security protocols](#network-security-protocols)
+      - [More on cryptography](#more-on-cryptography)
+        - [Symmetric Cryptography](#symmetric-cryptography)
+        - [Asymmetric Cryptography](#asymmetric-cryptography)
       - [Secure Socket Layer (SSL)](#secure-socket-layer-ssl)
       - [Transport Layer Security (TLS)](#transport-layer-security-tls)
       - [Hypertext Transfer Protocol Secure (HTTPS)](#hypertext-transfer-protocol-secure-https)
@@ -266,6 +274,37 @@ If a user wants to send an email, they first write the email and then press the 
 
 Network **gateways** direct the bit stream to the **recipient’s network**, converting data and communication protocols as needed. When the bit stream reaches the recipient’s computer, the **same protocols direct the email data through the network switches on the receiver’s network**. In the process, the network **reconstructs the original message until the email arrives**, in human-readable form, in the recipient’s inbox (the receiver node).
 
+## About compression
+
+We always talk about traffic on a network, and how we could affect it by either reducing packet size or changing the bandwidth. 
+
+Well, another method we can use is compression, which is the process of reducing the size of data to save space or speed up transmission. Kind of like how you might compress a PDF file or an image.
+
+In the context of networking, compression can help to save bandwidth as file sizes are now smaller. Not only does this make your network more cost-effective, but it’s also more efficient.
+
+I won't get into exactly how to do this, but in the interest of understanding the basics, there are two main types of compression that you need to understand - lossless and lossy.
+
+### Lossless Compression
+
+This type of compression reduces the size of the data without losing any information. When decompressed, the data is exactly the same as it was before compression.
+
+#### For example
+
+Imagine you just shot a 4k film for cinema release, but it’s just the raw footage, and you need to send it to editors.
+
+You could either post a hard drive with it on, or much quicker would be to compress it slightly and send it, helping to decrease the time for the file to be received, but without losing the original quality.
+
+### Lossy Compression
+
+This compresses data by removing some information. When decompressed, the data is not exactly as it was before compression, but it's close enough for the usage.
+
+#### For example
+
+When we take photos, they are normally in a much higher resolution than the human eye can actually pick up. The reason is that if we want to zoom in or expand the image (maybe for a billboard or a cinema screen), then it wouldn’t seem all blurry.
+
+However, if we wanted to put that same image on a website, it has far more information and pixels than needed for the size of the screen.
+
+So we can compress the image and lose some of the quality, but not enough that we can notice.e. However, if we tried to expand it again to billboard size we would see an issue, but for now, it's fine.
 
 # Network protocols to use when you implement a network
 
@@ -358,6 +397,28 @@ IMAP is the **more powerful** of the three email protocols. With IMAP and an ema
 Network security protocols are designed to **maintain the security of data across your network**. These protocols **encrypt in-transmission messages** between users, services, and applications.
 
 Network security protocols use **encryption** and **cryptographic** principles to secure messages.
+
+#### More on cryptography
+
+In the context of networking and cybersecurity, cryptography is about ensuring that the data you send across a network, be it text, images, or any other form, is only readable by the intended recipient.
+
+It achieves this with 2 processes: **Encryption** and **Decryption**.
+
+However, there are two main types of cryptography. One is faster but more vulnerable, while the other is slower but more secure. The big difference, is the number of keys used.
+
+So let’s break them down:
+
+##### Symmetric Cryptography
+
+In this instance, the same key is used for both encryption and decryption. This method is fast and efficient but poses a risk if the key is lost or stolen. Think of how the same car key can be used to both lock and unlock your car door. If someone had access to it, they could steal your car.
+
+##### Asymmetric Cryptography
+
+Also known as public-key cryptography, is where two different keys are used - one for encryption and one for decryption (public key and private key). In this instance, one key could lock your car, but it would take a different key to open it.
+
+This means there are more hoops to jump through, but the main advantage is that even if the encryption key is known, the data cannot be decrypted without the other key.
+
+-------
 
 To implement a secure network, you must match the right security protocols for your needs. The following list explores the leading network security protocols:
 
