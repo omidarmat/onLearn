@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -166,6 +166,10 @@
       - [`useMemo` in practice](#usememo-in-practice)
       - [`useCallback` in practice](#usecallback-in-practice)
   - [Optimizing bundle size and code splitting](#optimizing-bundle-size-and-code-splitting)
+- [React advanced patterns](#react-advanced-patterns)
+  - [Render props](#render-props)
+  - [Higher-order components (HOC)](#higher-order-components-hoc)
+  - [Compound component pattern](#compound-component-pattern)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7400,6 +7404,249 @@ function App() {
 ```
 
 And we are good to go. Remember that in this example, we wanted to split our bundle based on routes, and therefore we wanted to show a spinner as a fallback for the entire page components. This is why we wrapped the whole `<Routes>` in a `<Suspense>` component. In other approaches, suspense can be implemented in different ways.
+
+# React advanced patterns
+
+## Render props
+
+This is an old technique used in React in situations where you need to share and reuse a specific stateful logic and JSX related to it for rendering different contents.
+
+For instance, We want to render a `List` component which has open/close and collapse/uncollapse stateful functionality, but we want to use this component to render different list items. We want to use the list to render a list of _products_ and then in another place, to render a list of _companies_. The product items that we want to insert into this `List` component has different JSX than the company items.
+
+You may first think that you can use the `children` prop of the `List` component. This would work to some extent, but it will damage the collapse/uncollapse functionality of the `List` component, because when you are passing the children items to the component, you don't have access to the internal state variables of the `List` component used for collapse/uncollapse functionality. So you would have to somehow give the `List` component the product or company items component in a way other than the `children` prop. This is where the **render props** pattern comes into play.
+
+As for the example mentioned above, We would define the `List` component as:
+
+```jsx
+// Pay attention to the 'render' prop and how it is used inside the JSX
+function List({ title, items, render }) {
+  const [isOpen, setIsOpen] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const displayItems = isCollapsed ? items.slice(0, 3) : items;
+
+  function toggleOpen() {
+    setIsOpen((isOpen) => !isOpen);
+    setIsCollapsed(false);
+  }
+
+  return (
+    <div className="list-container">
+      <div className="heading">
+        <h2>{title}</h2>
+        <button onClick={toggleOpen}>
+          {isOpen ? <span>&or;</span> : <span>&and;</span>}
+        </button>
+      </div>
+      {isOpen && <ul className="list">{displayItems.map(render)}</ul>}
+
+      <button onClick={() => setIsCollapsed((isCollapsed) => !isCollapsed)}>
+        {isCollapsed ? `Show all ${items.length}` : "Show less"}
+      </button>
+    </div>
+  );
+}
+```
+
+Then wherever we want to use this component we would do it like this:
+
+```jsx
+export default function App() {
+  return (
+    <div>
+      <h1>Render Props Demo</h1>
+      <div className="col-2">
+        <List
+          title="Products"
+          items={products}
+          render={(product) => (
+            <ProductItem key={product.productName} product={product} />
+          )}
+        />
+
+        <List
+          title="Companies"
+          items={companies}
+          render={(company) => (
+            <CompanyItem
+              key={company.companyName}
+              company={company}
+              defaultVisibility={false}
+            />
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+## Higher-order components (HOC)
+
+Today actually almost no one writes HOCs by hand. Only those who are publishing libraries do this. However, it always helps to know the logic behind the things that we use. So let's understand how HOCs work.
+
+Basically, HOCs are used when we want to enhance a given component to make it comply with some other component where we want to use it. So a HOC is simply a component that takes in another component and then returns a new component that is an enhanced version of the initial component.
+
+As an example, imagine that we receive a component from a 3rd-party library and therefore, we cannot change it. However, we want this component to be renderd in complience to some other functionality that we implemented in another component that we have written and want to use.
+
+So we have received this component from a library:
+
+```jsx
+function ProductList({ title, items }) {
+  return (
+    <ul className="list">
+      {items.map((product) => (
+        <ProductItem key={product.productName} product={product} />
+      ))}
+    </ul>
+  );
+}
+```
+
+And we want to use this component to render a list of products within another `List` component where we have implemented some open/close and collapse/uncollapse functionality. So essentially, we would have to take the `ProductList` component and enhance it with the functionalities of our `List` component. One solution is define an HOC like this:
+
+```jsx
+export default function withToggles(WrappedComponent) {
+  return function List(props) {
+    const [isOpen, setIsOpen] = useState(true);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+
+    const displayItems = isCollapsed ? props.items.slice(0, 3) : props.items;
+
+    function toggleOpen() {
+      setIsOpen((isOpen) => !isOpen);
+      setIsCollapsed(false);
+    }
+
+    return (
+      <div className="list-container">
+        <div className="heading">
+          <h2>{props.title}</h2>
+          <button onClick={toggleOpen}>
+            {isOpen ? <span>&or;</span> : <span>&and;</span>}
+          </button>
+        </div>
+        {isOpen && <WrappedComponent {...props} items={displayItems} />}
+
+        <button onClick={() => setIsCollapsed((isCollapsed) => !isCollapsed)}>
+          {isCollapsed ? `Show all ${props.items.length}` : "Show less"}
+        </button>
+      </div>
+    );
+  };
+}
+```
+
+So when we pass the `ProductList` component to the `withToggles` HOC, it returns another component in which the `ProductList` component is wrapped along with the functionalities we intended the whole list to have. Now to use the HOC we can do this:
+
+```jsx
+// This is top-level code
+const ProductListWithToggles = withToggles(ProductList);
+```
+
+Now we have got a new enhanced component that we can use.
+
+```jsx
+export default function App() {
+  return (
+    <div>
+      <h1>Render Props Demo</h1>
+      <div className="col-2">
+        <ProductListWithToggles title="Products HOC" items={products} />
+      </div>
+    </div>
+  );
+}
+```
+
+## Compound component pattern
+
+The main idea behind compound component pattern is that we can create a set of related components that together achieve a useful task. As an example, we will go through a `Counter` component. This pattern can be used in implementing modal windows, pagination, tables and so on.
+
+The way we implement this pattern is to first create a parent component and then a few different child components that really belong to the parent and really only make sense when used together with the parent component. A good example of this would be HTML `<select>` and `<option>` elements. So the options can only be used inside a select element. This is the same principle that we use in compound component patterns. This would allow us to create highly flexible and reusable components with a very expressive API and all without using no props at all.
+
+Back to the `Counter` component example, imagine we could implement the component in a way that we could use all its related components in this format:
+
+```jsx
+<Counter>
+  <Counter.Decrease icon="-" />
+  <Counter.Count />
+  <Counter.Increase icon="+" />
+  <Counter.Label>My super flexible counter</Counter.Label>
+</Counter>
+```
+
+This way we can simply configure the `Counter` by moving its related components up and down or arrange them in any way we want. An alternative would be to use tons of props to configure the component to work exactly as we want:
+
+```jsx
+<Counter
+  iconIncrease="+"
+  iconDecrease="-"
+  label="My NOT so flexible counter"
+  hideLabel={false}
+  hideIncrease={false}
+  hideDecrease={false}
+/>
+```
+
+As you can see in the compound pattern implemented above, there is no state transfer between the related components. So if there is a counter state inside the `Counter` component, we are not going to pass it as a prop to the `Counter.Count` component. So how is this compound component going to work? We should actually use the **Context API** to implement the compound component pattern.
+
+```jsx
+// 1. Create a context
+const CounterContext = createContext();
+
+// 2. Create the parent component
+function Counter({ children }) {
+  const [count, setCount] = useState(0);
+  const increase = () => setCount((c) => c + 1);
+  const decrease = () => setCount((c) => c - 1);
+
+  return (
+    <CounterContext.Provider value={{ count, increase, decrease }}>
+      <span>{children}</span>
+    </CounterContext.Provider>
+  );
+}
+
+// 3. Create child components to help implementing the common task of the overall component
+function Count() {
+  const { count } = useContext(CounterContext);
+  return <span>{count}</span>;
+}
+
+function Label({ children }) {
+  return <span>{children}</span>;
+}
+
+function Increase({ icon }) {
+  const { increase } = useContext(CounterContext);
+  return <button onClick={increase}>{icon}</button>;
+}
+
+function Decrease({ icon }) {
+  const { decrease } = useContext(CounterContext);
+  return <button onClick={decrease}>{icon}</button>;
+}
+
+// 4. Add child components as properties to parent component (optional)
+Counter.Count = Count;
+Counter.Label = Label;
+Counter.Increase = Increase;
+Counter.Decrease = Decrease;
+
+export default Counter;
+```
+
+Again, we can use this compound component:
+
+```jsx
+<Counter>
+  <Counter.Decrease icon="-" />
+  <Counter.Count />
+  <Counter.Increase icon="+" />
+  <Counter.Label>My super flexible counter</Counter.Label>
+</Counter>
+```
 
 # Project deployment
 
