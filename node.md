@@ -731,7 +731,7 @@ In this situation, we usually produce or already have a data that we want to wri
   2. Data that is going to be written. Can be a variable holding the data.
 
 ```js
-const textIn = fs.writeFileSync("./txt/input.txt", "uft-8");
+const textIn = fs.readFileSync("./txt/input.txt", "uft-8");
 const textOut = `This is what we know about Avocado: ${textIn}\nCreated on ${Date.now()}`;
 
 fs.writeFileSync("./txt/output.txt", textOut);
