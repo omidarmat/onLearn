@@ -12,6 +12,8 @@
       - [Creating files using redirection](#creating-files-using-redirection)
     - [Create folders](#create-folders)
     - [Remove folders or files](#remove-folders-or-files)
+- [3rd-party packages](#3rd-party-packages)
+  - [WGET](#wget)
 
 # OS management commands
 
@@ -157,4 +159,22 @@ You can also perform deletions from anywhere else in the filesystem. In this cas
 
 ```bash
 rm /somefolder/anotherfolder/[file-name].[file-extension]
+```
+
+# 3rd-party packages
+
+## WGET
+
+wget is a GNU free software package that is used for retrieving files over the web.
+
+(link: https://askubuntu.com/questions/32850/what-download-managers-are-available-for-ubuntu)
+
+```bash
+wget [your-download-link]
+```
+
+If your download has stuck or paused for any reason, you can use the `-c` option to resume it:
+
+```bash
+wget -c [your-download-link]
 ```
