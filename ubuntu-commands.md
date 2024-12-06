@@ -21,6 +21,9 @@
   - [Creating command pipelines](#creating-command-pipelines)
 - [3rd-party packages](#3rd-party-packages)
   - [WGET](#wget)
+  - [Wireguard](#wireguard)
+    - [Adding an interface and using the VPN](#adding-an-interface-and-using-the-vpn)
+    - [Toggling VPN on/off](#toggling-vpn-onoff)
 - [Terminal helper commands](#terminal-helper-commands)
   - [Command manual](#command-manual)
 - [The superuser](#the-superuser)
@@ -366,6 +369,62 @@ If your download has stuck or paused for any reason, you can use the `-c` option
 
 ```bash
 wget -c [your-download-link]
+```
+
+## Wireguard
+
+To install wireguard, you need to install the package first. First run:
+
+```bash
+sudo apt update
+```
+
+Then run:
+
+```bash
+sudo apt install wireguard
+```
+
+### Adding an interface and using the VPN
+
+To add an interface you can copy your configuration file to the `etc` directory using this command:
+
+```bash
+sudo cp /path/to/myConfig.conf /etc/wireguard/
+```
+
+As an option, you can rename your configuration file so that you can write a simpler name in your command for toggling the VPN on and off:
+
+```bash
+sudo mv /etc/wireguard/myConfig.conf /etc/wireguard/wg0.conf
+```
+
+To ensure the configuration file is read-only by the root user you can do this:
+
+```bash
+sudo chmod 600 /etc/wireguard/wg0.conf
+```
+
+### Toggling VPN on/off
+
+To activate the VPN tunner you can use:
+
+```bash
+sudo wg-quick up wg0
+```
+
+> Notice the `wg0` configuration name that we can now use in your commands.
+
+You can then get a report of your tunnel using this command:
+
+```bash
+sudo wg
+```
+
+You can deactivate the VPN tunnel using this command:
+
+```bash
+sudo wg-quick down wg0
 ```
 
 # Terminal helper commands
