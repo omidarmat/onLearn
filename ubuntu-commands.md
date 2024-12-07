@@ -1,5 +1,6 @@
 - [OS management commands](#os-management-commands)
   - [Update all packages](#update-all-packages)
+  - [List all installed apps](#list-all-installed-apps)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -44,6 +45,20 @@ Then you can use this command to upgrade them all:
 sudo apt upgrade
 ```
 
+## List all installed apps
+
+To receive a list of all the apps already installed on your device you can use this command:
+
+```bash
+sudo apt list --installed
+```
+
+If you want to know if a specific package is installed on your device you can use this command:
+
+```bash
+sudo apt list -a package-name
+```
+
 # Filesystem commands
 
 ## Understanding relative and absolute paths
@@ -55,7 +70,7 @@ cd ~/Desktop
 # or
 cd /Desktop
 
-mkdir /[directory]/[file-name]
+mkdir /directory/file-name
 ```
 
 ## Listing all directories and files
@@ -79,7 +94,7 @@ ls -all
 To change the directory at which the terminal is running you can use this command:
 
 ```bash
-cd [directory-path]
+cd directory-path
 ```
 
 ### Go up to the parent directory
@@ -114,13 +129,13 @@ cd
 To create a new empty file you can use this command:
 
 ```bash
-touch [file-name].[file-extension]
+touch file-name.file-extension
 ```
 
 To create multiple files you can use this command:
 
 ```bash
-touch [file-name].[file-extension] [file-name]
+touch file-name.file-extension file-name
 ```
 
 > Note: inserting file extension is not necessary in Linux
@@ -173,19 +188,19 @@ echo "I have appended this line" >> combined.txt
 To create a new empty folder you can use this command:
 
 ```bash
-mkdir [directory]
+mkdir directory
 ```
 
 To create multiple folders you can use this command:
 
 ```bash
-mkdir [directory] [directory] [directory]
+mkdir directory1 directory2 directory3
 ```
 
 To create nested folders you can use the `-p` option in this command:
 
 ```bash
-mkdir -p [directory]/[directory]/[directory]
+mkdir -p directory1/directory2/directory3
 ```
 
 > Note: If you want to create a folder with spaces in their name like `Web Development` you should put the name inside `''`.
@@ -199,20 +214,20 @@ mkdir -p [directory]/[directory]/[directory]
 To remove a folder (directory) you should first position the terminal in the parent directory and then use this command:
 
 ```bash
-rm [directory]
-rm [file-name].[file-extension]
+rm directory
+rm file-name.file-extension
 ```
 
 You can also use these commands to delete multiple files:
 
 ```bash
-rm [file-name].[file-extension] [file-name].[file-extension]
+rm file-name.file-extension file-name.file-extension
 ```
 
 You can also perform deletions from anywhere else in the filesystem. In this case you would have to write the path to the file:
 
 ```bash
-rm /somefolder/anotherfolder/[file-name].[file-extension]
+rm /somefolder/anotherfolder/file-name.file-extension
 ```
 
 ## Reading file contents
@@ -220,13 +235,13 @@ rm /somefolder/anotherfolder/[file-name].[file-extension]
 To read the content of a text file you can use this command along with the file name:
 
 ```bash
-cat [file-name].txt
+cat file-name.txt
 ```
 
 If the file has too many lines to fit into the terminal screen, the terminal will let you know with a `-more-` text at the end. This is called a _pager_. You can use a better pager called `less`.
 
 ```bash
-less [file-name].txt
+less file-name.txt
 ```
 
 This will allow you to navigate throught the content of your file using the **arrow keys**, **PgUp**, **PgDn**, **Home** and **End** buttons. You can use `q` to quit the pager and use the terminal for other commands.
@@ -236,25 +251,25 @@ This will allow you to navigate throught the content of your file using the **ar
 To read the word count of a text file you can use this command:
 
 ```bash
-wc [file-name].txt
+wc file-name.txt
 ```
 
 To read the line count of a text file you can use the `-l` option on the `wc` command.
 
 ```bash
-wc -l [file-name].txt
+wc -l file-name.txt
 ```
 
 > Note: When counting the lines in a text file, you can use the `uniq` command to only receive the number of unique lines. But the `uniq` is a standalone command. You cannot simply use it as an option. To do this we should create a [pipeline](#creating-command-pipelines). So we would first `cat` the content of the file, then pipe it into the `uniq` command and then pipe the output of it to the `wc -l` command. Read the code below:
 
 ```bash
-cat [file-name].txt | uniq | wc -l
+cat file-name.txt | uniq | wc -l
 ```
 
 > Note: You may want to display the unique lines of the content of a text file on the screen knowing that the content won't fit in the terminal window. So you would like to use the `less` pager. In this case you can use this code:
 
 ```bash
-cat [file-name].txt | uniq | less
+cat file-name.txt | uniq | less
 ```
 
 ## Moving and manipulating files or folders
@@ -264,7 +279,7 @@ Let's now look at the sort of day-to-day tasks you might need to perform on mult
 To move a file to a folder you can use this command:
 
 ```bash
-mv [file-name].[file-extension] [directory]
+mv file-name.file-extension directory
 ```
 
 Let's work on an example. We have moved the `comb.txt` file into the `dir1` directory using this command:
@@ -294,13 +309,13 @@ mv combined.txt test_* dir3 dir2
 To copy files or directories, the `cp` command is used with the same syntax as `mv`.
 
 ```bash
-cp [file-name].[file-extension] [directory]
+cp file-name.file-extension directory
 ```
 
 The copy command can be used to make a copy of a file with a different name:
 
 ```bash
-cp [file-name] [file-name-2]
+cp file-name file-name-2
 ```
 
 ## Renaming files or directories
@@ -308,9 +323,9 @@ cp [file-name] [file-name-2]
 The traditional Unix command line handles a rename as though you are moving the file from one name to another. So for renaming files you can use the `mv` command again:
 
 ```bash
-mv [file-name] [file-name-2]
+mv file-name file-name-2
 # or
-mv [directory] [directory-2]
+mv directory directory-2
 ```
 
 ## Deleting files or directories
@@ -318,21 +333,21 @@ mv [directory] [directory-2]
 To delete one or more files from the current working directory you can use this command:
 
 ```bash
-rm [filename]
+rm filename
 # or
-rm [filename] [directory]/[filename-2]
+rm filename directory/filename-2
 ```
 
 To delete a directory you can use the `rmdir` command:
 
 ```bash
-rmdir [directory]
+rmdir directory
 ```
 
 In order to delete multiple nested directories you can use the `-p` option. Remember you can use the same option on `mkdir` command to create multiple nested directories.
 
 ```bash
-rmdir -p [directory]/[directory-2]/[directory-3]
+rmdir -p directory/directory-2/directory-3
 ```
 
 But this will only delete the folders if they are all empty. If there is a file in any of them, the command will not work.
@@ -340,7 +355,7 @@ But this will only delete the folders if they are all empty. If there is a file 
 > Note: In order to delete non-empty directories you can use the `-r` option on the `rm` command, making it run **recursively**. The `-r` option only works on `rm` and not `rmdir`.
 
 ```bash
-rm -r [non-empty-directory]
+rm -r non-empty-directory
 ```
 
 > **IMPORTANT:** The `rm` command does not move deleted files to trash. It remove the files and folders totally.
@@ -362,13 +377,13 @@ wget is a GNU free software package that is used for retrieving files over the w
 (link: https://askubuntu.com/questions/32850/what-download-managers-are-available-for-ubuntu)
 
 ```bash
-wget [your-download-link]
+wget your-download-link
 ```
 
 If your download has stuck or paused for any reason, you can use the `-c` option to resume it:
 
 ```bash
-wget -c [your-download-link]
+wget -c your-download-link
 ```
 
 ## Wireguard
