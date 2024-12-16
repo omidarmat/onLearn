@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -167,6 +167,7 @@
       - [`useCallback` in practice](#usecallback-in-practice)
   - [Optimizing bundle size and code splitting](#optimizing-bundle-size-and-code-splitting)
 - [React advanced patterns](#react-advanced-patterns)
+  - [Overview of reusablity](#overview-of-reusablity)
   - [Render props](#render-props)
   - [Higher-order components (HOC)](#higher-order-components-hoc)
   - [Compound component pattern](#compound-component-pattern)
@@ -7407,9 +7408,19 @@ And we are good to go. Remember that in this example, we wanted to split our bun
 
 # React advanced patterns
 
+## Overview of reusablity
+
+In React, we might want to reuse to types of code:
+
+1. A piece of UI: React components and props are used for this. The idea is that we use props as the API of the component. Using props we can customize how the component would look like. Taking this idea further, we can also pass in content or other components into components using the `children` prop. This way we can actually customize the content of the component.
+2. Stateful logic: This is logic that contains at least one React hook. We can do this by writing custom hooks.
+3. Non-stateful logic: regular JavaScript functions can be used for this.
+
+Now the question is: What if we want to reuse visuals and statefuyl logic at the same time? This is where more advanced patterns of React comes to play.
+
 ## Render props
 
-This is an old technique used in React in situations where you need to share and reuse a specific stateful logic and JSX related to it for rendering different contents.
+With render props, the user of a component has complete control over what the component actually renders by passing in a function as a prop. This function will tell the component what and how to render. The beauty of this is that with this pattern we can reuse logic that has some UI attached to it, while giving the component the ability to receive even more JSX.
 
 For instance, We want to render a `List` component which has open/close and collapse/uncollapse stateful functionality, but we want to use this component to render different list items. We want to use the list to render a list of _products_ and then in another place, to render a list of _companies_. The product items that we want to insert into this `List` component has different JSX than the company items.
 
@@ -7503,7 +7514,7 @@ function ProductList({ title, items }) {
 }
 ```
 
-And we want to use this component to render a list of products within another `List` component where we have implemented some open/close and collapse/uncollapse functionality. So essentially, we would have to take the `ProductList` component and enhance it with the functionalities of our `List` component. One solution is define an HOC like this:
+And we want to use this component to render a list of products within another `List` component where we have implemented some open/close and collapse/uncollapse functionality. So essentially, we would have to take the `ProductList` component and enhance it with the functionalities of our `List` component. One solution is to define a HOC like this:
 
 ```jsx
 export default function withToggles(WrappedComponent) {
@@ -7589,7 +7600,7 @@ This way we can simply configure the `Counter` by moving its related components 
 />
 ```
 
-As you can see in the compound pattern implemented above, there is no state transfer between the related components. So if there is a counter state inside the `Counter` component, we are not going to pass it as a prop to the `Counter.Count` component. So how is this compound component going to work? We should actually use the **Context API** to implement the compound component pattern.
+As you can see in the compound pattern implemented above, there is no **state transfer** between the related components. So if there is a counter state inside the `Counter` component, we are not going to pass it as a prop to the `Counter.Count` component. So how is this compound component going to work? We should actually use the **Context API** to implement the compound component pattern.
 
 ```jsx
 // 1. Create a context
