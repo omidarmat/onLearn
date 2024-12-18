@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -171,6 +171,7 @@
   - [Render props](#render-props)
   - [Higher-order components (HOC)](#higher-order-components-hoc)
   - [Compound component pattern](#compound-component-pattern)
+  - [React portal](#react-portal)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7658,6 +7659,30 @@ Again, we can use this compound component:
   <Counter.Label>My super flexible counter</Counter.Label>
 </Counter>
 ```
+
+## React portal
+
+React portal is a feature that allows you to render a component outside the `div` element with `root` ID as a direct child of the `body` element. This is a useful feature for rendering components such as modals which should not really be rendered within the app components, but outside and over all of them. Again, remember the example of a modal and here is a code sample:
+
+```JSX
+export default function Modal({ children, onClose }) {
+  return createPortal(
+    <Overlay>
+      <StyledModal>
+        <Button onClick={onClose}>
+          <HiXMark />
+        </Button>
+        <div>{children}</div>
+      </StyledModal>
+    </Overlay>,
+    document.body
+  );
+}
+```
+
+> Remember that this technique will still make the modal component remain in its own place inside the React component tree. Therefore, you will still be able to normally pass props to a component rendered using the React portal feature.
+
+But what problem does this technique solve? Why do we even need this? The main reason is to avoid conflicts with the CSS property `overflow: hidden`. Many times we build a component like a modal that in some cases would need this CSS property to be set to hidden. Rendering the component with this technique will prevent that conflict from hapenning.
 
 # Project deployment
 
