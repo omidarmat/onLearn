@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -172,6 +172,13 @@
   - [Higher-order components (HOC)](#higher-order-components-hoc)
   - [Compound component pattern](#compound-component-pattern)
   - [React portal](#react-portal)
+  - [Closing a modal with outside clicks](#closing-a-modal-with-outside-clicks)
+  - [User authentication and authorization](#user-authentication-and-authorization)
+    - [Authentication](#authentication)
+      - [The service file](#the-service-file)
+      - [The `useLogin` custom hook](#the-uselogin-custom-hook)
+      - [The login form component](#the-login-form-component)
+    - [Authorization](#authorization)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7683,6 +7690,247 @@ export default function Modal({ children, onClose }) {
 > Remember that this technique will still make the modal component remain in its own place inside the React component tree. Therefore, you will still be able to normally pass props to a component rendered using the React portal feature.
 
 But what problem does this technique solve? Why do we even need this? The main reason is to avoid conflicts with the CSS property `overflow: hidden`. Many times we build a component like a modal that in some cases would need this CSS property to be set to hidden. Rendering the component with this technique will prevent that conflict from hapenning.
+
+## Closing a modal with outside clicks
+
+This is a common advanced pattern that developers use when implementing features like modal windows and hamburger menues. In order to implement this technique, we need to use React `ref` and an `eventListener` atteched to the `document` element in a `useEffect` hook within the modal or menu component.
+
+Here is a sample code showing how you would try to implement this method:
+
+```jsx
+const { useEffect, useContext } = require("react");
+
+function Window({ children, name }) {
+  const { openName, close } = useContext(ModalContext);
+  const ref = useRef();
+
+  useEffect(
+    function () {
+      function handleClick(e) {
+        if (ref.current && !ref.current.contains(e.target)) {
+          close();
+        }
+      }
+
+      document.addEventListener("click", handleClick);
+
+      return () => document.removeEventListener("click", handleClick);
+    },
+    [close]
+  );
+
+  // some other logic
+
+  return <div>'JSX of modal'</div>;
+}
+```
+
+## User authentication and authorization
+
+In most real-world applications users need to be authenticated to be able to use the application. Of course, this technique has to be implemented in integration with a database and server process, but here we are going to learn only the React part of the technique.
+
+The idea behind this technique is to protect one or more routes against un-authenticated users. So React will only render components related to those routes if the user is authenticated.
+
+So you basically need to handle 2 main steps:
+
+1. **Authentication**: this means that you need to authenticate the user through an interaction with the database. This process usually results in an access token stored in a cookie or in the browser's local storage. This access token will then be sent along with each client request to the server.
+2. **Authorization**: this means that you can now protect specific routes of your application against un-authenticated users by implementing a barrier component.
+
+### Authentication
+
+To implement this, you normally need to expose a `/login` route as a barrier between the un-authenticated user and the protected routes. This route will render the user a login form or any other authentication logic.
+
+Regarding the file structure that you need for such a feature, you usually need a component for the login form `<LoginForm />` in addition to a component representing the login page, along with a service file which you may conventionally call `apiAuth.js` that handles the interaction you need with the server and database.
+
+#### The service file
+
+In this file you would regularly interact with a database. In this example we are using Supabase:
+
+```jsx
+import supabase from "./supabase";
+
+export async function login({ email, password }) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) throw new Error(error.message);
+
+  return data;
+}
+```
+
+This interaction, if successful, usually returns with a `session` data containing an access token which usually is a JWT. Also, in this specific example, additional data is available in the `user` property of the response object, including a `role` property which would contain a value of `authenticated`. The access token is automatically stored by Supabase in the browser's local storage and from now on it will send the access token along with each request that would be sent to the server. This access token usually has a refresh token atteched to it. The login form component would have to use all this data to grant the user access to the protected routes, e.g. the dashboard.
+
+#### The `useLogin` custom hook
+
+Using the authentication response data comming from the `useAuth.js` service file is regularly done via the React Query library. Therefore, you would want to create a custom hook for that. You may call it `useLogin.js`.
+
+Remember that the process of logging in is something that actually changes some data on the server. So this would be done using the `useMutation` hook of the React Query library.
+
+```jsx
+import { useMutation } from "@tanstack/react-query";
+import { login as loginApi } from "../../services/apiAuth";
+import { useNavigate } from "react-router-dom";
+
+export function useLogin() {
+  const navigate = useNavigate();
+
+  const { mutate: login, isLoading } = useMutation({
+    mutationFn: ({ email, password }) => loginApi({ email, password }),
+    onSuccess: (user) => {
+      navigate("/dashboard");
+    },
+    onError: (err) => {
+      console.log("ERROR", err);
+    },
+  });
+
+  return { login, isLoading };
+}
+```
+
+#### The login form component
+
+The login form component will simply use the `useLogin` custom hook as the heart of its logic:
+
+```jsx
+function LoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { login, isLoading } = useLogin();
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!email || !password) return;
+    login({ email, password });
+  }
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      <FormRowVertical label="Email address">
+        <Input
+          type="email"
+          id="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={isLoading}
+        />
+      </FormRowVertical>
+
+      <FormRowVertical label="Password">
+        <Input
+          type="password"
+          id="password"
+          autoComplete="current-password"
+          value={email}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading}
+        />
+      </FormRowVertical>
+
+      <FormRowVertical>
+        <Button disabled={isLoading}>Login</Button>
+      </FormRowVertical>
+    </Form>
+  );
+}
+```
+
+Now its time to handle authorization.
+
+### Authorization
+
+This step is meant to only allow authenticated users access some protected routes, like the `/dashboard`.
+
+As mentioned before, in this real-world implementation we will basically wrap the entire protected part of the application inside a `<ProtectedRoutes>` component.
+
+Within the `ui` folder of your project, create file called `ProtectedRoute.jsx`. This file will protect a child component like the code sample below. Since in this example, the whole application, except for the `/Login` route, resides within the `<AppLayout />` component, we will protect the `<AppLayout />` component in order to protect the whole application against un-authenticated users. This protecting component will only return its `children` if the user is authenticated.
+
+The process through which we have to work in authorization basically consists of 4 steps:
+
+1. Load the authenticated user
+2. If no authenticated user, redirect to the login page
+3. Otherwise, while loading, show a spinner
+4. If there is an authenticatid user, render the app layout component
+
+As for the first step, you need to interact with the database again to check if there is an active session for the current user. In order to do this, we would want to implement a specific function in the `apiAuth.js` file:
+
+```jsx
+// apiAuth.js
+export async function getCurrentUser() {
+  const { data: session } = await supabase.auth.getSession();
+
+  if (!session.session) return null;
+
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) throw new Error(error.message);
+
+  return data;
+}
+```
+
+In order to manage the authorization as a state, we would need to implement a custom hook. This would be done by creating a `useUser.js` file.
+
+```jsx
+export function useUser() {
+  const { isLoading, data: user } = useQuery({
+    queryKey: ["user"],
+    queryFn: getCurrentUser,
+  });
+
+  return { isLoading, user, isAuthenticated: user?.role === "authenticated" };
+}
+```
+
+We will now implement the `ProtectedRoute` component:
+
+```jsx
+function ProtectedRoute({ children }) {
+  const navigate = useNavigate();
+  // 1. Load the authenticated user
+  const { isLoading, isAuthenticated } = useUser();
+  // 2. If no authenticated user, redirect to the login page
+  useEffect(
+    function () {
+      if (!isAuthenticated && !isLoading) navigate("/login");
+    },
+    [isAuthenticated, isLoading, navigate]
+  );
+  // 3. While loading, show a spinner
+  if (isLoading) return <Spinner />;
+
+  // 4, If user, render the app layout
+  if (isAuthenticated) return children;
+}
+```
+
+Now one optimization problem is left. When the user loggs into the application, within the dashboard component we will see a short duration of loading spinner, indicating that a process of getting the current user (`getCurrentUser` function) is running just after the user has logged in, which is obviously not necessary. So we need to put the data of the user that has just logged in into the React Query cache so it would use that instead of running the `getCurrentUser` function again right after the user has logged in. In fact, the function only needs to run when the user comes back after a while to use the application. Therefore, you would need to update the `useLogin` custom hook like this:
+
+```jsx
+export function useLogin() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const { mutate: login, isLoading } = useMutation({
+    mutationFn: ({ email, password }) => loginApi({ email, password }),
+    onSuccess: (user) => {
+      queryClient.setQueriesData(["user"], user);
+      navigate("/dashboard");
+    },
+    onError: (err) => {
+      console.log("ERROR", err);
+    },
+  });
+
+  return { login, isLoading };
+}
+```
+
+This way, the `useUser` custom hook will simply get the user data from cache and therefore, no unnecessary attempts on interacting with the database.
 
 # Project deployment
 
