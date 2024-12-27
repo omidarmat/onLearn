@@ -44,7 +44,7 @@ You can retrieve raw data from the database, or you can make the database calcul
 
 #### Retrieve raw columns
 
-To retrieve data using the `SELECT` command you can use this query:
+To retrieve data using the `SELECT` statement you can use this query:
 
 ```sql
 SELECT * FROM cities;
@@ -71,7 +71,7 @@ SELECT name, population / area AS population_density
 FROM cities;
 ```
 
-> You can also use other math **operators** like '+', '-', '\*', '/', '^', '|/' (square root), '@' (absolute value), '%' (remainder).
+> You can also use other math **operators** like `+`, `-`, `\*`, `/`, `^`, `|/` (square root), `@` (absolute value), `%` (remainder).
 
 To manipulate string columns before being returned, you can use string operators or functions. For instance:
 
@@ -81,7 +81,7 @@ SELECT name || ', ' || country FROM cities;
 
 > Note that you can use string constants (`', '` in the example above ) when manipulating string columns using string operators.
 
-> There are also string **operators** and **functions** that you can use to manipulate string columns. These are '||' (join two strings), 'CONCAT()' (join two strings), 'LOWER()' (gives a lowercase string), 'LENGTH()' (gives number of characters in a string), 'UPPER()' (gives an uppercase string).
+> There are also string **operators** and **functions** that you can use to manipulate string columns. These are `||` (join two strings), `CONCAT()` (join two strings), `LOWER()` (gives a lowercase string), `LENGTH()` (gives number of characters in a string), `UPPER()` (gives an uppercase string).
 
 To use the `CONCAT()` string function to receive the exact result of the example above, you can use this query:
 
@@ -107,3 +107,81 @@ SELECT
 FROM
   cities;
 ```
+
+## Filtering rows
+
+### With `WHERE`
+
+To filter rows, you can use the `WHERE` statement after `FROM`, which is where you define which table you are retrieving data from.
+
+```sql
+SELECT name, area FROM cities WHERE area > 4000
+```
+
+You may need to understand how the three parts of this query is executed by SQL in order to fully get how it works. So it just does not start from the beginning and proceed to the end. It starts from the `FROM` statement, then goes to the `WHERE` statement, and finally to the `SELECT` statement. Understanding this will help you write more complicated queries.
+
+> Note that the query syntax formatting of the example above can also be like this:
+
+```sql
+SELECT
+  name,
+  area
+FROM
+  cities
+WHERE
+  area > 4000
+```
+
+> To filter rows you can use many comparison math operators like `=`, `>`, `<`, `>=`, `<=`, `IN` (is the value present in a list?), `<>` (are the values not equal), `!=`, `BETWEEN` (is the value between two other values?), `NOT IN` (is the value not present in a list?).
+
+Let's use the `BETWEEN` operator:
+
+```sql
+SELECT
+  name,
+  area
+FROM
+  cities
+WHERE
+  area BETWEEN 2000 AND 4000;
+```
+
+Let's use the `IN` and `NOT IN` operator:
+
+```sql
+SELECT
+  name,
+  area
+FROM
+  cities
+WHERE
+  name IN ('Delhi', 'Shanghai');
+```
+
+> Note that you are not limited to use strings with the `IN` and `NOT IN` operator.
+
+```sql
+SELECT
+  name,
+  area
+FROM
+  cities
+WHERE
+  area NOT IN (8223, 3043);
+```
+
+> You can use as many operators in one `WHERE` statement. This is called a _Compound check_ where you can use as many `AND` and `OR` statements. Here is an example:
+
+```sql
+SELECT
+  name,
+  area
+FROM
+  cities
+WHERE
+  area NOT IN (8223, 3043)
+  OR name = 'Delhi'
+  OR name = 'Tokyo';
+```
+
+In this query you want to find all the cities that does not have an area of `8223` or `3043`, `AND` also the city must have the name `Delhi`.
