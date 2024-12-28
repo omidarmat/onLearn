@@ -108,9 +108,9 @@ FROM
   cities;
 ```
 
-## Filtering rows
+### Filtering rows
 
-### With `WHERE`
+#### With `WHERE`
 
 To filter rows, you can use the `WHERE` statement after `FROM`, which is where you define which table you are retrieving data from.
 
@@ -185,3 +185,43 @@ WHERE
 ```
 
 In this query you want to find all the cities that does not have an area of `8223` or `3043`, `AND` also the city must have the name `Delhi`.
+
+> You can perform calculations in the `WHERE` statement. You just need to keep in mind that the order of execution in the filtering statement is prioritised for mathematical calculations and then comparisons. In the example below, `population` will be divided by `aread` and then the result will be compared to `6000`.
+
+```sql
+SELECT
+	name,
+  population / area AS population_density
+FROM
+	cities
+WHERE
+	population / area > 6000
+```
+
+> Remember that you cannot refer to the renamed calculated columns with their provided name in the `WHERE` statement. You can only refer to them by doing the calculation again in the `WHERE` statement.
+
+## Update rows
+
+To update a row in a table, you should use the `UPDATE` statement with the table name, and then the `SET` statement with the updating property along with its new value. Finally you have to specify which row you want to update by filtering the rows using the `WHERE` statement. So as an example:
+
+```sql
+UPDATE
+  cities
+SET
+  population = 39505000
+WHERE
+  name = 'Tokyo';
+```
+
+> Remember that if you are trying to update only one specific row, the `WHERE` statement you write should be specific enough to target only one record in the table. This can become a bit tricky sometimes. There is a nice solution for this problem. [later...]
+
+## Delete rows
+
+To delete a specific row from a table, you should use the `DELETE FROM` statement followed by the table name, and then the `WHERE` statement that defines the row that is going to be deleted.
+
+```sql
+DELETE FROM cities
+WHERE name = 'Tokyo';
+```
+
+> Remember that if you are trying to update only one specific row, the `WHERE` statement you write should be specific enough to target only one record in the table. This can become a bit tricky sometimes. There is a nice solution for this problem. [later...]
