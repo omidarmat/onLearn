@@ -1,3 +1,18 @@
+- [Basics of SQL](#basics-of-sql)
+  - [Creating a table](#creating-a-table)
+  - [Inserting rows](#inserting-rows)
+  - [Retrieve data](#retrieve-data)
+    - [With `SELECT`](#with-select)
+      - [Retrieve raw columns](#retrieve-raw-columns)
+      - [Retrieve calculated columns](#retrieve-calculated-columns)
+    - [Filtering rows](#filtering-rows)
+      - [With `WHERE`](#with-where)
+  - [Update rows](#update-rows)
+  - [Delete rows](#delete-rows)
+- [Working with tables](#working-with-tables)
+  - [Approaching database design](#approaching-database-design)
+    - [Types of relationships](#types-of-relationships)
+
 # Basics of SQL
 
 ## Creating a table
@@ -225,3 +240,30 @@ WHERE name = 'Tokyo';
 ```
 
 > Remember that if you are trying to update only one specific row, the `WHERE` statement you write should be specific enough to target only one record in the table. This can become a bit tricky sometimes. There is a nice solution for this problem. [later...]
+
+# Working with tables
+
+Things are going to get closer to real-world conditions now. We are going to work with multiple tables in one database. In this part of this tutorial we are going to design a database for a photo-sharing application.
+
+## Approaching database design
+
+Let's talk about a few tips that would help you come up with your own database design that would suit your application needs.
+
+The most important question you want to as yourself is: **What Tables should we make?**
+
+A lot of time for any application you make, chances are it is going to have many features that are common among many other applications. There are many features out in the world (e.g. authentication, liking system, commenting systems) that many different web apps implement. Therefore, there are tons of resources online to give you suggestions on how to structure your database to implement these features.
+
+However, you are probably going to create an app with some features that no one has ever built. To address this case, you need to take a look at some mockups of your application to see what the user interface looks like and what is the purpose of your application. Out goal here is to identify the different kinds of resources that exists inside your app. So you need to as yourself: **What type of resources exist in your app?** Then as the first step, you might want to create a separate table for each of these features or resources.
+
+Then for each of these resources, you might want to find relationship or ownership between two types of resources. These relationships must be reflected in the database design. This is only achievable in a practical example.
+
+Take Instagram as an example. To design the database for Instagram, we need 4 tables: users, photos, comments, likes. We also know that each user can own comments, photos and likes. We also know that photos own comments and likes by users. These are the relationships.
+
+To represent relationships, we need some data somewhere that says, for instnace, that some specific photos belong to a specific user. We should now learn about 4 different kinds of relationships.
+
+### Types of relationships
+
+1. One-to-Many: for example, a user can own many photos. Also, a photo can have many different comments tied to it.
+2. One-to-One:
+3. Many-to-Many:
+4. Many-to-One: it is kind of the opposite direction of One-to-Many relationship. Many different comments can belong to one photo.
