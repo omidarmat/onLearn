@@ -29,6 +29,12 @@
   - [Joins](#joins)
     - [Examples](#examples)
     - [Different kinds of joins](#different-kinds-of-joins)
+      - [Inner join](#inner-join)
+      - [Left outer join](#left-outer-join)
+      - [Right outer join](#right-outer-join)
+      - [Full join](#full-join)
+    - [`WHERE` with `JOIN`](#where-with-join)
+    - [Three way joins](#three-way-joins)
   - [Aggregation](#aggregation)
 
 # Basics of SQL
@@ -492,7 +498,7 @@ FROM comments
 JOIN photos ON photos.id = comments.photo_id;
 ```
 
-> Note that changing the order of stating tables in a join might sometimes result in different results, while other times it might work just fine and will give you the same result. The example above is one of those situations where changing the order does not matter. So the syntax below will give you the same result. We will see in which situations it will not work like this. [later...]
+> Note that changing the order of stating tables in a join might sometimes result in different results, while other times it might work just fine and will give you the same result. The example above is one of those situations where changing the order does not matter. So the syntax below will give you the same result. We will see in which situations it will not work like this. The order matters if we are doing a [left outer join](#left-outer-join), or [right outer join](#right-outer-join).
 
 ```sql
 SELECT contents, url
@@ -527,6 +533,124 @@ JOIN comments ON p.id = comments.photo_id;
 > The `AS` keyword in the table renaming syntax can simply be dropped off, and the query will work just fine. But try not to do these things in your queries. Keep them readable.
 
 ### Different kinds of joins
+
+The queries we make by **joining** tables work fine if all the records in the queried table has a **reference** to a record in another table. However, if there is a record in the queried table that does not reference any record in the other table, and we want the query to list all the items in the queried table, we would have to account for that special record with no reference. Otherwise, it won't show up.
+
+This is a situation that can happen many times. Imagine you insert an image into the photos table with no reference in the `user_id` column.
+
+```sql
+INSERT INTO
+  photos (url, user_id)
+VALUES
+  ('https://banner.jpg', NULL)
+```
+
+We are now going to query for all the records in the photos table by joinging in the users table.
+
+```sql
+SELECT url, username
+FROM photos
+JOIN users ON users.id = photos.user_id
+```
+
+The response returned by Postgres will not include the recent record that we inserted. But what if we wanted to query for all the photos so that we could analyze the whole memory amount occupied by them? We need to somehow include that photo in the result of our query.
+
+Currently, the join logic will only list photos that satisfy the join condition. To go around this limit, we need to learn about different kinds of joins.
+
+#### Inner join
+
+Photos table | Users table
+
+Whenever you use the `JOIN` statement by itself in a query, that is by default an inner join. Alternatively, you can write `INNER JOIN` to explicitely indicate that you are doing an inner join.
+
+Inner join joins two tables together. When there is a record in one table that has no reference to a record in the other table, that row is going to be dropped out of the result set.
+
+```sql
+SELECT url, username
+FROM photos
+JOIN users ON users.id = photos.user_id;
+```
+
+#### Left outer join
+
+Photos table | Users table
+
+Following the previous example, if there are any records in the photos table that does not reference to any record in the users table, those records in the photos table will not be dropped out of a query that queries for all the photos.
+
+```sql
+SELECT url, username
+FROM photos
+LEFT JOIN users ON users.id = photos.user_id;
+```
+
+> Changing the order of performing the query in left outer join will affect the result.
+
+#### Right outer join
+
+Photos table | Users table
+
+If there are any records in the photos table that have no reference to any record in the users table, those records will be dropped out of a query that queries for all the photos. However, all the records from the users table will be included in the result set, including those that are not referenced by any of the photos.
+
+```sql
+SELECT url, username
+FROM photos
+RIGHT JOIN users ON users.id = photos.user_id;
+```
+
+> Changing the order of performing the query in right outer join will affect the result.
+
+#### Full join
+
+Photos table | USers table
+
+This join tells that just give me everything and I dont' care whether or not there is any correct merging going on, just try to merge as many rows as possible and if you can't just include the rest of the records in the result set.
+
+```sql
+SELECT url, username
+FROM photos
+FULL JOIN users ON users.id = photos.user_id;
+```
+
+### `WHERE` with `JOIN`
+
+Imagine you are going to write a query to answer this question: Users can comment on photos that they posted. List the url and contents for every photo/comment where this occured. This is easily solved by using a joins along with the `WHERE` statement. This means that you should basically try to find photos and comments that have the same `user_id`, which means users that have commented under their own photos.
+
+The way to go is to first join the comments and photos tables where the comment's `photo_id` equals the `id`s in the photos table. This will give us the comments that are posted under some specific photos. Now in this joined table, we would want to find records where the `user_id` in both comments and photos are the same.
+
+Here is the query:
+
+```sql
+SELECT
+  url,
+  contents
+FROM
+  comments
+JOIN photos ON photos.id = comments.photo_id
+WHERE
+  comments.user_id = photos.user_id;
+```
+
+As you can expect, the result set will include the photo URLs and the comment contents. We cannot see who actually are these users who have posted comments under their own photos. What should we do to retrieve their usernames? We currently have no sign of the users table in this query.
+
+### Three way joins
+
+Three way joins are the solution to the problem that we mentioned previously. Conceptually, this is very difficult to understand, but the query syntax ends up being very straight forward.
+
+What we should do is to first, get the three tables into the temporary, imaginary joind table. This table has the columns from all the three tables. We can first start with the comments table, and then go on to the photos table and join where `comments.photo_id` equals `photos.id`. Then we go on to the users table and join where `comments.user_id` equals `photos.user_id` and also equals `user.id`. Certainly, not all the rows in the joind table would match this triple equal condition. So the related user row in this joind table would be filled with `NULL` if the condition is not satisfied. But if it is satisfied, the user id and username will be inserted into the joind table.
+
+So we are going to update the query like this:
+
+```sql
+SELECT
+  url,
+  contents,
+  username
+FROM
+  comments
+ JOIN photos ON photos.id = comments.photo_id
+ JOIN users ON users.id = comments.user_id
+  AND photos.user_id = users.id
+```
 
 ## Aggregation
 
