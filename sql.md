@@ -35,7 +35,10 @@
       - [Full join](#full-join)
     - [`WHERE` with `JOIN`](#where-with-join)
     - [Three way joins](#three-way-joins)
-  - [Aggregation](#aggregation)
+  - [Aggregation and grouping](#aggregation-and-grouping)
+    - [Grouping](#grouping)
+    - [Aggregates](#aggregates)
+    - [Combining `GROUP BY` and aggregates](#combining-group-by-and-aggregates)
 
 # Basics of SQL
 
@@ -652,6 +655,75 @@ FROM
   AND photos.user_id = users.id
 ```
 
-## Aggregation
+## Aggregation and grouping
 
-The goal of aggregation is to take a set of rows and somehow calculate a single value out of them. Calculating 'most', 'least', 'greatest', 'average', etc. you are probably going to need to use aggragation.
+With all the queries you have written so far you have just essentially pulled out some set of rows, which was more or less the exact information passed into the database. However, as we move towards more complicated queries, we are going to introduce two additional techniques: groupings and aggregation.
+
+The goal with these two techniques is to take a big set of values or rows and somehow condense them down to a smaller set of values. It would be challenging to select data or select columns out of the grouped information. To avoid this challenge, it is key to visualize what happens when you apply the group by keyword.
+
+### Grouping
+
+With grouping, we are going to reduce many rows down to fewer rows. Grouping is done using the `GROUP BY` keyword. For example, take the example query below and let's understand what it does:
+
+```sql
+SELECT user_id
+FROM comments
+GROUP BY user_id;
+```
+
+The `GROUP BY` keyword, your database will take a look all the rows that you have selected. Here we have selected all the rows of the comments table. It will now try to find all the unique values for `user_id` and it will create a separate row in an imaginary table. The database will then take each of the rows from the selected table and assign it to a different group row based upon that row's `user_id`.
+
+It is extremely important to remember that in this imaginary grouped table, you can only select the `user_id` column which is the `GROUP BY` argument in the query above. If you want to select columns related to the comments table inside the new imaginary grouped table, you must use aggregate functions.
+
+### Aggregates
+
+The goal of aggregation is to take a set of rows and somehow calculate a single value out of them. Calculating 'most', 'least', 'greatest', 'average', etc. you are probably going to need to use aggragation. This is done by using the **aggregate functions**.
+
+Here are some different aggregate functions that we can use:
+
+1. `COUNT()`
+2. `SUM()`
+3. `AVG()`
+4. `MIN()`
+5. `MAX()`
+
+Let's go through some examples with aggregate functions. Take the query below as an example:
+
+```sql
+SELECT MAX(id)
+FROM comments;
+```
+
+This will simply return the commet record with the maxium value for the `id` comlumn. You can use any other aggregate function and see the results. You can understand the all these functions actually take a big column of values and performs some kind of calculation or math operation on all those different values and return just one single value.
+
+Remember that when using an aggregate function, we cannot do a normal select next to it. For instance, you cannot `SUM(id)` and `SELECT id` at the same time in a query:
+
+```sql
+-- This is NOT OK
+SELECT SUM(id), id
+FROM comments;
+```
+
+So we are going to most frequently use these aggregate functions by themselves or as a part of a larger `GROUP BY` statement.
+
+### Combining `GROUP BY` and aggregates
+
+Back to example mentioned previously, how can you use aggregates to select columns in the grouped table? We can now add aggregate functions on top of grouping. An aggregate function will be applied to the individual sub-groups. If you use an aggregate function over the grouped table, you can then select the column related to that aggregate function.
+
+Take the example below. You can see that columns of the original comments table can only be selected within an aggregate function. They can only be called to become the subject of an aggregate function.
+
+```sql
+SELECT user_id, COUNT(id)
+FROM comments
+GROUP BY user_id
+```
+
+This specific query above is actually grouping all the comments from the comments table based on the `uder_id`. So each row in the grouped table includes all the comments of a specific user. So when you apply the `COUNT(id)` aggregate function, you are actually asking the database to count the number of comments created by each individual user.
+
+> You can also rename the column created by an aggregate function. Following the example above:
+
+```sql
+SELECT user_id, COUNT(id) AS num_comments_created
+FROM comments
+GROUP BY user_id
+```
