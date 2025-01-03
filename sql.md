@@ -39,6 +39,7 @@
     - [Grouping](#grouping)
     - [Aggregates](#aggregates)
     - [Combining `GROUP BY` and aggregates](#combining-group-by-and-aggregates)
+    - [Filtering groups with `HAVING`](#filtering-groups-with-having)
 
 # Basics of SQL
 
@@ -715,7 +716,7 @@ Take the example below. You can see that columns of the original comments table 
 ```sql
 SELECT user_id, COUNT(id)
 FROM comments
-GROUP BY user_id
+GROUP BY user_id;
 ```
 
 This specific query above is actually grouping all the comments from the comments table based on the `uder_id`. So each row in the grouped table includes all the comments of a specific user. So when you apply the `COUNT(id)` aggregate function, you are actually asking the database to count the number of comments created by each individual user.
@@ -725,5 +726,73 @@ This specific query above is actually grouping all the comments from the comment
 ```sql
 SELECT user_id, COUNT(id) AS num_comments_created
 FROM comments
+GROUP BY user_id;
+```
+
+> A corner case about the `COUNT` aggregate function: the count function does not count if the given argument is `NULL`. For instance, if we count the rows in the photos table by the `user_id` column, only the photo rows that have an actualy user ID will be counted. If there is a photo with the `user_id` set to `NULL`, the `COUNT` aggregate function will not count it. To go around this limit you can pass `*` to the `COUNT` function. This is true in almost any case that we are using the `COUNT` function.
+
+```sql
+SELECT COUNT(*) FROM photos;
+```
+
+As another example, we are going to find the number of comments for each photo. This is the query to write:
+
+```sql
+SELECT photo_id, COUNT(*)
+FROM comments
+GROUP BY photo_id
+```
+
+As another more complicated example, imagine you have two tables, one for books and one for authors. You now want to write a query that will print an author's name and the number of books they have authored. Here is the solution:
+
+```sql
+SELECT name, COUNT(*)
+FROM books
+JOIN authors ON authors.id = books.author_id
+GROUP BY authors.name;
+-- also possitble to group by writing:
+GROUP BY name;
+```
+
+### Filtering groups with `HAVING`
+
+The `HAVING` keyword is used to filter the set of groups. It is pretty similar to `WHERE`. The difference however, is that `HAVING` is used to filter out some number of groups, while `WHERE` is used to filter out some number of rows. So you will never see `HAVING` without a `GROUP BY` statement.
+
+Let's work with an example. We divide the question into separate parts:
+
+1. Find the number of comments for each photo
+2. Where the `photo_id` is less than 3: this is concerned with a value inside a particular row. This is `WHERE`.
+3. And the photo has more than 2 comments: this is concerned with an aggregate function and filtering. This is about `HAVING`. Note that `HAVING` is going to have an `AGGREGATE` keyword inside it.
+
+```sql
+ SELECT photo_id, COUNT(*)
+ FROM comments
+ WHERE photo_id < 3
+ GROUP BY photo_id
+ HAVING COUNT(*) > 2;
+```
+
+As a more complicated example, let's do this: Find the users where the user has commented on the first 2 photos and the user added more than 2 comments on those photos. Let's first divide this question into separate parts:
+
+1. Find the users IDs
+2. Where the user has commented on the first 2 photos (photos with ID 1 or 2): this is `WHERE`. We are looking for comments that have the `photo_id` of 1 or 2.
+3. And the user has added more than or equal to 2 comments on those photos: this is aggregation and filtering, which means `HAVING`.
+
+```sql
+SELECT user_id, COUNT(*)
+FROM comments
+WHERE photo_id < 3
 GROUP BY user_id
+HAVING COUNT(*) >= 2
+```
+
+> Most of the times, especially in more complicated queries, it is easier to leave the `SELECT` statement empty, write the other parts of the query, and then based upon the result you are expecting, fill in the `SELECT` statement.
+
+Let's go for another example: Given a table of phones, print the names of manufacturers and total revenue (price \* units_sold) for all phones. Only print the manufacturers who have revenue greater than 2,000,000 for all the phones they sold.
+
+```sql
+SELECT manufacturer, SUM(price*units_sold)
+FROM phones
+GROUP BY manufacturer
+HAVING SUM(price * units_sold) > 2000000;
 ```
