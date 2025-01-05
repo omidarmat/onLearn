@@ -40,6 +40,12 @@
     - [Aggregates](#aggregates)
     - [Combining `GROUP BY` and aggregates](#combining-group-by-and-aggregates)
     - [Filtering groups with `HAVING`](#filtering-groups-with-having)
+- [Basics of sorting](#basics-of-sorting)
+  - [Sorting variation: number](#sorting-variation-number)
+  - [Sorting variation: string](#sorting-variation-string)
+  - [Sorting variation: based on multiple properties](#sorting-variation-based-on-multiple-properties)
+  - [`OFFSET` and `LIMIT`](#offset-and-limit)
+    - [`LIMIT` and `ORDER BY` and `OFFSET`](#limit-and-order-by-and-offset)
 
 # Basics of SQL
 
@@ -795,4 +801,135 @@ SELECT manufacturer, SUM(price*units_sold)
 FROM phones
 GROUP BY manufacturer
 HAVING SUM(price * units_sold) > 2000000;
+```
+
+# Basics of sorting
+
+Sorting means to retrieve a number of rows from a table and then try to re-order those records based on the values of one of the columns.
+
+## Sorting variation: number
+
+For instance, if you want to sort a list of products sorted from the least expensive to the most expensive (ascending), you can the `ORDER BY` statement:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price;
+```
+
+> The default behavior of sorting is to sort data in an ascending format. Nevertheless, you can also explicitely use the `ASC` keyword to clarify the sorting behavior.
+
+```sql
+SELECT *
+FROM products
+ORDER BY price ASC;
+```
+
+If you want to sort from highest to lowest price, you can use the `DESC` statement at the end of the `ORDER BY` statement.
+
+```sql
+SELECT *
+FROM products
+ORDER BY price DESC;
+```
+
+## Sorting variation: string
+
+You can sort the retrieved data from a table based on string values of a column using the same syntax:
+
+```sql
+SELECT *
+FROM products
+ORDER BY name;
+```
+
+> Keywords `ASC` and `DESC` works just like before.
+
+## Sorting variation: based on multiple properties
+
+Imagine you are sorting the products list by price, and then you see multiple products with the same price, and you want these products to be sorted based on some other property. So you have to sort the records based on more than just one property.
+
+To do this you can simply state another column in the `ORDER BY` statement.
+
+```sql
+SELECT *
+FROM products
+ORDER BY price, weight;
+```
+
+Now if two products happen to have the same price, they will be sorted ascendingly based on their weight value.
+
+> `ASC` and `DESC` keywords works just like before, but you would have to insert them for each column name that you have mentioned in the `ORDER BY` statement. For instance:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price, weight DESC;
+```
+
+This means that if two products have the same price, they will be sorted descendingly regarding their weight values.
+
+## `OFFSET` and `LIMIT`
+
+You use `OFFSET` anytime you want to skip some number of records in a result set. For example, if you retrieve all rows from the users table and you know that there are 50 records, You can use this keyword to make Postgres skip the first 40 rows, and give you the last 10 records.
+
+```sql
+SELECT *
+FROM users
+OFFSET 40;
+```
+
+You use `LIMIT` when you want to constrain the number of records you get back from the result of the query. You are very likely to use `LIMIT` and `OFFSET` together. However, `LIMIT` can be used by itself.
+
+```sql
+SELECT *
+FROM users
+LIMIT 5;
+```
+
+> The limit value can be greater than the number of records that exist in a table.
+
+### `LIMIT` and `ORDER BY` and `OFFSET`
+
+As an example, you now want to order all your products by price, and then you want to retrieve the 5 least expensive products:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price
+LIMIT 5;
+```
+
+Taking this example one step further, you now want to get the 5 most expensive products except the top most expensive product:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 5
+OFFSET 1;
+```
+
+> Note that when using `LIMIT` and `OFFSET` together, it is a convention to insert `OFFSET` after `LIMIT`.
+
+> `LIMIT` and `ORDER BY` are usually used in scenarios where you want to find the tops. For instance, the top five or anything like that.
+
+> `LIMIT` and `OFFSET` are used in scenarios where you want to return results based on some pagination system in a table. So for example, if you want to display all the products to the user, you do it in a paginated format, which will present 20 products per page. This means that for the first page, you will have to return the first 20 products:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 20
+OFFSET 0;
+```
+
+Moving to the next page, you would have to skip the first 20 rows, and go for the second 20 rows:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 20
+OFFSET 20;
 ```
