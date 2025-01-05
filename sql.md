@@ -46,6 +46,9 @@
   - [Sorting variation: based on multiple properties](#sorting-variation-based-on-multiple-properties)
   - [`OFFSET` and `LIMIT`](#offset-and-limit)
     - [`LIMIT` and `ORDER BY` and `OFFSET`](#limit-and-order-by-and-offset)
+- [`UNION`, `INTERSECRT` and `EXCEPT` with sets](#union-intersecrt-and-except-with-sets)
+  - [Some rules of unions](#some-rules-of-unions)
+  - [Commonalities with intersections](#commonalities-with-intersections)
 
 # Basics of SQL
 
@@ -933,3 +936,92 @@ ORDER BY price DESC
 LIMIT 20
 OFFSET 20;
 ```
+
+# `UNION`, `INTERSECRT` and `EXCEPT` with sets
+
+Let's consider a realistic example: Find the 4 products with the highest price **and** the 4 products with the heighest price/weight ratio. The query for the first and second part are very different and putting them in one query is really challenging.
+
+Let's first write the query for the first part:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 4;
+```
+
+Let's now write the query for the second part:
+
+```sql
+SELECT *
+FROM products
+ORDER BY price / weight DESC
+LIMIT 4;
+```
+
+Now to join the two queries together in order to receive one result set we can use the `UNION` keyword as below:
+
+```sql
+(
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 4
+)
+UNION
+(
+SELECT *
+FROM products
+ORDER BY price / weight DESC
+LIMIT 4
+);
+```
+
+> Some of the records might satisfy both queries. These records will be displayed once in the final result set. If you want those records to appear each time they satisfy a query, you can use the `UNION ALL` keyword.
+
+```sql
+(
+SELECT *
+FROM products
+ORDER BY price DESC
+LIMIT 4
+)
+UNION ALL
+(
+SELECT *
+FROM products
+ORDER BY price / weight DESC
+LIMIT 4
+);
+```
+
+## Some rules of unions
+
+1. It is not necessary to separate the different queries using `( )`. In this specific example, we used `( )` because otherwise the database might be confused about applying the `ORDER BY` or `LIMIT` statement to just the second query or to the whole query. A union without the `( )` can look like:
+
+```sql
+SELECT * FROM products
+UNION
+SELECT * FROM products;
+```
+
+2. Two queries can be joined with the `UNION` keyword only if the result set of both queries have the same columns and the data type inside them must be the same also. For example, these queries cannot be unioned:
+
+```sql
+SELECT name FROM products
+UNION
+SELECT price FROM products;
+```
+
+It won't also work if you rename the `price` column to `name` because data types will still not be compatible.
+
+## Commonalities with intersections
+
+Here is a list of related keywords that are used to implement unions and intersections:
+
+1. `UNION`: join together the result of two queries and remove duplicate rows
+2. `UNION ALL`: join together results of two queries
+3. `INTERSECT`: find the rows common in the results of two queries. Remove duplicates.
+4. `INTERSECT ALL`: Find the rows common in the results of two queries.
+5. `EXCEPT`: Find the rows that are present in first query but not second query. Remove duplicates.
+6. `EXCEPT ALL`: Find the rows that are present in first query but not second query.
