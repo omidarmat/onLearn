@@ -25,6 +25,7 @@
   - [Wireguard](#wireguard)
     - [Adding an interface and using the VPN](#adding-an-interface-and-using-the-vpn)
     - [Toggling VPN on/off](#toggling-vpn-onoff)
+  - [V2RayA](#v2raya)
 - [Terminal helper commands](#terminal-helper-commands)
   - [Command manual](#command-manual)
 - [The superuser](#the-superuser)
@@ -440,6 +441,46 @@ You can deactivate the VPN tunnel using this command:
 
 ```bash
 sudo wg-quick down wg0
+```
+
+## V2RayA
+
+To start the V2rayA service you can use this bash command:
+
+```bash
+sudo systemctl start v2raya
+```
+
+After starting, you can go to this url to enable your v2ray config and connect:
+
+```
+127.0.0.1:2017
+```
+
+Then login with your username and password.
+
+To make the service go active on boot:
+
+```bash
+sudo systemctl enable v2raya
+```
+
+To stop the V2rayA service you can use this command:
+
+```bash
+sudo systemctl stop v2raya
+```
+
+To prevent the service from going active on boot:
+
+```bash
+sudo systemctl disable v2raya
+```
+
+To see the service status you can use:
+
+```bash
+sudo systemctl status v2raya
 ```
 
 # Terminal helper commands
