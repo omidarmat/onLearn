@@ -246,7 +246,7 @@ WHERE
 
 In this query you want to find all the cities that does not have an area of `8223` or `3043`, `AND` also the city must have the name `Delhi`.
 
-> You can perform calculations in the `WHERE` statement. You just need to keep in mind that the order of execution in the filtering statement is prioritised for mathematical calculations and then comparisons. In the example below, `population` will be divided by `aread` and then the result will be compared to `6000`.
+> You can perform calculations in the `WHERE` statement. You just need to keep in mind that the order of execution in the filtering statement is prioritised for mathematical calculations and then comparisons. In the example below, `population` will be divided by `area` and then the result will be compared to `6000`.
 
 ```sql
 SELECT
@@ -294,11 +294,11 @@ Things are going to get closer to real-world conditions now. We are going to wor
 
 Let's talk about a few tips that would help you come up with your own database design that would suit your application needs.
 
-The most important question you want to as yourself is: **What Tables should we make?**
+The most important question you want to ask yourself is: **What Tables should we make?**
 
 A lot of time for any application you make, chances are it is going to have many features that are common among many other applications. There are many features out in the world (e.g. authentication, liking system, commenting systems) that many different web apps implement. Therefore, there are tons of resources online to give you suggestions on how to structure your database to implement these features.
 
-However, you are probably going to create an app with some features that no one has ever built. To address this case, you need to take a look at some mockups of your application to see what the user interface looks like and what is the purpose of your application. Out goal here is to identify the different kinds of resources that exists inside your app. So you need to as yourself: **What type of resources exist in your app?** Then as the first step, you might want to create a separate table for each of these features or resources.
+However, you are probably going to create an app with some features that no one has ever built. To address this case, you need to take a look at some mockups of your application to see what the user interface looks like and what is the purpose of your application. Out goal here is to identify the different kinds of resources that exists inside your app. So you need to ask yourself: **What type of resources exist in your app?** Then as the first step, you might want to create a separate table for each of these features or resources.
 
 Then for each of these resources, you might want to find relationship or ownership between two types of resources. These relationships must be reflected in the database design. This is only achievable in a practical example.
 
