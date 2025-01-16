@@ -406,7 +406,7 @@ VALUES
   ('http://six.jpg', 4);
 ```
 
-We can now see that in the record of this photo in the table, we have a `user_id` of `4`. ut how is this going to help us with the relationship? There two big advantages here:
+We can now see that in the record of this photo in the table, we have a `user_id` of `4`. But how is this going to help us with the relationship? There two big advantages here:
 
 1. We can start to write a lot of interesting queries that allow us to fetch all the different photos that are associated with a user.
 2. We also start to get a little bit of **data consistency**.
@@ -812,7 +812,7 @@ Sorting means to retrieve a number of rows from a table and then try to re-order
 
 ## Sorting variation: number
 
-For instance, if you want to sort a list of products sorted from the least expensive to the most expensive (ascending), you can the `ORDER BY` statement:
+For instance, if you want to sort a list of products sorted from the least expensive to the most expensive (ascending), you can use the `ORDER BY` statement:
 
 ```sql
 SELECT *
