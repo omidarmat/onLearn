@@ -49,6 +49,7 @@
 - [`UNION`, `INTERSECRT` and `EXCEPT` with sets](#union-intersecrt-and-except-with-sets)
   - [Some rules of unions](#some-rules-of-unions)
   - [Commonalities with intersections](#commonalities-with-intersections)
+- [Assembling queries with subqueries](#assembling-queries-with-subqueries)
 
 # Basics of SQL
 
@@ -1025,3 +1026,49 @@ Here is a list of related keywords that are used to implement unions and interse
 4. `INTERSECT ALL`: Find the rows common in the results of two queries.
 5. `EXCEPT`: Find the rows that are present in first query but not second query. Remove duplicates.
 6. `EXCEPT ALL`: Find the rows that are present in first query but not second query.
+
+> Changing the order of the queries when using `UNION` and `INTERSECT` does not change the result. However, with `EXCEPT` the result will change based on the order of queries.
+
+# Assembling queries with subqueries
+
+To understand why we actually need subqueries let's start with an example. You have a table that includes all the products of some hyper market. What would you do if you were to write this query: List the name and price of all products that are more expensive than all products in the Toys department.
+
+You should first try to find all the products related to the Toys department and then find the highest price among them. Finally you woul have to find the products that are more expensive than that.
+
+As for the first stage, you cannot simply go through all the table rows to find out about the toy products. You might have a table with thousands of rows. You should do this using a query. So to write the query above, you should actually do it in 2 different steps: First, find the most expensive product in the toys department. Then, you would use the result of the first step in a second query where you will list all the products that have a price higher than the result of the first step. In this case, you can combine these two steps into one by using a subquery.
+
+Let's first see how we would write the two steps separately:
+
+```sql
+-- FIRST STEP
+SELECT MAX(price)
+FROM products
+WHERE department = 'Toys';
+
+-- SECOND STEP
+SELECT name, price
+FROM products
+WHERE price > (result-of-first-step);
+```
+
+Now to combine these two queries into one using a subquery, we would first write the outer query, or essentially the second one and insert the first query as a subquery where we need the actual result of the first query.
+
+```sql
+SELECT name, price
+FROM products
+WHERE price > (
+  -- THIS IS WHERE THE FIRST QUERY GOES: SUBQUERY
+  );
+```
+
+Now you can put any other queries inside the `( )`.
+
+```sql
+SELECT name, price
+FROM products
+WHERE price > (
+  SELECT MAX(price)
+  FROM products
+  WHERE department = 'Toys'
+  );
+```
