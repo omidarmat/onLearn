@@ -50,6 +50,11 @@
   - [Some rules of unions](#some-rules-of-unions)
   - [Commonalities with intersections](#commonalities-with-intersections)
 - [Assembling queries with subqueries](#assembling-queries-with-subqueries)
+  - [Subqueries in `SELECT`](#subqueries-in-select)
+  - [Subqueries in `FROM`](#subqueries-in-from)
+  - [Subqueries in `JOIN`](#subqueries-in-join)
+  - [Subqueries in `WHERE`](#subqueries-in-where)
+    - [Example](#example)
 
 # Basics of SQL
 
@@ -1070,5 +1075,244 @@ WHERE price > (
   SELECT MAX(price)
   FROM products
   WHERE department = 'Toys'
+  );
+```
+
+Understanding subqueries can be difficult since they can be used in many places in another query. But why is it hard? Because anywhere you use a subquery, you have to change the shape or type of its returned data so that it would be usable in its outer query. Some queries might produce a single value, while others will return some rows. Some of them might even produce a column. Therefore, understanding the **shape** of query result is key.
+
+Take these queries as examples:
+
+```sql
+SELECT * FROM orders
+-- Returns many rows and many columns
+
+SELECT id FROM orders
+-- Returns many rows but one column
+
+SELECT COUNT(*) FROM orders
+-- Returns one row and one column (single value) - this is also called a scalar query.
+```
+
+## Subqueries in `SELECT`
+
+If you are going to insert a subquery into a `SELECT` statement, your subquery would have to provide a single value. So any subquery that results in a single value can be inserted into the `SELECT` statement.
+
+```sql
+SELECT name, price, (subquery-result)
+```
+
+As an example:
+
+```sql
+SELECT name, price, (
+  SELECT MAX(price) FROM products
+)
+FROM products
+WHERE price > 867
+  -- This query clearly does not provide a meaningful result. It is just an example to review the rules of subqueries.
+```
+
+## Subqueries in `FROM`
+
+When using subqueries in a `FROM` statement, you can return a wide variety of different structure of data. It is all about making sure that the outer query is compatible with the subquery.
+
+Take this query as an example:
+
+```sql
+SELECT
+  name,
+  price / weight AS price_weight_ratio
+FROM
+  products;
+```
+
+This will return a table with two columns: name and price_weight_ratio. Now think about this query as being a subquery for another query like this:
+
+```sql
+SELECT name, price_weight_ratio
+-- name and price_weight_ratio are selected based on what the subquery returns
+FROM (subquery-goes-here) AS p
+-- Subqueries used in FROM statements must be followed by an alias, so you would be able to refer to them with the alias
+WHERE price_weight_ratio > 5
+-- This is a pretty simple and easy-to-understand example which could easily be written without the subquery in a real-world scenario.
+```
+
+So the final query will be like:
+
+```sql
+SELECT
+  name,
+  price_weight_ratio
+FROM
+  (
+    SELECT
+      name,
+      price / weight AS price_weight_ratio
+    FROM
+      products
+  ) AS p
+WHERE
+  price_weight_ratio > 5
+```
+
+But why would we want to use a subquery inside a `FROM` statement? To find out about it, let's go over this example: Find the average number of orders for all users. What we basically need to do is to calculate this: total number of orders divided by total number of users.
+
+To do this, we can first group the orders table by user id. This way we would know how many orders each user has. We can then use this as a subquery for another main query.
+
+```sql
+SELECT
+  user_id,
+  COUNT(*) AS order_count
+FROM
+  orders
+GROUP BY
+  user_id
+```
+
+The main query will now use this subquery like this:
+
+```sql
+SELECT
+  order_count
+FROM
+  (
+    SELECT
+      user_id,
+      COUNT(*) AS order_count
+    FROM
+      orders
+    GROUP BY
+      user_id
+  ) AS p
+```
+
+Now we are provided with a single column of values, and this means that we can now use the `AVG` aggregate function on the column.
+
+```sql
+SELECT
+  AVG(order_count)
+FROM
+  (
+    SELECT
+      user_id,
+      COUNT(*) AS order_count
+    FROM
+      orders
+    GROUP BY
+      user_id
+  ) AS p
+```
+
+> There is a way to solve this query without a subquery.
+
+## Subqueries in `JOIN`
+
+The `JOIN` clause can receive any subquery that returns a result compatible with the `ON` clause. Let's go over an example. This is a query to find all the users that have ordered product ID 3:
+
+```sql
+SELECT user_id
+FROM orders
+WHERE product_id = 3;
+```
+
+This returns a table with one column called `user_id` containing some rows. We are now going to use this query as a subquery for another query like:
+
+```sql
+SELECT first_name
+FROM users
+JOIN (subquery-compatible-with-on) AS o
+ON o.user_id = users.id
+```
+
+So the final query would be like:
+
+```sql
+SELECT
+  first_name
+FROM
+  users
+  JOIN (
+    SELECT
+      user_id
+    FROM
+      orders
+    WHERE
+      product_id = 3
+  ) AS o ON o.user_id = users.id;
+```
+
+> This example can be solved without using any subquery. It is just an example.
+
+## Subqueries in `WHERE`
+
+This probably the most useful case of using subqueries. Let's go over an example: Show the ID of orders that involve a product with a price/weight ratio greater than 5.
+
+Using subqueries inside a `WHERE` clause will require you to understand and remember how this clause works in general. The `WHERE` clause is used to filter some rows of table. There are a couple of operators that can be used inside a `WHERE` clause.
+
+The structure of data allowed to be returned by a subquery inside a `WHERE` statement changes depending on the comparison operator used.
+
+Going back to the example, we are first going to list all the products that have price/weight ration greater than 5.
+
+```sql
+ SELECT id
+ FROM products
+ WHERE price / weight > 5;
+```
+
+This returns a single column of values. This structure of data can be used inside `IN` operator within a `WHERE` statement.
+
+```sql
+SELECT id
+FROM
+  orders
+WHERE
+  product_id IN (
+    SELECT
+      id
+    FROM
+      products
+    WHERE
+      price / weight > 50;
+  );
+```
+
+So the `IN` operator can only receive a list of values, that is a single column of values.
+
+> This example could be solved using a simple `JOIN` statement.
+
+Let's give you a table so you can easily see what data structure you need to provide for each operator that you can use in a `WHERE` statement.
+
+| Operator in the `WHERE` statement | Structure of data of subquery |
+| --------------------------------- | ----------------------------- |
+| >                                 | Single value                  |
+| <                                 | Single value                  |
+| >=                                | Single value                  |
+| <=                                | Single value                  |
+| =                                 | Single value                  |
+| <> or !=                          | Single value                  |
+| IN                                | Single column                 |
+| NOT IN                            | Single column                 |
+| > ALL/SOME/ANY                    | Single column                 |
+| < ALL/SOME/ANY                    | Single column                 |
+| >= ALL/SOME/ANY                   | Single column                 |
+| <= ALL/SOME/ANY                   | Single column                 |
+| = ALL/SOME/ANY                    | Single column                 |
+| <> ALL/SOME/ANY                   | Single column                 |
+
+### Example
+
+Show the name of all products with a price greater than the average product price.
+
+```sql
+SELECT
+  name
+FROM
+  products
+WHERE
+  price > (
+    SELECT
+      AVG(price)
+    FROM
+      products
   );
 ```
