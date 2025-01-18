@@ -54,7 +54,7 @@
   - [Subqueries in `FROM`](#subqueries-in-from)
   - [Subqueries in `JOIN`](#subqueries-in-join)
   - [Subqueries in `WHERE`](#subqueries-in-where)
-    - [Example](#example)
+    - [Examples](#examples-1)
 
 # Basics of SQL
 
@@ -1299,7 +1299,7 @@ Let's give you a table so you can easily see what data structure you need to pro
 | = ALL/SOME/ANY                    | Single column                 |
 | <> ALL/SOME/ANY                   | Single column                 |
 
-### Example
+### Examples
 
 Show the name of all products with a price greater than the average product price.
 
@@ -1314,5 +1314,56 @@ WHERE
       AVG(price)
     FROM
       products
+  );
+```
+
+Let's go over another example: Show the name of all products that are not in the same department as products with a price less than 100.
+
+```sql
+SELECT
+  name, department
+FROM
+  products
+WHERE
+  department NOT IN (
+    SELECT
+      department
+    FROM
+      products
+    WHERE
+      price < 100
+  );
+```
+
+Another example: Show the name, department, and price of products that are more expensive than all products in the Industrial department. This example can be solved with different approaches, but we are now trying to use an operator in the `WHERE` statement that we have not used before, and that is `> ALL`. Remember that this operator can receive a single column of values resulting from a subquery:
+
+```sql
+SELECT name, department, price
+FROM
+  products
+WHERE
+  price > ALL (
+    SELECT
+      price
+    FROM
+      products
+    WHERE
+      department = 'Industrial'
+  );
+```
+
+Let's now go over another example where you can use the `SOME` operator to receive a subquery: Show the name of products that are more expensive than at least one product in the Industrial department.
+
+```sql
+SELECT name, department, price
+FROM
+  products
+WHERE
+  price > SOME (
+    SELECT price
+    FROM
+      products
+    WHERE
+      department = 'Industrial'
   );
 ```
