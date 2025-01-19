@@ -62,6 +62,7 @@
   - [`GREATEST` function](#greatest-function)
   - [`LEAST` function](#least-function)
   - [`CASE` keyword](#case-keyword)
+- [Postgres complex data types](#postgres-complex-data-types)
 
 # Basics of SQL
 
@@ -1529,3 +1530,5 @@ FROM
 ```
 
 > Any calculation is also possible inside the `WHEN` clause. IF your conditions are written in a way that some records don't satisfy any of them, they will be described as `null`.
+
+# Postgres complex data types
