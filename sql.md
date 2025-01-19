@@ -55,6 +55,7 @@
   - [Subqueries in `JOIN`](#subqueries-in-join)
   - [Subqueries in `WHERE`](#subqueries-in-where)
     - [Examples](#examples-1)
+  - [Correlated subquery](#correlated-subquery)
 
 # Basics of SQL
 
@@ -1367,3 +1368,26 @@ WHERE
       department = 'Industrial'
   );
 ```
+
+## Correlated subquery
+
+To understand what correlated subqueries, let's try to solve another example: Show the name, department, and price of the most expensive product in each department.
+
+```sql
+SELECT
+  name,
+  department,
+  price
+FROM
+  products AS p1
+WHERE
+  p1.price = (
+    SELECT
+    FROM
+      products as p2
+    WHERE
+      p2.department = p1.department
+  )
+```
+
+What makes this query special, is that we are using aliases for each of the `FROM` statements, so that we can refer to them in both the subquery and the main query in order to do some filtering. This means that the two queries are working in relation to each other, like a double-nested loop.
