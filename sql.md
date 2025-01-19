@@ -56,6 +56,12 @@
   - [Subqueries in `WHERE`](#subqueries-in-where)
     - [Examples](#examples-1)
   - [Correlated subquery](#correlated-subquery)
+  - [`SELECT` without a `FROM` or `JOIN`](#select-without-a-from-or-join)
+- [Selecting `DISTINCT` records](#selecting-distinct-records)
+- [Utility operators](#utility-operators)
+  - [`GREATEST` function](#greatest-function)
+  - [`LEAST` function](#least-function)
+  - [`CASE` keyword](#case-keyword)
 
 # Basics of SQL
 
@@ -1391,3 +1397,135 @@ WHERE
 ```
 
 What makes this query special, is that we are using aliases for each of the `FROM` statements, so that we can refer to them in both the subquery and the main query in order to do some filtering. This means that the two queries are working in relation to each other, like a double-nested loop.
+
+> In the subquery, you can refer to the alias introduced in the main query.
+
+Let's go over another example: Without using a join or a group by, print the number of orders for each product.
+
+```sql
+SELECT
+  p1.name,
+  (
+    SELECT
+      COUNT(*)
+    FROM
+      orders AS o1
+    WHERE
+      o1.product_id = p1.id
+  ) AS num_orders
+FROM
+  products AS p1
+```
+
+As you can see, correlated subqueries can also be used inside the `SELECT` statement.
+
+## `SELECT` without a `FROM` or `JOIN`
+
+As long as a subquery returns one single value, you can use it in a `SELECT` statement without using any `FROM` or `JOIN` afterwards. But why would you need this? Let's go over an example.
+
+```sql
+SELECT
+  (
+    SELECT
+      MAX(price)
+    FROM
+      products
+  );
+```
+
+This will give you one column with only one value which is the maximum price of all the products. Let's go over another example: Print the ratio of maximum price on minimum price.
+
+```sql
+SELECT
+  (
+    SELECT
+      MAX(price)
+    FROM
+      products
+  ) / (
+    SELECT
+      MIN(price)
+    FROM
+      products
+  );
+```
+
+You will need to use a single `SELECT` with subqueries whenever you want calculate one row of values or calculate the result of some math around some different values combined together.
+
+# Selecting `DISTINCT` records
+
+The `DISTINCT` keyword is always places inside a `SELECT` clause. `DISTINCT` will return all the different unique values inside a column.
+
+For instance, if you want to see what unique departments there are in your products table, you can use this query:
+
+```sql
+SELECT DISTINCT department
+FROM products;
+```
+
+You can also use this keyword to get the number of unique values.
+
+```sql
+SELECT COUNT(DISTINCT department)
+FROM products
+```
+
+> `DISTINCT` is similar to `GROUP BY`. You can use `GROUP BY` instead of `DISCTINCT`, but not the other way. The difference is that `GROUP BY` can use aggregate functions to take a look at values inside each of the groups.
+
+The `DISTINCT` keyword can receive more than one argument. This is useful when you need to get combined unique values. For instance, if you need to find every unique combination of department and name of your products:
+
+```sql
+SELECT DISTINCT department, name
+FROM products;
+```
+
+> When using `DISTINCT` with more than one argument, you can no longer use the `COUNT` function on it.
+
+# Utility operators
+
+## `GREATEST` function
+
+You can use the `GREATEST` function to calculate the maximum value among some given values. For instance:
+
+```sql
+SELECT GREATEST(20, 10, 30);
+```
+
+This returns `30` as result. But how would you use this on a real table? Let's go over an example: Compute the cost to ship each item in a products table. Note that shipping is the maximum of weight\*2$ or 30$.
+
+```sql
+SELECT name, weight, GREATEST(weight * 2, 30)
+FROM products;
+```
+
+## `LEAST` function
+
+You can use the `LEAST` function to calculate the minimum value among some given values.
+
+For instance, let's say all products are on sale, and their price are the least of price\*0.5 or 400$.
+
+```sql
+SELECT name, price, LEAST(price*0.5, 400)
+FROM products;
+```
+
+## `CASE` keyword
+
+Let's go over an example to understand this: Print each product and its price. Also print a description of the price, meaning that if price is heigher then 500 then print 'hight', if it is higher than 300 then print 'medium' and else, print 'cheap'.
+
+The `CASE` keyword is always used together with `WHEN` and `THEN` keywords.
+
+```sql
+SELECT
+  name,
+  price,
+  CASE
+    WHEN price > 600 THEN 'hight'
+    WHEN price > 300 THEN 'medium'
+    ELSE 'cheap'
+  END
+FROM
+  products
+```
+
+> Any calculation is also possible inside the `WHEN` clause. IF your conditions are written in a way that some records don't satisfy any of them, they will be described as `null`.
