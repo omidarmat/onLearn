@@ -63,6 +63,11 @@
   - [`LEAST` function](#least-function)
   - [`CASE` keyword](#case-keyword)
 - [Postgres complex data types](#postgres-complex-data-types)
+  - [Data types](#data-types)
+    - [Numeric types](#numeric-types)
+      - [Rules on number type](#rules-on-number-type)
+    - [Character types](#character-types)
+    - [Boolean types](#boolean-types)
 
 # Basics of SQL
 
@@ -1532,3 +1537,140 @@ FROM
 > Any calculation is also possible inside the `WHEN` clause. IF your conditions are written in a way that some records don't satisfy any of them, they will be described as `null`.
 
 # Postgres complex data types
+
+## Data types
+
+Data types determine what type of data you can store inside each table column. For instnace, a price column would probably only allow you to insert number (`INTEGER`) type.
+
+Here is a list of data type categories you can use in Postgres. There are many different sub-types in each category:
+
+- Numbers
+- Date/Time
+- Character
+- Boolean
+- Geometric
+- Currency
+- Range
+- XML
+- Binary
+- JSON
+- Arrays
+- UUID
+
+The first four categories are probably all you would have to remember to get on with Postgres.
+
+### Numeric types
+
+Here is a list of number data type category:
+
+Numbers without any decimal points:
+
+- smallint: between -32768 and +32767
+- integer: between -2147583648 and -2147583647
+- bigint
+
+Numbers without decimal points but with auto increment:
+
+- smallserial: 1 to 32767
+- serial: 1 to 2147483647
+- bigserial: 1 to ...
+
+Numbers with decimal points: Here we have 2 sub-categories again
+
+- Extreme precision:
+  - decimal: 131072 digits before decimal point, 16383 after
+  - numeric: 131072 before decimal point, 16383 after
+- Normal precision:
+  - real: 1E-37 to 1E37 with at least 6 places precision
+  - double precision: 1E-307 to 1E308 with at least 15 place precision
+  - float: same as real or double precision
+
+You can use each of these sub-type names to determine what type of value you can insert into a column cell.
+
+#### Rules on number type
+
+There 4 main rules that you need to understand:
+
+1. To define the `id` column of a table, mark the column as `SERIAL`.
+2. To store a number with no decimal points, mark the column as `INTEGER`.
+3. To store an extremely accurate number with decimals, for example for bank balances, grams of gold, or scientific calculations, mark the column as `NUMERIC`.
+4. To store a number with decimals where the number doesn't need to be scientifically accurate, for example for kilograms of trash in a landfill, liters of water in a lake, air pressure in a tire, mark the column as `DOUBLE PRECISION`.
+
+Let's now explore some detailed rules. To do this we need to execute some queries inside PGAdmin.
+
+If you go on and execute these queries, you will see that Postgres will automatically try to infer the exact type of number that you have inserted.
+
+```sql
+SELECT (2);
+-- integer
+
+SELECT(2.0);
+-- numeric
+```
+
+You can force Postgres to treat your value in a differnt way using the `::` operator.
+
+```sql
+SELECT (2.0::INTEGER);
+```
+
+Now postgres will follow your command and assign `integer` type to a value which previously was considered `numeric`.
+
+Now try this query:
+
+```sql
+SELECT (2.0::SMALLINT);
+```
+
+Postgres will now treat your value as a small integer and convert it accordingly to `2` with no decimal point as `smallint`.
+
+Inserting a value that is out of range for a specific type would result in error:
+
+```sql
+SELECT (999999::SMALLINT);
+-- ERROR:  smallint out of range
+```
+
+Let's now explore some rules around decimals. Take this query as an example:
+
+```sql
+SELECT (1.99999::REAL - 1.99998::REAL);
+-- returns 0.00001001358 (!)
+```
+
+You would normally expect the result to be `0.00001`. But what you actually get is different: `0.00001001358`. Why? Because Postgres, treats `REAL`, `DOUBLE PRECISION`, and `FLOAT` with floating point math. This kind of calculations are notorious for being womewhat inaccurate. However, since they are very efficient and fast for running calculations, they are used when you don't need extreme precision in your numeric values. Now to calculate the query precisely:
+
+```sql
+SELECT (1.99999::DECIMAL - 1.99998::DECIMAL);
+SELECT (1.99999::numeric - 1.99998::numeric);
+-- both return 0.00001
+```
+
+### Character types
+
+Here is a list of data types of character category:
+
+- To store a fixed length of 5 (or any other length) characters, mark the column as `CHAR(5)`. If a string with longer length is provided, Postgres will trim characters until it reaches the length of 5. If a string with shorter length is provided, Postgres will insert spaces to the right side until it reches the correct length.
+- To insert any length of string, mark the column as `VARCHAR`.
+- To insert a fixed length of 40 (or any other length) characters, mark the column as `VARCHAR(40)`. Works similar to `CHAR(40)`
+- To store any length of string, mark the column as `TEXT`.
+
+Take this query as an example:
+
+```sql
+SELECT ('alksjdhfgkwshegdf'::CHAR(3))
+-- returns 'alk'
+
+SELECT ('a'::CHAR(3))
+-- returns 'a  '
+
+SELECT ('asdfgsdfgsdfdfgsxdfg'::VARCHAR(5))
+-- returns 'asdfg'
+
+SELECT ('asdfgsdfgsdfdfgsasdfgsdfgsdfgadfsfgasdfgadfgxdfg'::TEXT)
+-- returns 'asdfgsdfgsdfdfgsasdfgsdfgsdfgadfsfgasdfgadfgxdfg'
+```
+
+> There is no performance difference between these difference character types, which is unlike other databases. Just use the type that suits the needs of your application. Adding character length limit will not change anything regarding the performance, it is just a layer of data validation before it gets inserted into the database.
+
+### Boolean types
