@@ -68,6 +68,19 @@
       - [Rules on number type](#rules-on-number-type)
     - [Character types](#character-types)
     - [Boolean types](#boolean-types)
+    - [Date/time types](#datetime-types)
+      - [Calculations with date and time](#calculations-with-date-and-time)
+- [Database-side validation and constraints](#database-side-validation-and-constraints)
+  - [Row-level validation](#row-level-validation)
+    - [Applying null constraint](#applying-null-constraint)
+    - [Default column values](#default-column-values)
+    - [Appylying unique constraint](#appylying-unique-constraint)
+      - [Multi-column uniqueness](#multi-column-uniqueness)
+    - [Droping constraints](#droping-constraints)
+    - [Adding validation check](#adding-validation-check)
+      - [Checks over multiple columns](#checks-over-multiple-columns)
+- [Database structure design patterns](#database-structure-design-patterns)
+  - [Building some schema](#building-some-schema)
 
 # Basics of SQL
 
@@ -1674,3 +1687,396 @@ SELECT ('asdfgsdfgsdfdfgsasdfgsdfgsdfgadfsfgasdfgadfgxdfg'::TEXT)
 > There is no performance difference between these difference character types, which is unlike other databases. Just use the type that suits the needs of your application. Adding character length limit will not change anything regarding the performance, it is just a layer of data validation before it gets inserted into the database.
 
 ### Boolean types
+
+When we talk about booleans, we are only talking about `true`, `false` and `null`. But we can also set some special values and tell Postgres to treat them as boolean. It will basically convert them into true or false.
+
+You can provide a string of `yes` to Postgres and tell it to treat it as true. For instance, take the query below as an example:
+
+```sql
+SELECT ('yes'::BOOLEAN)
+-- returns true as boolean
+
+SELECT ('y'::BOOLEAN)
+-- returns true as boolean
+
+SELECT ('on'::BOOLEAN)
+-- returns true as boolean
+
+
+SELECT (1::BOOLEAN)
+-- returns true as boolean
+
+SELECT ('no'::BOOLEAN)
+-- returns false as boolean
+
+SELECT ('n'::BOOLEAN)
+-- returns false as boolean
+
+SELECT ('off'::BOOLEAN)
+-- returns false as boolean
+
+SELECT (0::BOOLEAN)
+-- returns false as boolean
+```
+
+Storing `null` in a boolean typed cell, just means that there is no data. It is still boolean, but it is neither true nor false.
+
+### Date/time types
+
+Postgres can store date, time, time of timezones, and timestamps. Postgres is perfectly flexible. You can provide Postgres with various formats of strings and it would be translated into a date or time format. Take the examples below:
+
+```sql
+SELECT ('NOV-20-1980'::DATE);
+-- returns 1980-11-20 as date
+
+SELECT ('NOV 20 1980'::DATE);
+-- returns 1980-11-20 as date
+
+SELECT ('NOV 20, 1980'::DATE);
+-- returns 1980-11-20 as date
+
+SELECT ('1980 NOV 20'::DATE);
+-- returns 1980-11-20 as date
+```
+
+Here are some examples to store time values with no time zone:
+
+```sql
+SELECT ('01:23'::TIME);
+-- returns 01:23:00 as time without time zone
+
+SELECT ('01:23 PM'::TIME);
+-- returns 13:23:00 as time without time zone
+
+SELECT ('01:23 PM'::TIME WITHOUT TIME ZONE);
+-- you can explicitely determine the type of time format
+
+SELECT ('01:23:30 PM'::TIME);
+-- returns 13:23:30
+```
+
+To use time with time zone you would have to determine the name of the time zone in the string that you provide. Postgres will then convert your time to UTC value. So take these examples:
+
+```sql
+SELECT ('01:23:30 AM EST'::TIME WITH TIME ZONE);
+-- returns 01:23:30-05:00 as time with time zone
+
+SELECT ('01:23:30 AM PST'::TIME WITH TIME ZONE);
+-- returns 01:23:30-08:00 as time with time zone
+
+SELECT ('01:23:30 AM z'::TIME WITH TIME ZONE);
+-- returns 01:23:30+00:00 (z is UTC) as time with time zone
+
+SELECT ('01:23:30 AM utc'::TIME WITH TIME ZONE);
+-- returns 01:23:30+00:00  as time with time zone
+```
+
+You can also store timestamp with or without a time zone attached to it. You can provide a string containing a date in any format and a time in any format and, optionally, a time zone. See examples below:
+
+```sql
+SELECT ('NOV-20-1980 1:23 AM PST'::TIMESTAMP WITH TIME ZONE);
+-- returns 1980-11-20 12:53:00+03:30 as timestamp with time zone
+```
+
+#### Calculations with date and time
+
+Postgres has many built-in functions to perform calculations on date and time values. There is actually a data type in Postgres called `INTERVAL`. It can hold the date/time duration between two date/time values.
+
+```sql
+SELECT ('1 day'::INTERVAL);
+-- returns 1 day as interval
+
+SELECT ('1 D 20 H'::INTERVAL);
+-- returns 1 day 20:00:00 as interval
+```
+
+But this is not useful by itself. It only becomes useful when you can calculate durations.
+
+```sql
+SELECT ('1 D 20 H'::INTERVAL) - ('1 D'::INTERVAL)
+-- returns 20:00:00
+
+SELECT
+	('NOV-20-1980 1:23 AM EST'::TIMESTAMP WITH TIME ZONE)
+	-
+	('1 D'::INTERVAL)
+  -- returns 1980-11-19 09:53:00+03:30 as timestamp with time zone
+
+  SELECT
+	('NOV-20-1980 1:23 AM EST'::TIMESTAMP WITH TIME ZONE)
+	-
+	('NOV-10-1980 1:23 AM EST'::TIMESTAMP WITH TIME ZONE)
+  -- (same time zones) returns 10 days as interval
+
+  SELECT
+	('NOV-20-1980 1:23 AM EST'::TIMESTAMP WITH TIME ZONE)
+	-
+	('NOV-10-1980 5:43 AM PST'::TIMESTAMP WITH TIME ZONE)
+  -- (different time zones) returns 9 days 16:40:00 as interval
+```
+
+# Database-side validation and constraints
+
+When a user sends some data to the server to be stored on the database, there should be some validation process on the way in order to prevent not relevant values or types to be inserted into the database. For instance, the price of a product can never have a negative value, or some fields are strictly required and cannot be left empty. There are some solutions for this. In some situations you can do validations on the back-end (server) while in others you may do it directly inside the database. This was the first scenario. The second scenario is a bit different.
+
+Imagine the company doesn't have the required resources to create a user interface and web server to power it. So data would have to be inserted directly into the database by an admin user. Now that data validation should be performed by the database itself. Postgres has a way of implementing data validation.
+
+So, where should you implement validations eventually? The best approach is to spread validations accross all three. There are benefits for doing it in both:
+
+| Web server                                        | Database                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------- |
+| Easier to express more complex validation         | Validation still applied even if you connect with a different client |
+| Far easier to apply new validation rules          | Guaranteed that validation is always applied                         |
+| Many libraries to handle validation automatically | Can only apply new validation rules if all existing rows satisfy it  |
+
+## Row-level validation
+
+Row-level validation is done when a record is inserted into a table. Here is a list of things we can check for when a row is being inserted or updated in a table:
+
+- Is a given value defined?
+- Is a value unique in its column?
+- Is a value `>`, `<`, `>=` or `<=` sine other value?
+
+All the examples and solutions mentioned in this section are applied in PGAdmin software.
+
+### Applying null constraint
+
+As an example, we create a table for products with id, name, price and weight as columns.
+
+```sql
+CREATE TABLE products (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40),
+	department VARCHAR(40),
+	price INTEGER,
+	weight INTEGER
+);
+```
+
+Now as you try to insert a row into this database like below, without defining the product's price, you will see that Postgres will simply accept your insertion and put `null` for the product's price in the table.
+
+```sql
+INSERT INTO products (name, department, weight)
+VALUES
+	('Pants', 'CLothes', 3);
+```
+
+But we now want to apply a null constraint so as to prevent such behavior for a value that we don't want to be left undefined. There are 2 ways to apply this constraint:
+
+1. You can update the create table statement: mark your required column as `NOT NULL`.
+
+```sql
+CREATE TABLE products (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40),
+	department VARCHAR(40),
+	price INTEGER NOT NULL,
+	weight INTEGER
+);
+```
+
+2. You can update a table that was created previously, using `ALTER` and `SET` command:
+
+```sql
+ALTER TABLE products
+ALTER COLUMN price
+SET NOT NULL;
+```
+
+There is a gotcha around this approach. When you are using this command to update the configuration of a previously created table, you will end up in an error if the target column already has null values inserted into it. The error would say: "column "price" of relation "products" contains null values". In this situations there are two options:
+
+1. Find all the rows that have `null` for the target column and delete them. Then, you can run the command above.
+2. Fina all the rows that have `null` for the target column and change their null to something else, like `99999` or anything special that will remind you that you need to update them with real data.
+
+As for the second approach, you can use the query below to update the null values for the price column:
+
+```sql
+UPDATE products
+SET price = 9999
+WHERE price IS NULL;
+```
+
+> Note that you cannot write `WHERE price = NULL` to find the null prices. To check this, you need to use the `IS` operator.
+
+You can now run the command above to update the null constraint on the table. Now you will no longer be able to leave the price field empty as you insert a row into the table:
+
+```sql
+INSERT INTO products (name, department, weight)
+VALUES
+	('Shoes', 'Clothes', 5);
+  -- returns an error: violates not-null constraint
+```
+
+### Default column values
+
+In some situations, the user/admin might not really know what value they should insert for a specific column. Nevertheless, the column should not be left with a null value. So you would have to set a default value for the columns that are required, but the user/admin might not always know what to insert. To set default values for a column you have two options:
+
+1. You can update the create table statement: mark your required column as `DEFAULT` with a value:
+
+```sql
+CREATE TABLE products (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40),
+	department VARCHAR(40),
+	price INTEGER DEFAULT 999,
+	weight INTEGER,
+);
+```
+
+2. You can update a previously created table using the `ALTER` and `SET` command:
+
+```sql
+ALTER TABLE products
+ALTER COLUMN price
+SET DEFAULT 999;
+```
+
+You can now insert a row into the table without having to provide a value for the price column, as it would contain `999` instead of `null`.
+
+### Appylying unique constraint
+
+If you need the values of a specific column of a table to be unique, you can set this constraint for your table. For instance, you might need to have unique names for the product tables. Again you can do this in two situations:
+
+1. You can update the create table statement: marke the target column as `UNIQUE`:
+
+```sql
+CREATE TABLE products (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40) UNIQUE,
+	department VARCHAR(40),
+	price INTEGER,
+	weight INTEGER,
+);
+```
+
+2. You can update a previously created table using the `ALTER` and `ADD` command:
+
+```sql
+ALTER TABLE products
+ADD UNIQUE (name);
+```
+
+There is a gotcha around this commnad. You cannot execute this command unless all values inside the target column are already unique. So if you have duplicate values inside the target column, you would have to clean them up beforehand, otherwise you would end up in an error.
+
+#### Multi-column uniqueness
+
+You may want all the products in your table to have a unique combination of names and departments.
+
+```sql
+ALTER TABLE products
+ADD UNIQUE (name, department);
+```
+
+### Droping constraints
+
+In order to drop a constraint applied to your table, you can use the `DROP CONSTRAINT` command followed by the constraint name. You can find the constraint name by looking into the _Constraints_ section of your table inside PGAdmin.
+
+```sql
+ALTER TABLE products
+DROP CONSTRAINT products_name_key;
+```
+
+> To see the updated list of your table constraints in PGAdmin, you would have to refresh your table in the Object Explorer panel.
+
+### Adding validation check
+
+When a value is inserted or updated, you can validate if the value is `>`, `>=`, `<`, `<=` than another value. For instance, to prevent the value of a column from being negative, you can add the proper validation. Again, there are two options:
+
+1. You can update the create table statement: mark the target column with `CHECK` along with some validation inside `( )`.
+
+```sql
+CREATE TABLE products (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40) UNIQUE,
+	department VARCHAR(40),
+	price INTEGER CHECK (price > 0),
+	weight INTEGER,
+);
+```
+
+2. You can update a previously created table using the `ALTER` and `ADD` command:
+
+```sql
+ALTER TABLE products
+ADD CHECK (price > 0);
+```
+
+There is a gotcha around this command. It only works when you are adding or updating a row. It does not act on already existing rows.
+
+#### Checks over multiple columns
+
+This is when your validation check involves the value inside more than one single column. To apply this kind of check at the time of creating a table:
+
+```sql
+CREATE TABLE orders (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(40) NOT NULL,
+	created_at TIMESTAMP NOT NULL,
+	est_delivery TIMESTAMP NOT NULL,
+	CHECK (created_at < est_delivery)
+);
+```
+
+With this validation check, this query will work fine:
+
+```sql
+INSERT INTO orders (name, created_at, est_delivery)
+VALUES
+	('Shirt', '2000-NOV-20 01:00AM', '2000-NOV-25 01:00AM')
+```
+
+But this one won't work:
+
+```sql
+INSERT INTO orders (name, created_at, est_delivery)
+VALUES
+	('Shirt', '2000-NOV-20 01:00AM', '2000-NOV-10 01:00AM')
+  -- est_deliver is not greater than created_at time.
+```
+
+# Database structure design patterns
+
+From now on we are going to use some more advanced featrues that require more complicated database structure and schema to work. This means that we are going to work with a lot more data and more tables. You are now going to decide how many tables you should create, how they would be related, define columns and data types for the columns.
+
+When working with many tables in a database, it is challenging to keep the structure/name of them in your head. So it is nice to document your database structure somehow. For this, you can use a **schema designer** to help guide your design.
+
+Here is a list of schema designer software you can use:
+
+1. dbdiagram.io
+2. drawsql.app
+3. sqldbm.com
+4. quickdatabasediagrams.com
+5. ondras.zarovi.cz/sql/demo
+
+In this section of this tutorial we are going to simulate the database structure of Instagram.
+
+## Building some schema
+
+You can use the code below to create your diagrams in dbdiagram.io web application.
+
+```
+Table users {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  username VARCHAR(30)
+}
+
+Table posts {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  url VARCHAR(200)
+  user_id INTEGER [ref: > users.id]
+}
+
+Table comments {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  contents VARCHAR(240)
+  user_id INTEGER [ref: > users.id]
+  post_id INTEGER [ref: > post.id]
+
+}
+```
