@@ -81,6 +81,18 @@
       - [Checks over multiple columns](#checks-over-multiple-columns)
 - [Database structure design patterns](#database-structure-design-patterns)
   - [Building some schema](#building-some-schema)
+  - [Going through a real-wold example](#going-through-a-real-wold-example)
+    - [How to build a like system](#how-to-build-a-like-system)
+      - [How not to design a like system](#how-not-to-design-a-like-system)
+      - [Designing a like system](#designing-a-like-system)
+        - [Polymorphic associations](#polymorphic-associations)
+        - [Alternative design](#alternative-design)
+        - [Easier alternative](#easier-alternative)
+        - [Conclusion](#conclusion)
+    - [How to build a mention system](#how-to-build-a-mention-system)
+      - [One table for both](#one-table-for-both)
+      - [Separate tables](#separate-tables)
+      - [Conclusion](#conclusion-1)
 
 # Basics of SQL
 
@@ -2054,7 +2066,7 @@ In this section of this tutorial we are going to simulate the database structure
 
 You can use the code below to create your diagrams in dbdiagram.io web application.
 
-```
+```sql
 Table users {
   id SERIAL [pk, increment]
   created_at TIMESTAMP
@@ -2078,5 +2090,187 @@ Table comments {
   user_id INTEGER [ref: > users.id]
   post_id INTEGER [ref: > post.id]
 
+}
+```
+
+## Going through a real-wold example
+
+### How to build a like system
+
+Here are some rules around likes:
+
+1. Each user can like a specific post a single time
+2. A user should be able to unlike a post
+3. Need to be able to figure out how many users like post
+4. Need to be able to list which users like a post
+5. Something besides a post might need to be liked (comments, maybe?)
+6. We might want to think about dislikes or other kinds of reactions
+
+#### How not to design a like system
+
+You should not add a `likes` column to the posts table. This way you would have these problems:
+
+- No way to make sure a user likes a post only once
+- No way to make sure a user can only unlike a post they have liked
+- No way to figure out which users like a post
+- No way to remove a like if a user gets deleted
+
+Overall, we would have no idea who liked what and this is not good!
+
+#### Designing a like system
+
+It is the best practice to have a table of likes, including `id`, `user_id`, and `post_id` columns. It is extremely important to note that within this table, we must have unique combinations of `user_id` and `post_id` so that each user can only like a post once. It means that the table would have to be limited to a `UNIQUE(user_id, post_id)` constraint.
+
+This design also works fine for a favorites or a bookmarks table. It would basically mean the same thing, although they are different features.
+
+However, this design has its limits too:
+
+- You cannot define different kinds of reactions, such as dislike, sad about or stuff like that.
+- You cannot implement a feature where a comment could be liked. Right now only a post can be liked.
+
+So to adjust the design above to account for the mentioned limitations, you can implement a table called reactions including `id`, `user_id`, `post_id`, and `type`. The type column can contain a limited variation of values which could be strings as `like`, `love`, `care`, `funny` and `sad`. Postgres has a special data type to make sure values inserted into this column will always be one of these, and that is **enum**.
+
+Now to address the option for users to be able to like a post or a comment. Let's try three solutions here.
+
+##### Polymorphic associations
+
+Polymorphic associations are generally not recommended, but they are still in use in some applications you will work on.
+
+With this approach you will implement a table for likes that includes `id`, `user_id`, `liked_id` and `liked_type`. The `liked_type` will either contain `post` or `comment` string values in it. But there is a huge problem with this.
+
+Remember the concept of **data consistency** that we talked about when discussing foreign keys? When you implement a `post_id` in a likes table, you are actually defining the column as containing the foreign key relating to a specific row in the posts table. So when you insert a row in the likes table with a particular `post_id`, Postgres will first look into the posts table to see if a post with that ID actually exists. But with the `liked_id` column that we implemented in our recent design we cannot define up front to which table the foreign key is actually relating to: posts or comments? We cannot know until a row is already recorded into the table. So we cannot apply the foreign key definition to the `liked_id` column when creating the table, it would just be a simple integer column. Without foreign keys, we lose data consisitency. This is not good. We should think of another design.
+
+> Ruby on Rails projects make use of polymorphic associations like this a descent amount!
+
+##### Alternative design
+
+We could have a likes table which includes these columns: `id`, `user_id`, `post_id`, `comment_id`. Now when a like is attached to a post, the post ID wil be inserted and the comment id will be left `NULL` and vice versa. Note that both `post_id` and `comment_id` columns will be foreign keys relating to the posts and comments table respectively.
+
+We might want to add a little bit of validation when a record is being inserted into this likes table. We can make sure either a post or a comment ID is defined in the record. We can also check for situations when both post and comment ID columns are filled with foreign key data in one single record. We can also check if both are left empty. This design gives us the ability to check all these scenarios. However, writing a check for these scenarios is a bit difficult:
+
+```sql
+Add CHECK of
+(
+  COALESCE((post_id)::BOOLEAN::INTEGER, 0)
+  +
+  COALESCE((comment_id)::BOOLEAN::INTEGER, 0)
+) = 1
+```
+
+The `COALESCE` function receives two arguments and returns the first non-null value between them.
+
+So the downside to this approach is that if later we are going to allow a user to like many more things, we would have trouble adding them to the table and validate record entries.
+
+##### Easier alternative
+
+It is a lot easier to create a couple of tables. A tables called `posts_likes` and another one called `comments_likes`. The first would include `id`, `user_id` and `post_id`, and the second one would include `id`, `user_id` and `comment_id`.
+
+This is the most straight forward solution. This way we can add more tables if we would like to make users able to like other things than posts and comments. Data consistency is fully considered also.
+
+The downside to this approach is that if you ever want to write a query where you will aggregate all the different kinds of likes inside the application, you would have to use a **union** or a **view** (We will talk about views later).
+
+##### Conclusion
+
+The second approach might be the optimal solution to this problem. We don't really need to create different tables for likes on posts and likes on comments, because there is no additional information in one compared to the other. Liking a post and a comment are pretty similar to each other; They are actually the same.
+
+Let's now implement the design:
+
+```sql
+Table users {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  username VARCHAR(30)
+}
+
+Table posts {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  url VARCHAR(200)
+  user_id INTEGER [ref: > users.id]
+}
+
+Table comments {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  contents VARCHAR(240)
+  user_id INTEGER [ref: > users.id]
+  post_id INTEGER [ref: > post.id]
+}
+
+<!-- THE FINAL APPROACH TO LIKES -->
+Table likes {
+  id SERIAL  [pk, increment]
+  created_at TIMESTAMP
+  user_id INTEGER [ref: > users.id]
+  comment_id INTEGER [ref: > comments.id]
+  post_id INTEGER [ref: > posts.id]
+}
+```
+
+### How to build a mention system
+
+As an intermediary step, let's make the posts able to receive captions and location coordinates. So we would simply have to add some columns to the posts table.
+
+```sql
+Table posts {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  url VARCHAR(200)
+  user_id INTEGER [ref: > users.id]
+  caption VARCHAR(240)
+  lat REAL
+  lng REAL
+}
+```
+
+> The `REAL` type is numeric type with decimals. With this type, you are not guaranteed to have an absolutely precise number, but you will have precision at the level of 6 decimal digits. over that, Postgres will start to round off the value. For string location coordinates, this is probably enough as for data accuracy.
+
+Now about the mention or tag system, we are going to consider two types of tags:
+
+1. Tag on a photo: tagging a user on a photo requires us to store 3 piece of data related to this kind of tag. First, the username that was tagged, and then the point on the photo to which the tag is attached. So we would need the `user_id`, `x` and `y` in a tags table.
+2. Tag in a post caption: Tags in post caption usually initiate with a `@` symbol and is highlighted. But this does not mean that we necessarily need to store something in our database. Highlighting a mention in a post caption is something that can be done easily on the front-end. But if any of the situations below are going to happen, you might need to store some data about this kind of tag in your database:
+
+- Need to show a list of posts a user was mentioned in?
+- Need to show a list of the most-often mentioned users?
+- Need to notify a user when they have been mentioned?
+
+It might seem that the two types of tags are very different. But thinking twice about it, they are actually very similar! In both situations, we are actually tag a user to a post. Their behavior is pretty similar.
+
+#### One table for both
+
+In this approach, we would create a table that includes both photo tags and caption tags. This table will have `id`, `user_id`, `post_id`, `x`, `y` columns, where for photo tags, columns `x` and `y` will contain numeric values, while in captions tags they are left `NULL`.
+
+#### Separate tables
+
+In this approach we would have a `photo_tags` table and a `caption_tags` table.
+
+#### Conclusion
+
+To decide between the two solutions, let's consider these:
+
+- Do you expect to query for caption tags and photo tags at different rates? If that is the case, you might need to split the two tags in separate tables.
+- Will the meaning of a photo tag change at some point? If a tag is likely to change its functionality over time, you might need to store it in a separate table. For instance, if the tag will receive likes in future.
+
+So let's go with the second solution:
+
+```sql
+Table photo_tags {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  post_id INTEGER [ref: > posts.id]
+  user_id INTEGER [ref: > users.id]
+  x INTEGER
+  y INTEGER
+}
+
+Table caption_tags {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  user_id INTEGER [ref: > users.id]
 }
 ```
