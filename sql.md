@@ -93,6 +93,16 @@
       - [One table for both](#one-table-for-both)
       - [Separate tables](#separate-tables)
       - [Conclusion](#conclusion-1)
+    - [How to build a hashtag system](#how-to-build-a-hashtag-system)
+    - [How to build a follower system](#how-to-build-a-follower-system)
+- [Implementing Design in Postgres](#implementing-design-in-postgres)
+  - [Creating tables with checks](#creating-tables-with-checks)
+    - [Creating the users table](#creating-the-users-table)
+    - [Creating the posts table](#creating-the-posts-table)
+    - [Creating the comments table](#creating-the-comments-table)
+    - [Creating the likes table](#creating-the-likes-table)
+    - [Creating the photo tags and caption tags tables](#creating-the-photo-tags-and-caption-tags-tables)
+    - [Creaing the hashtags table](#creaing-the-hashtags-table)
 
 # Basics of SQL
 
@@ -2072,6 +2082,13 @@ Table users {
   created_at TIMESTAMP
   updated_at TIMESTAMP
   username VARCHAR(30)
+  bio VARCHAR(400)
+  avatar VARCHAR(200)
+  phone VARCHAR(25)
+  email VARCHAR(40)
+  password VARCHAR(50)
+  status VARCHAR(15)
+  -- status field might need to be changed to enum type
 }
 
 Table posts {
@@ -2093,6 +2110,20 @@ Table comments {
 }
 ```
 
+> Note that we are not storing data about a user's number of posts, number of followers and number of followings. We are not going to create a column in the users table to store a number representing these amounts. Whenever you need some data that can be calculated based on the exisiting data in a database (this is called **Derived Data**), you usually don't create a column in a table to store derived data. When you need the data, you send a query to the database to calculate it right away.
+>
+> In this situation we have a users table, a posts table including a `user_id` column that points to specific users, and a `followers` table with a `user_id` column pointing to specific users. You can then use the queries below to count the number of posts and followers related to a specific user, for example user with ID 123. We will implement the following system at the end of this section.
+
+```sql
+SELECT COUNT(*)
+FROM posts
+WHERE user_id = 123;
+
+SELECT COUNT(*)
+FROM followers
+WHERE user_id = 123;
+```
+
 ## Going through a real-wold example
 
 ### How to build a like system
@@ -2108,7 +2139,7 @@ Here are some rules around likes:
 
 #### How not to design a like system
 
-You should not add a `likes` column to the posts table. This way you would have these problems:
+You should not add a `likes` column to the posts table. way you would have these problems:
 
 - No way to make sure a user likes a post only once
 - No way to make sure a user can only unlike a post they have liked
@@ -2274,3 +2305,233 @@ Table caption_tags {
   user_id INTEGER [ref: > users.id]
 }
 ```
+
+### How to build a hashtag system
+
+Hashtags can be inserted into photo captions, comments, and profile biographies. One solution might be to create a table for hashtags in each, so `hashtags_posts`, `hashtags_comments`, `hashtags_users` tables. The post hashtags table would contain `id`, `title` and `post_id` columns and so on.
+
+We could also implement a polymorphic association pattern and combine the three tables in one. Again to decide between these two solutions, you might ask yourself: Do you expect to run a query to see what posts/comments/users contain a given hashtag? If yes, then the first solution is fine.
+
+We know that hastags are used only in the search feature. There you can search hastags and what you get back is a list of posts that contain that hashtag. So a hashtag is only useful for seaching posts with that hashtag, and not comments or user profiles that have used the hashtag.
+
+So we need the `hashtag_posts` table, but we don't need the two tables `hashtags_comments` and `hashtags_users` separately. We can just get rid of them in our design.
+
+To model the relationship between a hashtag and a post, we can do it in 2 ways:
+
+1. A hashtags table containing `id`, `title`, `post_id` columns. This works fine, but for performance reasons, there might be a better way. In this first solution, we are very likely to end up with a table containing a lot of duplicates values in the `title` column. This will cause us to use up more storage space.
+2. A table for hashtags including `id` and `title`. Another table containing posts, and another table connecting the two resources called `hashtags_posts` including `id`, `hashtag_id` and `post_id`. This third table is called a **join table**. In this second solution, we will also have duplicate IDs in the `hashtag_id` column but it will use a lot less storage space as an integer takes up much less space in storage.
+
+Let's now implement the design:
+
+```sql
+Table hashtags {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  title VARCHAR(20)
+}
+
+Table hashtags_posts {
+  id SERIAL [pk, increment]
+  hashtag_id INTEGER [ref: > hashtags.id]
+  post_id INTEGER [ref: > posts.id]
+}
+```
+
+### How to build a follower system
+
+There are generally two main rules around a follower system.
+
+1. Each user can follow another user only once.
+2. No user can follow themselves.
+
+To implement a follower system, we create a table containing `id`, `user_id` and `follower_id` columns. `user_id` points to the user who is being followed. In this table, we have to implement this check:
+
+```sql
+CHECK (user_id != follower_id)
+```
+
+You can also check if a user follows another user only once:
+
+```sql
+UNIQUE(user_id, follower_id)
+```
+
+Remember to name the columns properly so that it would be understood easily. `user_id` might better be replaced by `followed_id` or anything else.
+
+Let's now implement the followers table design:
+
+```sql
+Table followers {
+  id SERIAL [pk, increment]
+  created_at TIMESTAMP
+  followed_id INTEGER [ref: > users.id]
+  follower_id INTEGER [ref: > users.id]
+}
+```
+
+# Implementing Design in Postgres
+
+## Creating tables with checks
+
+### Creating the users table
+
+We are now going to create the users table. You can use the query below:
+
+```sql
+ CREATE TABLE users (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	username VARCHAR(30) NOT NULL,
+	bio VARCHAR(400),
+	avatar VARCHAR(200),
+	phone VARCHAR(25),
+	email VARCHAR(40),
+	password VARCHAR(50),
+	status VARCHAR(15),
+	CHECK(COALESCE(phone, email) IS NOT NULL)
+)
+```
+
+Note that `CURRENT_TIMESTAMP` is a Postgres reserved variable name which holds the value of the current timestamp and we have provided it as a default value of `created_at` column if the value is not provided by the client who is creating the user row.
+
+Also note that the `CHECK` at the end is making sure that at least one of the fields (phone or email) is provided with a value and not both of them are left null.
+
+> Reminder: `NOT NULL` means that a value must be provided (empty strings are values).
+>
+> Reminder: `DEFAULT` means provide a default value if an `INSERT` statement does not give one.
+>
+> Note: If it does not matter if a value exists, you don't need to mark `NOT NULL` or provide `DEFAULT`.
+>
+> Note: When you always want a value but it should be optional, you can apply both `NOT NULL` and `DEFAULT`.
+
+### Creating the posts table
+
+You can use the query below to create the posts table:
+
+```sql
+CREATE TABLE posts (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	url VARCHAR(200) NOT NULL,
+	caption VARCHAR(240),
+	lat REAL CHECK(lat IS NULL OR (lat >= -90 AND lat <= 90)),
+	lng REAL CHECK(lat IS NULL OR (lat >= -180 AND lat <= 180)),
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+> Note that valid values of geographic latitude can go between -90 and 90. Valid values for geographic longitude go between -180 and 180.
+
+> Reminder: If rules around validating a value might change frequently, you don't need to add database-level validation. Also, if rules around validating the values are complex, you had better implement them on the server application. However, if you want to make sure we have the right type or domain of values, you can use database-level validation. This is what we are doing for the `lat` and `lng` columns.
+>
+> Reminder: `ON DELETE CASCADE` makes sure if a user is deleted from the database, all posts related to that user will be deleted also.
+
+### Creating the comments table
+
+Here is the query to create the comments table:
+
+```sql
+CREATE TABLE comments (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	contents VARCHAR(240) NOT NULL,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE
+)
+```
+
+### Creating the likes table
+
+Here is the query to create the likes table:
+
+```sql
+CREATE TABLE likes (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+	comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+	CHECK(
+		COALESCE((post_id)::BOOLEAN::INTEGER, 0)
+		+
+		COALESCE((comment_id)::BOOLEAN::INTEGER, 0)
+		= 1
+	),
+	UNIQUE(user_id, post_id, comment_id)
+)
+```
+
+> Question: what is this check doing differently than the check I implemented in the users table?
+
+### Creating the photo tags and caption tags tables
+
+To create the photo tags table you can use this query:
+
+```sql
+CREATE TABLE photo_tags (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+	x INTEGER NOT NULL,
+	y INTEGER NOT NULL,
+	UNIQUE (user_id, post_id)
+)
+```
+
+> Reminder: the `UNIQUE` check is making sure that a user gets tagged only once in a single post.
+
+To create the caption tags table you can use this query:
+
+```sql
+CREATE TABLE caption_tags (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+	UNIQUE (user_id, post_id)
+)
+```
+
+### Creaing the hashtags table
+
+To create a table for hashtags you can do this:
+
+```sql
+CREATE TABLE hashtags (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	title VARCHAR(20) NOT NULL UNIQUE
+)
+```
+
+To create a table for post hashtags you can do this:
+
+```sql
+CREATE TABLE hashtags_posts (
+	id SERIAL PRIMARY KEY,
+	hashtag_id INTEGER REFERENCES hashtags(id) ON DELETE CASCADE,
+	post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  UNIQUE(hashtag_id, post_id)
+)
+```
+
+> The `UNIQUE` check is making sure a hashtag will be recorded only once on a single post.
+
+To create the table for followers you can do this:
+
+```sql
+CREATE TABLE followers (
+	id SERIAL PRIMARY KEY,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	leader_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	UNIQUE(leader_id, follower_id)
+)
+```
+
+> The `UNIQUE` check is making sure a user can follow another user only once.
