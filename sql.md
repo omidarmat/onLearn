@@ -103,6 +103,10 @@
     - [Creating the likes table](#creating-the-likes-table)
     - [Creating the photo tags and caption tags tables](#creating-the-photo-tags-and-caption-tags-tables)
     - [Creaing the hashtags table](#creaing-the-hashtags-table)
+- [Managing the database](#managing-the-database)
+  - [Inserting data from a backup file](#inserting-data-from-a-backup-file)
+  - [Restoring a database if accidentally deleted](#restoring-a-database-if-accidentally-deleted)
+- [Understanding the internals of Postgres](#understanding-the-internals-of-postgres)
 
 # Basics of SQL
 
@@ -2535,3 +2539,21 @@ CREATE TABLE followers (
 ```
 
 > The `UNIQUE` check is making sure a user can follow another user only once.
+
+# Managing the database
+
+## Inserting data from a backup file
+
+Let's first insert a lot of fake data into our implemented database design.
+
+A backup file compatible with Postgres and PGAdmin usually has the `.sql` file extension. In order to insert this file into our implemented tables, you need to right-click on the database, click on `restore`, then locate and select the file, then turn on the options below:
+
+1. Data options: type of objects: only data (on)
+2. Data options: do not save: owner (on)
+3. Query options: single transaction (on)
+4. Options: disable: triggers (on)
+5. Options: miscellaneous / behavior: verbose messages (on)
+
+## Restoring a database if accidentally deleted
+
+# Understanding the internals of Postgres
