@@ -114,6 +114,9 @@
       - [Block or page](#block-or-page)
   - [Block data layout](#block-data-layout)
   - [Heap file layout](#heap-file-layout)
+- [Indexes for performance](#indexes-for-performance)
+  - [What is an index](#what-is-an-index)
+  - [How an index is created](#how-an-index-is-created)
 
 # Basics of SQL
 
@@ -2628,4 +2631,78 @@ Let's now take a look a an actual block stored on your hard drive.
 
 ## Heap file layout
 
-Let's map out how Postgres stores data at the binary level.
+Let's map out how Postgres stores data at the binary level. You can also check a documentation at:
+
+```
+postgresql.org/docs/current/storage-page-layout.html
+```
+
+Remember that pages are 8kb in size, and a single heap file has many pages inside it.
+
+> Some crazy stuff is written in this document and displayed in video tutorial episode. Take a look at it whenever you need.
+
+# Indexes for performance
+
+Now that you have seen how Postgres stores records inside individual blocks inside a heap file, you may ask, who cares? We are now going to walk through a query and understand how it is executed by Postgres and start to understand some performance characteristics of it.
+
+Imagine we have a heap file where there are two blocks. Block 0 holds information on usernames Nancy and Alf, and block 1 holds information on usernames Jia and Riann. Now what would happen if you run this query:
+
+```sql
+SELECT *
+FROM users
+WHERE username = 'Riann';
+```
+
+![sql-indexes-1](/images/sql/sql-indexes-1.jpg)
+
+The important thing to keep in mind here is that when data is inside a heap file on your hard drive, Postgres cannot examine that file in place. In other words, in order to take a look at the different users, we have to first load these users up into memory (RAM). So step 1 for a query like this would be to take a look at all of our different blocks inside the heap file. Postgres would load up all the different users into memory, and then once they are inside memory, we can start some further querying or filtering on this data.
+
+The problem is that anytime that we load up information from our hard drive over to memory, it has a relatively large performance cost. So whenever possible, as database engineers, we try to minimize the amount of data that is being moved between the hard drive and the memory. So it is important to understand how we can limit how much data is being taken out of a heap file and placed into memory. Finally, when the data is brought into memory, we then have to walk through each individual record until eventually we find some number of rows that satisfy the criterion of having a username of `Riann`.
+
+Anytime that we load up information from a heap file on hard drive to memory and then iterate over the records one by one, we refer to this as a **full table scan**. This frequently has poor performance, but not always. There are some situations where a full table scan is actually desirable over any alternate method. Regardless, any time that we see Postgres is doing a full table scan, we want to do a little bit of investigation and figure out whether or not there is some way that we can search for the data in some different manner, which could be more efficient to execute the query.
+
+## What is an index
+
+There is some way that we could load up some particular records out of a heap file without having to first load them all into memory. How would we do that? How would we somehow figure out that we want specifically user Riann without having to load up all the different records from the heap file? Maybe if we had some kind of outside tool of sorts, something that existed separate from the entire heap file or the table that could somehow tell us exactly where every user was located inside heap file.
+
+If we had some tool like this, then we could get Postgres to go into that heap file, find just the targetted block, maybe load up the entire block and then get just user Riann out of that and we have our data!
+
+![sql-indexes-2](/images/sql/sql-indexes-2.jpg)
+
+Well fortunately we have this tool. It is implemented in Postgres as something called an **index**. An index is a data structure that very efficiently tells us exactly what block and index a particular record is stored at.
+
+To understand how an index works internally, it is easiest if we approach this from how an index is initially created. It would also help you understand pros and cons of index.
+
+## How an index is created
+
+1. For the first step, in creating an index, you are first going to decide exactly which column we want to have a very fast lookup on. When you create an index, you create it on a very specific column that allows us to do a fast lookup on your table whenever you are doing some kind of filtering logic on the same column.
+
+As for the query we discussed earlier:
+
+```sql
+SELECT *
+FROM users
+WHERE username = 'Riann';
+```
+
+you would want an index on the username column in particular because this would allow you to run queries that involve username very quickly.
+
+Remember that you could technically have an index that takes into account the value in multiple different columns for each row, not just one. But for now we are working with index for only one column.
+
+2. In the second step, you are going to take a look at your user table or really your heap file, and you are going to look for every single row, and you are going to extract just that one property that you want to create the index for. Then when you extract that property, you are also going to record the block and the index that we found the property at. In other words, you are going to take a look at block 0, start with Nancy, username is Nancy. So you will extract Nancy and you will record that you found that username at block 0 index 1. Then you will extract Alf and record its index, and so on to the next block and for all the data in the heap file.
+
+Notice that the `username` values with block and index numbers are the actual information that is going to go into the index.
+
+![sql-indexes-3](/images/sql/sql-indexes-3.jpg)
+
+3. For the next step, you are now going to take a look at all the different values that you have extracted and sort them in a meaningful way. For strings or text, you would sort them in alphabetical order. If they were numbers, you would sort them ascendingly or descendingly.
+
+4. For the next step, you will take the index list of records and organize them into a tree data structure. When you insert these records into the three, you are going to distribute all the records evenly among the different leaf nodes that you have inside the tree.
+
+![sql-indexes-4](/images/sql/sql-indexes-4.jpg)
+
+5. Last step is to add some helpers to the root node. As you see in the image above, there are two empty boxes under the root node. In them, you are going to put some directions to say whether or not someone who is trying to execute a query or find some particular record should go down to this leaf node. In other words, in each of the empty boxes, you are going to list what set of values exist inside the related leaf node. For example, in a simple explanation, you would say go to this leaf node if `'Alf' <= username < 'Nancy'`. For the other empty box you would say go to this leaf node if `'Nancy' <= username`.
+
+![sql-indexes-5](/images/sql/sql-indexes-5.jpg)
+
+Now when you look for the username `Riann`, this index would help you avoid loading up all the heap file into memory. Instead, you will do just a simple evaluation according to the sorted data, and that will lead you toward the correct leaf node of the index, and that in turn will lead you toward the targetted block in the heap file, without having to go over all of the blocks inside the heap file.
