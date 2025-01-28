@@ -107,6 +107,13 @@
   - [Inserting data from a backup file](#inserting-data-from-a-backup-file)
   - [Restoring a database if accidentally deleted](#restoring-a-database-if-accidentally-deleted)
 - [Understanding the internals of Postgres](#understanding-the-internals-of-postgres)
+  - [Where does Postgres stores data on hard disk](#where-does-postgres-stores-data-on-hard-disk)
+    - [Heaps, blocks and tuples](#heaps-blocks-and-tuples)
+      - [Heap or heap file](#heap-or-heap-file)
+      - [Tuple or item](#tuple-or-item)
+      - [Block or page](#block-or-page)
+  - [Block data layout](#block-data-layout)
+  - [Heap file layout](#heap-file-layout)
 
 # Basics of SQL
 
@@ -2557,3 +2564,68 @@ A backup file compatible with Postgres and PGAdmin usually has the `.sql` file e
 ## Restoring a database if accidentally deleted
 
 # Understanding the internals of Postgres
+
+In order to get a good performance out of your Postgres database, you have to understand what goes on inside it:
+
+1. You have to understand how information is being stored on hard disk, and how it gets accessed.
+2. What tools we have and how they work. Understanding indexes and how they work.
+3. How queries are interpretted by the database and how they actually get executed.
+
+## Where does Postgres stores data on hard disk
+
+You can use the `SHOW` clause anytime you want to pull one configuration option out of your database.
+
+```sql
+SHOW data_directory;
+-- returns C:/Program Files/PostgreSQL/17/data
+```
+
+In this directory, all the data that you have in your database is located inside the `base` folder. There are multiple folders with numeric names assigned to them, each containing data related to a separate database. If you want to understand what these numbers are you can run this query:
+
+```sql
+SELECT oid, datname
+FROM pg_database;
+-- returns the same set of directories you found in your file explorer.
+```
+
+Among them, you see `template0` and `tewmplate1` but we will discuss these later. You can also see the `instagram` database that you created previously. Inside this directory, you will find a lot of files that contain all the raw data of your database. But what actually are these files and what is stored in each? You can understand that by running another query:
+
+```sql
+SELECT * FROM pg_class;
+```
+
+Each of the rows you get from this query contains information about one of those files. Each file represents one individual object inside your database. The objects that you have in your database are not just tables. We also have objects for indexes, sequences, primary keys, and a couple of other things as well. You can find, for example, the file related to the users table by looking into the `relname` column and find its `oid`. Then you can go back to the file explorer and find the file there. Let's not understand how information is actually stored in this data. But before that, let's understand a little piece of terminology.
+
+### Heaps, blocks and tuples
+
+#### Heap or heap file
+
+This is a file that contains all the data (rows) of a table. A heap data structure is very different than a heap file.
+
+#### Tuple or item
+
+This is an individual row from a table.
+
+#### Block or page
+
+The heap file is divided into many different blocks or pages. Each page/block stores some number of tuples, items or rows. By default, each block/page is 8kb in size regardless of how many items are stored inside it.
+
+But why do we have this structure in our database?
+
+## Block data layout
+
+Let's now go deeper and understand what goes on in a block. We are going to understand how a block is physically stored on the hard drive. So let's take the file `22445` as an example. It is a heap file and there are a couple of blocks in it. We are now concentrating on one block.
+
+When we talk about block 1, we are actually thinking about some information that is being stored on the hard disk of your computer. You hard disk stores information as binary (0s and 1s). When we talk about the structure of a block, we are essentially talking about what different 0s and 1s inside this block are actually being used to store what piece of information. It is a continuous series of 0s and 1s.
+
+A collection of 0s and 1s at the very beginning of the block represent information about the block itself. The next set of 0s and 1s contain information about the actual data that is stored in this block, so that is information about the actual rows, but it does not contain information about the rows themselves (so no usernames, no IDs). It simply says where you can find the different rows that are stored in this block.
+
+Then there is huge area of empty space in the block. This is a series of 0s and 1s that are not being used by the block right now. This space can eventually be used to assign some kind of user data or whatever we are trying to store inside the table.
+
+Finally, at the very end of the block, is the actual data itself. Again it is a series of 0s and 1s where information about tuples are stored.
+
+Let's now take a look a an actual block stored on your hard drive.
+
+## Heap file layout
+
+Let's map out how Postgres stores data at the binary level.
