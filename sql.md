@@ -117,6 +117,13 @@
 - [Indexes for performance](#indexes-for-performance)
   - [What is an index](#what-is-an-index)
   - [How an index is created](#how-an-index-is-created)
+  - [Creating an actual index in Postgres](#creating-an-actual-index-in-postgres)
+    - [Droping an index](#droping-an-index)
+  - [Benchmarking queries](#benchmarking-queries)
+  - [Downsides of indexes](#downsides-of-indexes)
+  - [Types of index](#types-of-index)
+  - [Automatically generated indexes](#automatically-generated-indexes)
+  - [Behind the scenes of indexes](#behind-the-scenes-of-indexes)
 
 # Basics of SQL
 
@@ -2706,3 +2713,125 @@ Notice that the `username` values with block and index numbers are the actual in
 ![sql-indexes-5](/images/sql/sql-indexes-5.jpg)
 
 Now when you look for the username `Riann`, this index would help you avoid loading up all the heap file into memory. Instead, you will do just a simple evaluation according to the sorted data, and that will lead you toward the correct leaf node of the index, and that in turn will lead you toward the targetted block in the heap file, without having to go over all of the blocks inside the heap file.
+
+## Creating an actual index in Postgres
+
+To create an index for the users table you can use this syntax:
+
+```sql
+CREATE INDEX ON users (username);
+```
+
+Using this command, the index will be, bu default, named conventionally as `users_urename_idx`. If you want to name the index manually you can use this syntax:
+
+```sql
+CREATE INDEX users_username_idx ON users (username);
+```
+
+### Droping an index
+
+To drop a previously created index you can use this query:
+
+```sql
+DROP INDEX users_username_idx;
+```
+
+## Benchmarking queries
+
+Benchmarking a query means to measure how long a query takes to be executed. Whenever you run a query in PGAdmin 4, you see a report at the messages section that, for example, says 'Query returned successfully in 69 msec.' However, this number is a bit misleading because it includes travel time for the query from the PGAdmin interface over to the database and back. So it includes some network travel time that does not really reflect nicely nor is really relevant on the actual execution speed of the query itself. So it is not a great metric.
+
+In order to correctly benchmark a query, you use `EXPLAIN ANALYZE` right at the beginning of your query:
+
+```sql
+EXPLAIN ANALYZE SELECT *
+FROM users
+WHERE username = 'Emil30';
+```
+
+Using this syntax, what you get back is no longer records that satisfy your query. It would be just a report about the query plan and performance. At the final row of the table returned by this query, you see that the execution time is about 0.081 ms. Remember that this query is executed with the username index in place. You can repeatedly execute the query and receive some different but close execution times. Execution time 0.08 ms is really really fast.
+
+We are now going to remove the index and repeat the query. It will now execute in 0.583ms. Note that this time is still very fast, but compared to the previous execution time, it is nearly 7 times slower. That is a lot! So using an index, made our query run 7 times faster. That is a huge improvement.
+
+## Downsides of indexes
+
+Although indexes help a query run a lot faster, this does not mean that you should go ahead and add an index for all columns of all your tables. Why?
+
+Remember that creating an index means to create a tree-like structure behind the scenes. In that tree, for every row of our actual table, we extracted a piece of information along with a pointer over to some location inside our heap file. In other words, for every single row we are now storing an additional piece of information and a pointer which obviously comes with some amount of storage cost. You are using some amount of your hard disk space just to store this index.
+
+You can actually see how much space your table and its index are occupying on your hard drive using these queries:
+
+```sql
+SELECT pg_size_pretty(pg_relation_size('users'));
+-- returns 872 kb
+
+SELECT pg_size_pretty(pg_relation_size('users_username_idx'));
+-- returns 184 kb
+```
+
+So an index for the username column of the users table takes up 184 kb of space on your hard drive. Now 872kb and 184kb are not big numbers, but a table on a database for a huge application could take up to 80GB of space, and an index created on this table could take up around 18GB of space, and that is too much!
+
+So try to use indexes whenever it makes sense regarding the performance and financial aspects of the project.
+
+There are also other downsides associated with creating an index. Having an index can slow down the insert, update and delete operations on a specific table. Every single time that you make a change to the table, Postgres would have to update the index too. So try not to create an index for a table that is going to get updated very frequently.
+
+Another downside is that in some scenarios Postgres is not going to use an index to speed up a query. Just because an index exists, does not guarantee that Postgres is going to actually use it. Some queries run faster without using an index at all. Let's go over an exmaple for this.
+
+So here is a list of downsides to indexes:
+
+1. They take a significant amount of space especially in huge databases.
+2. They slow down insert, update and delete operations.
+3. Postgres might not even use your index.
+
+## Types of index
+
+Whenever you create an index, you are actually creating a particular type of index. There are several different types of indexes in Postgres. The most common type of index is a **B-tree**. The image below shows the B-tree structure:
+
+![sql-indexes-5](/images/sql/sql-indexes-5.jpg)
+
+In a vast majority of times, B-tree is the type of index that you would want to create. Here is a list of every possible type of indexes, but you most likely never have to worry about other types:
+
+| Index type | Description                                                        |
+| ---------- | ------------------------------------------------------------------ |
+| B-tree     | General purpost index. 99% of the time you want this               |
+| Hash       | Speeds up simple equality checks                                   |
+| GiST       | Geometry, full-text search                                         |
+| SP-GiST    | Clustered data, such as dates - many rows might have the same year |
+| GIN        | For columns that contain arrays or JSON data                       |
+| BRIN       | Specialized for really large datasets                              |
+
+## Automatically generated indexes
+
+In two situations, Postgres automatically created indexes for your tables:
+
+1. Postgres automatically creates an index for the primary key column of every table.
+2. Postgres automatically creates an index for any `UNIQUE` constrained column of a table.
+
+Remember that these indexes are not listed in the `indexes` section in PGAdmin.
+
+For instance, if you have a table named `hashtags`, the index that is created for the `id` column (if it is assigned to be a primary key) would be called `hashtags_pkey`. Also if you contstraint the `title` column of the table to be `UNIQUE`, its index will be called `hashtags_title_key`. So try not to create index for these scenarios, since they get created automatically.
+
+There is a query that you can use to see what indexes actually exist inside your database:
+
+```sql
+SELECT relname, relkind
+from pg_class
+WHERE relkind = 'i';
+```
+
+The `pg_class` table lists all the different objects that exist inside your database, so all the different tables, indexes, sequences and so on. `relkind` of `i` means an index object.
+
+## Behind the scenes of indexes
+
+When you create an index, an actual file is created on your hard drive. The file is assigned some kind of random number identifier, and it is called something like `users_username_idx`. The structure of this file is essentially the same as heap files we discussed earlier:
+
+![sql-indexes-6](/images/sql/sql-indexes-6.jpg)
+
+So inside this file, there 8kb pages. Each page in an index has a specific purpose, whereas in a heap file all pages are essentially the same.
+
+The very first page in an index file is called a Meta page. This page has some information about the overall index. In addition, we have some Leaf pages and one Root page. All of these pages represent a node of the index's B-tree. This is the structure of the B-tree regarding these pages:
+
+![sql-indexes-7](/images/sql/sql-indexes-7.jpg)
+
+In the root page, there are some directions to direct us to a leaf page with some particular records. The leaf pages are where the actual information are stored for the index. A leaf page might have some listing of usernames and for each username there might be a pointer to where we could find the record related to that username inside the users heap file.
+
+The pages in an index file are identical in nature to those pages in the heap file. So in each of these pages, there is a header, there is that item id index array, then some free space, then the actual items stored in each of these leaf pages.
