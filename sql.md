@@ -131,6 +131,16 @@
     - [Planner](#planner)
     - [Executor](#executor)
   - [`EXPLAIN` and `EXPLAIN ANALYZE`](#explain-and-explain-analyze)
+    - [Understanding cost analysis](#understanding-cost-analysis)
+- [Common Table Expressions (CTE)](#common-table-expressions-cte)
+  - [Simple table expressions](#simple-table-expressions)
+  - [Recursive common table expressions](#recursive-common-table-expressions)
+    - [Step 1: Define the results and working tables](#step-1-define-the-results-and-working-tables)
+    - [Step 2: Run the non-recursive statement](#step-2-run-the-non-recursive-statement)
+    - [Step 3: Run the recursive statement](#step-3-run-the-recursive-statement)
+    - [Step 4: Append recursive statement's result to the results table and run recursion again](#step-4-append-recursive-statements-result-to-the-results-table-and-run-recursion-again)
+  - [When to use recursive CTE?](#when-to-use-recursive-cte)
+- [Simplify queries with views](#simplify-queries-with-views)
 
 # Basics of SQL
 
@@ -2582,6 +2592,8 @@ A backup file compatible with Postgres and PGAdmin usually has the `.sql` file e
 
 # Understanding the internals of Postgres
 
+> **This and some subsequent sections of this note file have overlooked some important aspects of Postgres internals and performance subjects as they were too complicated and deep for the first learning scan. You need to fill these sections with that necessary information when you have completed your basic understanding of Postgres.**
+
 In order to get a good performance out of your Postgres database, you have to understand what goes on inside it:
 
 1. You have to understand how information is being stored on hard disk, and how it gets accessed.
@@ -2890,7 +2902,7 @@ This step just executes the query and get some number of rows back for you and t
 We are going to use the output of the planner section to understand what makes a fast query and what makes a slow query. `EXPLAIN` and `EXPLAIN ANALYZE` are some of our best tools for understanding how a query is actually being executed and figuring out how to improve the performance of that query as well.
 
 - Explain: Postgres will build a query plan and display information about it
-- Explain analyze: Postgres will build a query plan, run it, and then display information about it including some statistics about the query performance
+- Explain analyze: Postgres will build a query plan, run it, and then display information about it including some statistics about the query performance in each row.
 
 The two statements are for benchmarking and evaluating queries, not for use in real data fetching.
 
@@ -2950,8 +2962,207 @@ In addition to these steps which are marked with arrows within the Explain analy
 
 Hash join tells us that we are doing a hash join operation which is going to implement some kind of join process, like the same kind of join that we put into out query. Let's now go through the numbers:
 
-1. Cost: Amount of processing power required for this step
+1. Cost: Amount of processing power required for this step.
 2. Rows: A guess at how many rows this step will produce
-3. Width: A guess at the average nuymber of bytes of each row
+3. Width: A guess at the average number of bytes of each row
+
+Now there is a mystery here. If you use `EXPLAIN` instead of `EXPLAIN ANALYZE`, you will still receive the guessed numbers in the returned result. But how do you think Postgres is able to guess the number of rows and number of bytes without executing the query? The answer is that Postgres actually keeps some very detailed statistics about what is going on inside each of your different tables. We can see how Postgres is tracking the statistics of our tables using this query:
+
+```sql
+SELECT *
+FROM pg_stats
+WHERE tablename = 'users';
+```
+
+`pg_stats` is a table that is created and maintained by Postgres. This table helps Postgres make close guesses about our data and query execution beforehand.
 
 > You can either use `EXPLAIN ANALYZE` within your query string or you can use the Explain analyze feature built into the PGAdmin software which will provide you with some digrams and graphical information about the query performance.
+
+### Understanding cost analysis
+
+Cost refers to the amount of time to execute some part of a query plan. We will however, update this definition gradually as we try to understand this concept.
+
+In the planner step of the query execution pipeline, a query plan is generated which is the way to execute the query. The planner might decide to use the index for the username column of the users table and then use the pointers from the index to open the user heap file and load the appropriate pages and fetch the related users. Alternatively, the planner might decide not to use the index and fetch all the users and search one by one through them. But how does Postgres decide which plan is fastest without running them?
+
+Here is a list of actions that should be done in each scenario:
+
+![sql-indexes-10](/images/sql/sql-indexes-10.jpg)
+
+How can Postgres decide which scenario will be quicker? Maybe the best way to think about the number of pages that have to be loaded from the hard disk:
+
+![sql-indexes-11](/images/sql/sql-indexes-11.jpg)
+
+Now if there are 100 pages, then at first glance, you know that looking at the index to find the related user is probably faster and more efficient. But there is a twist here: **Loading data from random spots off a hard drive usually takes more time than loading data sequentially.** Jumping randomly all over the place on a hard drive takes more time. This makes it so that deciding on choosing one of the scenarios above will be based on a more complicated but more accurate calculation rather than just counting the number of pages in each scenario.
+
+![sql-indexes-12](/images/sql/sql-indexes-12.jpg)
+
+Let's now see the full equation that Postgres uses to calculate the cost of any arbitrary step of your query:
+
+```
+cost =
+  (number of pages read sequentially) * seq_page_cost +
+  (number of pages read at random) * random_page_cost +
+  (number of rows scanned) * cpu_tuple_cost +
+  (number of index entries scanned) * cpu_index_tuple_cost +
+  (number of times function/operator evaluated) * cpu_operator_cost
+```
+
+You can take a look at the values of cost factors used in the equation above in the link below:
+
+```
+postgresql.org/docs/current/runtime-config-query.html
+```
+
+You can also take a look at this diagram to understand it better:
+
+![sql-indexes-13](/images/sql/sql-indexes-13.jpg)
+
+> These constant values for the cost factors are almost never meant to be manipulated unless you really need to.
+
+# Common Table Expressions (CTE)
+
+We are now moving back from Postgres internals and low-level information and we are going to discuss common table expressions which is a technique you can use to make your queries a little bit more readable.
+
+There are 2 different forms of CTEs:
+
+1. Simple form: used to make a query easier to understand.
+2. Recursive form: used to write queries that are otherwise impossible to write.
+
+## Simple table expressions
+
+Let's start with an example: Show the username of users who were tagged in a caption or photo before January 7th, 2010. Also show the date they were tagged. So we are going to need the `users`, `caption_tags` and `photo_tags` tables of our database.
+
+```sql
+SELECT username, tags.created_at
+FROM users
+JOIN (
+	SELECT user_id, created_at FROM caption_tags
+	UNION ALL
+	SELECt user_id, created_at FROM photo_tags
+) AS tags ON tags.user_id = users.id
+WHERE tags.created_at < '2010-01-07';
+```
+
+This query works fine, but look at the subquery. It is pretty long and is making the whole query hard to read. We can use a CTE to write the subquery more clearly.
+
+```sql
+WITH tags AS (
+	SELECT user_id, created_at FROM caption_tags
+	UNION ALL
+	SELECt user_id, created_at FROM photo_tags
+)
+SELECT username, tags.created_at
+FROM users
+JOIN tags ON tags.user_id = users.id
+WHERE tags.created_at < '2010-01-07';
+```
+
+So common table expressions are define using a `WITH` keyword before the main query. It produces a table that we can refer to anywhere else in our query.
+
+> Using CTEs don't make any changes in the way the query is executed, thus no difference in performance.
+
+## Recursive common table expressions
+
+Recursive CTE is a bit challenging. Let's review a few things to remember first:
+
+1. It is very different from simple CTEs.
+2. It is useful anytime you have a tree or graph-type data structure.
+3. You must use a `UNION` keyword when you are using recursive CTEs. Simple CTEs don't have to use a union.
+4. This is a super advanced feature of SQL.
+
+Let's go for an example here:
+
+```sql
+WITH RECURSIVE countdown(val) AS (
+	SELECT 3 AS val -- initial (non-recursive) query
+	UNION
+	SELECT val - 1 FROM countdown WHERE val > 1 -- recursive query
+)
+SELECT *
+FROM countdown;
+```
+
+Running this query will give you a table with 3 rows, each holding an integer value going from 3 at the first row to 1 at the last. You can change the `3` within the recursive CTE and get results with different number of rows. But what is this?!
+
+Let's first understand two pieces of terminology:
+
+1. **Initial (non-recursive) query:** The `SELECT` statement at the beginning of the recursive CTE is called the initial query.
+2. **Recursive query:** The second `SELECT` statement after the `UNION` statement inside the recursive CTE is called the recursive query.
+
+Let's now understand what is going on with the query above step by step.
+
+### Step 1: Define the results and working tables
+
+Running the query above will make Postgres create two temporary tables in the background; results table, and working table. These tables are going to be given some number of tables. The columns that they get assigned are whatever you have inside of the `( )` of the recursive CTE definition. In this example we have just one argument in the `( )`, therefor both of the temporary tables are going to get one single column labeled `val`.
+
+### Step 2: Run the non-recursive statement
+
+The non-recursive statement runs, and the results are put into the results table and working table. The non-recursive statement is a meaningful statement on its own, regardless of being used inside a recursive CTE. So you can run this query:
+
+```sql
+SELECT 3 AS val;
+```
+
+And you get back a table with one column called `val` and one row holding `3` as in integer value. So this is what the non-recursive statement does.
+
+### Step 3: Run the recursive statement
+
+In this step, the table name `countdown` is going to get replaced with a reference to the working table. Note that inside the recursive statement there is a `FROM countdown` clause. So instead of `countdown` you can say `WORKING_TABLE`. This is key to understand what is going on. So the recursive statement is basically doing this:
+
+```sql
+SELECT val - 1 FROM WORKING_TABLE WHERE val > 1;
+```
+
+> `WORKING_TABLE` is not an actual Postgres keyword. You cannot write it in your query. It is written here so you can understand the subject more easily.
+
+While the working table holds `3` as `val` from step 2. So we are actually selecting all the different rows in the working table where `val` is greater than `1`. So as in intermediary result we now have `val - 1` which is `2`.
+
+### Step 4: Append recursive statement's result to the results table and run recursion again
+
+In this step, if the recursive statement returns some rows, Postgres will append them to the results table and run the recursion again. So now the results table has 1 column called `val` and 2 rows, first `3` and second `2` which is now appended to the table. Also, everything in the working table that is related to the previous steps is thrown away and replaced by the new value of the `val` parameter.
+
+So as for the example that we are going through, we will now go back to step 3. We will then take `2` and the recursive statement will return `val - 1` which is `1` and this will again be stored in the results table and rapleced with the current value of `val` in the working table. In the next step, the recursive statement won't execute since `val` is no longer greater than `1`. So recursion will have no result.
+
+IF the recursive statement returns no rows, Postgres will stop recursion. Finally, the results table will be called `countdown` and this table will be accessible to the rest of the query outside the recursive CTE. In the example, we are selecting everything from the final countdown table, and this is the result that we saw first.
+
+| n   | val |
+| --- | --- |
+| 1   | 3   |
+| 2   | 2   |
+| 3   | 1   |
+
+## When to use recursive CTE?
+
+Let's go through another example, this time working on our real-world Instagram database. In the page where Instagram who the user should follow. Why are they recommended? Why should a user be recommended to follow some other users? Imagine you are following some people on your account. These are your first circle connections. Those people, in turn, follow some other people on their account. These are your second circle connections. So you are not directly connected to them. Instagram thinks you might be interested in following them too.
+
+So for Instagram to come up with this list of suggestions, it would have to go over your list of followings, find who they are following in turn, and bring them up for you to follow. But there is something else to note here.
+
+Imagine you, as a user, scroll down the suggestions list and find no interest in those people. So Instagram would have to continue suggest other people to you. It would probably have to go for your 3rd circle of connections. So Instagram would have to go over the following list of the second circle and suggest you to follow people at one step further in your circles. This is where you need a recursive CTE. You need a recursive CTE because people following other people, typically creates an undirectional graph structure. But as for the purpose of this Instagram feature example, we can assume that it is a directional tree, although it really is not.
+
+Let's now write this query. Remember that we are trying to give some suggestions to a particular user. We are not generating suggestions for every person inside our application. Let's now find out which tables we are going to use to implement this feature in our database.
+
+We probably only need the `users` and `followers` table. Let's imagine the process of finding some suggestions for the user ID of 1. The first thing we should do is to go through the followers table and find out who the targetted user is following. So we are going to find all the rows in the followers table where the `follower_id` is 1. We now have the ID of users that this user is following. They are users with IDs 4 and 5. Now we should find out who these two users are following. So we would have to go over the followers table again and find all the rows where `follower_id` is either 4 or 5. These will mark for us the users that we are going to suggest to the user ID 1 to follow them. As for the next circle, we would find who the second circle people are following and find them by going through the followers table again. You can now see why we call this recursive.
+
+Let's now write the actual query. It is going to be challenging. Imagine we want to suggest people to the user with ID 1000.
+
+```sql
+WITH RECURSIVE suggestions(leader_id, follower_id, depth) AS (
+		SELECT leader_id, follower_id, 1 AS depth -- non-recursive (start)
+		FROM followers
+		WHERE follower_id = 1000 -- non-recursive (end)
+	UNION
+		SELECT followers.leader_id, followers.follower_id, depth + 1 -- recursive (start)
+		FROM followers
+		JOIN suggestions on suggestions.leader_id = followers.follower_id
+		WHERE depth < 3 -- recursive (end)
+)
+SELECT DISTINCT users.id, users.username
+FROM suggestions
+JOIN users ON users.id = suggestions.leader_id
+WHERE depth > 1
+LIMIT 30;
+```
+
+Pretty long one! Let's now go line by line over the query to fully understand it.
+
+# Simplify queries with views
