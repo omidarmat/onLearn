@@ -124,6 +124,13 @@
   - [Types of index](#types-of-index)
   - [Automatically generated indexes](#automatically-generated-indexes)
   - [Behind the scenes of indexes](#behind-the-scenes-of-indexes)
+- [Query tuning](#query-tuning)
+  - [The query processing pipeline](#the-query-processing-pipeline)
+    - [Parser](#parser)
+    - [Rewriter](#rewriter)
+    - [Planner](#planner)
+    - [Executor](#executor)
+  - [`EXPLAIN` and `EXPLAIN ANALYZE`](#explain-and-explain-analyze)
 
 # Basics of SQL
 
@@ -2835,3 +2842,49 @@ The very first page in an index file is called a Meta page. This page has some i
 In the root page, there are some directions to direct us to a leaf page with some particular records. The leaf pages are where the actual information are stored for the index. A leaf page might have some listing of usernames and for each username there might be a pointer to where we could find the record related to that username inside the users heap file.
 
 The pages in an index file are identical in nature to those pages in the heap file. So in each of these pages, there is a header, there is that item id index array, then some free space, then the actual items stored in each of these leaf pages.
+
+# Query tuning
+
+We still dont' really know when to use an index and how to really evaluate whether a given columns should get an index at all. So we are now going to learn how to evaluate what makes a good query and what makes a bad query and how we can fix a query or make it better at least a little bit by creating an index.
+
+The first thing to do is to better understand how Postgres handles queries that we hand off to it.
+
+## The query processing pipeline
+
+![sql-indexes-8](/images/sql/sql-indexes-8.jpg)
+
+In this diagram you can see the query processing pipeline. So when you start with a query like this:
+
+```sql
+SELECT *
+FROM users
+WHERE username = 'Alyson14';
+```
+
+This query will go through a series of steps. First, the parser, then the rewriter, then the planner, and finally an executor.
+
+### Parser
+
+Parser will immediately try to take all the different characters of the query string and tear it apart one by one and figure out what the meaning of every character in every word inside there. Therefore, the parser is going to make sure that what you wrote inside the query is actually a valid SQL. After this evaluating, it is going to build up something called a query tree.
+
+A query tree is a programmatic description of the query that you are trying to run. Once the query tree is written, it is then handed off to the rewriter.
+
+### Rewriter
+
+The rewriter is going to take a look at the query tree and possibly make little modifications to it if Postgres thinks that certain parts could be executed a little bit more efficiently. However, what happens much more frequently is it applies the idea of views to the query tree itself. We will learn about views later...
+
+### Planner
+
+This is what we really care about. The goal of the planner is to take a look at the query tree, figure our what information you are trying to fetch and then come up with a series of different plans or strategies that could be used to actually get that information. In this case, the planner might realize that you are trying to get some information out of the users table based upon a username. It might say we could probably get that information very efficiently by using the user's username index and then use the references or pointers inside there to go and fetch some appropriate data from the users heap file.
+
+Tha planner might also come up with a plan where it says rather than using an index, we could just go into the user table directly, fetch all the different users and do a one by one search.
+
+After coming up with all these different plans, the planner is going to evaluate which one it thinks is going to execute the fastest and then choose that plan to actually run. After the planner decides on what the most efficient strategy is, it is handed off to the executor.
+
+### Executor
+
+This step just executes the query and get some number of rows back for you and the process finishes.
+
+## `EXPLAIN` and `EXPLAIN ANALYZE`
+
+We are going to use the output of the planner section to understand what makes a fast query and what makes a slow query.
