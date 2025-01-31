@@ -2887,4 +2887,71 @@ This step just executes the query and get some number of rows back for you and t
 
 ## `EXPLAIN` and `EXPLAIN ANALYZE`
 
-We are going to use the output of the planner section to understand what makes a fast query and what makes a slow query.
+We are going to use the output of the planner section to understand what makes a fast query and what makes a slow query. `EXPLAIN` and `EXPLAIN ANALYZE` are some of our best tools for understanding how a query is actually being executed and figuring out how to improve the performance of that query as well.
+
+- Explain: Postgres will build a query plan and display information about it
+- Explain analyze: Postgres will build a query plan, run it, and then display information about it including some statistics about the query performance
+
+The two statements are for benchmarking and evaluating queries, not for use in real data fetching.
+
+Take this query as an example:
+
+```sql
+EXPLAIN SELECT username, contents
+FROM users
+JOIN comments ON comments.user_id = users.id
+WHERE username = 'Alyson14';
+```
+
+You well get back a table called **Query plan**. It displays the plan to execute to actually get some information. Opting for `ANALYZE`:
+
+```sql
+EXPLAIN ANALYZE SELECT username, contents
+FROM users
+JOIN comments ON comments.user_id = users.id
+WHERE username = 'Alyson14';
+```
+
+You will get back the same table but with some additional rows about the query performance statistics like this:
+
+```
+"Hash Join  (cost=8.31..1795.11 rows=11 width=81) (actual time=0.126..11.238 rows=7 loops=1)"
+"  Hash Cond: (comments.user_id = users.id)"
+"  ->  Seq Scan on comments  (cost=0.00..1628.10 rows=60410 width=72) (actual time=0.018..4.027 rows=60410 loops=1)"
+"  ->  Hash  (cost=8.30..8.30 rows=1 width=17) (actual time=0.028..0.029 rows=1 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 9kB"
+"        ->  Index Scan using users_username_idx on users  (cost=0.28..8.30 rows=1 width=17) (actual time=0.024..0.025 rows=1 loops=1)"
+"              Index Cond: ((username)::text = 'Alyson14'::text)"
+"Planning Time: 0.267 ms"
+"Execution Time: 11.270 ms"
+```
+
+Note that at the beginning of some of the rows in the report above, there are arrows. We refer to these rows as **query nodes**. These are essentially some step where we are trying to access some data that is stored inside the database or we are trying to do some processing. In addition, the first top row (Hash Join) does not have an arrow but it is also a query node.
+
+The correct way to read along all these rows, is to first go for the inner most row that has an arrow, which in this case is:
+
+```
+"        ->  Index Scan using users_username_idx on users  (cost=0.28..8.30 rows=1 width=17) (actual time=0.024..0.025 rows=1 loops=1)"
+```
+
+Every single place where we see on of these arrows, we imagine it is trying to access some data inside our database or inside an index and then passing that data up next to the nearest parent that has an arrow on it.
+
+![sql-indexes-9](/images/sql/sql-indexes-9.jpg)
+
+The hash step is then doing some processing on the data and then again sending it up to the nearest parent node which is the Hash join. At the same time with the Hash step, we also got a step which does sequential scan on comments. A sequential scan means we are going to access all the different rows inside a table. So the data acquired by this step will also be sent up to the Hash join step which is again the nearest parent node. So the Hash join step at the end is combining the results of Hash step and Sequential scan step.
+
+Finally, the result of the Hash join step is the result of the query that we inserted into Postgres.
+
+In addition to these steps which are marked with arrows within the Explain analyze report, there are some numbers. Let's go through these numbers for the Hash join step:
+
+```
+"Hash Join  (cost=8.31..1795.11 rows=11 width=81) (actual time=0.126..11.238 rows=7 loops=1)"
+```
+
+Hash join tells us that we are doing a hash join operation which is going to implement some kind of join process, like the same kind of join that we put into out query. Let's now go through the numbers:
+
+1. Cost: Amount of processing power required for this step
+2. Rows: A guess at how many rows this step will produce
+3. Width: A guess at the average nuymber of bytes of each row
+
+> You can either use `EXPLAIN ANALYZE` within your query string or you can use the Explain analyze feature built into the PGAdmin software which will provide you with some digrams and graphical information about the query performance.
