@@ -141,6 +141,11 @@
     - [Step 4: Append recursive statement's result to the results table and run recursion again](#step-4-append-recursive-statements-result-to-the-results-table-and-run-recursion-again)
   - [When to use recursive CTE?](#when-to-use-recursive-cte)
 - [Simplify queries with views](#simplify-queries-with-views)
+  - [A possible solution](#a-possible-solution)
+  - [A better solution: Create a view](#a-better-solution-create-a-view)
+  - [When to use a view](#when-to-use-a-view)
+  - [Deleting and changing a view](#deleting-and-changing-a-view)
+- [Optimizing queries with materialized view](#optimizing-queries-with-materialized-view)
 
 # Basics of SQL
 
@@ -3166,3 +3171,170 @@ LIMIT 30;
 Pretty long one! Let's now go line by line over the query to fully understand it.
 
 # Simplify queries with views
+
+To understand views, let's start with an example: Show the most popular users - the users who were tagged the most.
+
+We are going to need all the tags joined in one table, we don't need them separately as `captiong_tags` and `photo_tags` table. So would again use a `UNION`.
+
+Then we are going to take a look at each individual user ID in the users table, then for each user, we are going to join it with each user in the joined tags table. You will end up with a table that for each username you will probably have multiple rows representing tags.
+
+Afterwards, we could use a `GROUP BY` operation. We can group by username, and then count the number of rows for each different group. Then we could use a sorting operation to make sure we get the most popular users at the top of the table. This would be the SQL:
+
+```sql
+SELECT username, COUNT(*)
+FROM users
+JOIN (
+	SELECT user_id FROM photo_tags
+	UNION ALL
+	SELECT user_id FROM caption_tags
+) AS tags ON tags.user_id = users.id
+GROUP BY username
+ORDER BY COUNT(*) DESC;
+```
+
+The awkward part here is that, if you notice, we are doing this join again. Maybe this was a problem when we designed the database. Maybe we didn't need to create two separate tables for tags, and up until now we have not discovered any scenario where the separated tables would come in handy.
+
+This section is all about fixing this kind of mistakes: when we have two tables and we are get the feeling that we actually need them two be one. There are 2 possible solutions.
+
+## A possible solution
+
+The first solution, which is not a good one is to merge the two tables into one table called `tags`. This would be the series of queries that we will use:
+
+```sql
+CREATE TABLE tags(
+  id SERIAL PRIMARY KEY,
+  create_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  x INTEGER,
+  y INTEGER
+);
+
+INSERT INTO tags(created_at, updated_at, user_id, post_id, x, y)
+SELECT created_at, updated_at, user_id, post_id, x, y
+FROM photo_tags;
+
+INSERT INTO tags(created_at, updated_at, user_id, post_id)
+SELECT created_at, updated_at, user_id, post_id
+FROM caption_tags;
+```
+
+But this solution is not a good one because of two reasons:
+
+1. We cannot copy the IDs of photo_tags and caption_tags table to this new table since they must be unique. These tags might have ID numbers in common because they were stored in separate tables, and now they cannot be inserted into one table with their previoud IDs. So if there are other resources in the database that point to those IDs, then we are breaking the foreign keys referencing integrity.
+2. If we delete the original tables that tags are coming from, we are actualy breaking existing queries that refer to those tables.
+
+## A better solution: Create a view
+
+Let's learn some important things about views:
+
+1. A view is basically a fake table that has rows from other tables.
+2. These can be exact rows as they exist on another table, or a computed value.
+3. You can reference a view in any place where you would normally reference a table.
+4. Views does not actually create a new table or move any data around.
+5. Views don't have to be used for a `UNION`. They can compute absolutely any values.
+
+You can think of a view as being very similar in nature to a common table expression (CTE). The only issue with a CTE is that you should attach them to some other query. On the other hand, with views, you can create them ahead of time and then refer to them at any future point in time in any other query.
+
+Let's create a view:
+
+```sql
+CREATE VIEW tags AS (
+	SELECT id, created_at, user_id, post_id, 'photo_tag' AS type FROM photo_tags
+	UNION ALL
+	SELECT id, created_at, user_id, post_id, 'caption_tag' AS type FROM caption_tags
+);
+```
+
+Using `photo_tag` and `caption_tag` with the `AS type` clause, makes it possible for us to distinguish between a row that is related to a photo tag and a row related to a caption tag. No to refer to this view in another later query:
+
+```sql
+SELECT * FROM tags;
+```
+
+So this view is actually helping us solving the issue of having two separate tables where we actually need only one. you can remove this view anytime you want, and none of the original data will be lost from your database since they are stored in their own tables. So now the previous query:
+
+```sql
+SELECT username, COUNT(*)
+FROM users
+JOIN (
+	SELECT user_id FROM photo_tags
+	UNION ALL
+	SELECT user_id FROM caption_tags
+) AS tags ON tags.user_id = users.id
+GROUP BY username
+ORDER BY COUNT(*) DESC;
+```
+
+can be simplified and replaced with this query:
+
+```sql
+SELECT username, COUNT(*)
+FROM users
+JOIN tags ON tags.user_id = users.id
+GROUP BY username
+ORDER BY COUNT(*) DESC
+```
+
+## When to use a view
+
+You saw one possible usecase of a view. Now let's go through another usecase and example. Here is a list of queries you might want to try.
+
+The 10 most recent posts are really important:
+
+- Show the users who created the 10 most recent posts
+- Show the users who were tagged in the 10 most recent posts
+- Show the average number of hastags used in the 10 most recent posts
+- Show the number of likes each of the 10 most recent posts received
+- Show the hashtags used by the 10 most recent posts
+- Show the total number of comments the 10 most recent posts received
+
+Notice that in all these different queries how the ten most recent posts are very important and needed. For each, we could write a subquery that would find us the 10 top most recent posts. Alternatively, putting the concept of views in use, we could create a view that finds the 10 most recent posts. We could then reuse that view in all the queries above, without having to rewrite the logic again and again.
+
+Let's now create a view to find the 10 most recent posts:
+
+```sql
+CREATE VIEW recent_posts AS (
+	SELECT *
+	FROM posts
+	ORDER BY created_at DESC
+	LIMIT 10
+);
+```
+
+You can now refer to this view whenever you want:
+
+```sql
+SELECT * FROM recent_posts;
+```
+
+We can now use this view in the queries above. For instnace, for the first query:
+
+```sql
+SELECT username FROM recent_posts
+JOIN users ON users.id = recent_posts.user_id;
+```
+
+## Deleting and changing a view
+
+Remember the last view we created: It contained the 10 most recent posts. Maybe in a new requirement, we would now need to get the 15 most recent posts. So we now need to change the configuration of the view.
+
+```sql
+CREATE OR REPLACE VIEW recent_posts AS (
+	SELECT *
+	FROM posts
+	ORDER BY created_at DESC
+	LIMIT 15
+);
+```
+
+To delete a view you can use this query:
+
+```sql
+DROP VIEW recent_posts;
+```
+
+You can no longer refer to this view afterwards.
+
+# Optimizing queries with materialized view
