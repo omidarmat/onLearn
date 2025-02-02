@@ -49,6 +49,8 @@ computers, processors, and operating systems. TIFF must be revisable — it
 is not a read-only format. Software systems should be able to edit, process,
 and change TIFF files.
 
+### Tags
+
 TIFF stands for Tag Image File Format. Tag refers to the file's basic structure. A TIFF tag provides information about the image, such as its **width**, **length**, and **number of pixels**. Tags are organized in **tag directories**. Tag directories have no set length or number, since **pointers** lead from one directory to another. Here is a list of standard tags:
 
 ```
@@ -87,4 +89,24 @@ BitsPerSample
     The number of bits per pixel. 2**BitsPerSample = # of gray levels
 ```
 
+The right-hand column in the figure above shows the structure of each directory entry. Each entry contains a tag indicating what type of information the file holds, the data type of the information, the length of the information, and a pointer to the information or the information itself.
+
 This is the strucutre of a TIFF file:
+[image from page 13]
+
+This is the beginning of a TIFF file:
+[image from page 14]
+
+The first 8 bytes of the file are the header. These 8 bytes have the same format on all TIFF files. The remainder of the file differs from image to image.
+
+Bytes 0 and 1 tell whether the file stores numbers with the most significant byte(MSB) first, or least significant byte (LSB) first. If bytes 0 and 1 are II (0x4949), then the LSB is first (predominant in the PC world). If the value is MM (0x4D4D) the MSB is first (predominant in the Macintosh world). Your software needs to read both formats.
+
+Bytes 2 and 3 give the TIFF version number, which should be 42 (0x2A) in all TIFF images.
+
+Bytes 4 to 7 tive the offset to the first Image File Directory (IFD). The first byte in the file has the offset 0. The offset in the example above is 8, so the IFD begins in byte 9 of the file.
+
+> All offsets in TIFF indicate locations with respect to the beginning of the file.
+
+### IFD
+
+The **IFD** (Image File Directory) contains the number of directory entries and the directory entry themselves. The content of address 8 is 27, meaining the this file has 27 12-byte directory entries. The first 2 bytes of the entry contain the tag, which tells the type of information the entry contains. The directory entry at location 0 contains `tag = 255`. This tag tells the file type. The next 2 bytes of the entry give the data type of the information. Directory entry 0 is `type = 3`, a short (2-byte unsigned integer). The next four bytes of the entry give the length of the information. This length is not in bytes, but rather in multiples of data type.
