@@ -146,6 +146,9 @@
   - [When to use a view](#when-to-use-a-view)
   - [Deleting and changing a view](#deleting-and-changing-a-view)
 - [Optimizing queries with materialized view](#optimizing-queries-with-materialized-view)
+  - [A slow query](#a-slow-query)
+  - [Better solution](#better-solution)
+- [Managing database design with schema migrations](#managing-database-design-with-schema-migrations)
 
 # Basics of SQL
 
@@ -3338,3 +3341,173 @@ DROP VIEW recent_posts;
 You can no longer refer to this view afterwards.
 
 # Optimizing queries with materialized view
+
+So now you know that a view is a query that gets executed every time you refer to it. But let's now understand what a materialized view is. A materialized view is a query that gets executed only at very specific times, but the results are saved and can be referenced without re-running the query.
+
+We use materialized views anytime that we have a very expensive query; that is, a query that might take seconds, minutes, or even hours to execute. We can run a materialized view just one time, hang on to the result set, and refer to the results without having to re-run the expensive query.
+
+There is a similarity between views and CTEs. Just as simple CTEs were convenience tools compared to recursive CTEs, simple views are the same compared to materialized views. So materialized views add major functionality like recursive CTEs.
+
+To understand materialized views better, let's go over an example: For each week, show the number of likes that posts and comments received. Use the post and comment created_at date, not when the like was received.
+
+This query takes a considerable amount of time to execute, so it is a good case for materialized view.
+We are going to use our tables of posts, comments, and likes. Remember that likes have a `post_id` and a `comment_id`. For each like, only one of the columns have an ID value and the other would definitely be `null`. This is important, because we will use this fact when we are going to write the query.
+
+We should first group the whole lifetime of the application by weeks. Then, we should assign posts and comments to these week groups based on their `created_at` value. Then we would have to find out how many likes each post and comment has received.
+
+As for the stage of writing the query, we are first going to join the three tables of likes, posts, and comments together. So, likes with posts, and then liskes with comments. But we need a reminder here. Do you remember _left join_? We are going to use it here. If we go for a normal _inner join_ between likes and posts, we would lose the rows in likes that have null values for `post_id`. So instead of an inner join, we use a left join. This will make the query keep all the rows from the likes table no matter what the value of the `post_id` is. This would be the diagram of the final joined table:
+
+![sql-indexes-14](/images/sql/sql-indexes-14.jpg)
+
+> Using a normal inner join would return with a complete empty table. This is a sign that you are probably using the wrong type of join.
+
+## A slow query
+
+Let's first write the query for the 3-way join we explained previously. This query will take a noticable amount of time by itself.
+
+```sql
+SELECT *
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id;
+-- returns a table just like the figure above
+```
+
+Next, we are going to take the `created_at` column of either a post or a comment in this joined table, and somehow round them to weeks. This is only achievable by using a Postgres built-in function that truncates date values. This function allows you to pull one piece of information out of a timestamp. In this case we are going to pull out week. Let's see how you can use it here:
+
+```sql
+SELECT
+	date_trunc('week', COALESCE(posts.created_at, comments.created_at))
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id;
+```
+
+So the `date_trunc('week', COALESCE(posts.created_at, comments.created_at))` line is actually passing two arguments to the `date_trunc` function. The first argument is the unit to which the date values are going to be rounded. We are then going to pass the `created_at` value of either a post or a comment; one that is not null. So we use the `COALESCE` clause and pass both `created_at` values to it and let it find out which one is not null and give it to the `date_trunc` function.
+
+Don't forget to give this line an alias in the query:
+
+```sql
+SELECT
+	date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id;
+```
+
+This is a piece of the table that you get back:
+
+```
+--week--
+"2015-08-03 00:00:00+04:30"
+"2013-07-08 00:00:00+04:30"
+"2016-05-09 00:00:00+04:30"
+"2016-08-08 00:00:00+04:30"
+"2017-01-02 00:00:00+03:30"
+"2013-12-09 00:00:00+03:30"
+"2016-10-24 00:00:00+03:30"
+...
+```
+
+Notice that in all the rows, the time value is now `00:00:00`. The dates are now divided into weeks but we cannot be sure now, we cannot see it. So let's sort this table by using an `ORDER BY` at the end:
+
+```sql
+SELECT
+	date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id
+ORDER BY week;
+```
+
+You now see the returned table as:
+
+```
+--week--
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-11 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+"2010-01-18 00:00:00+03:30"
+...
+```
+
+As you see we have multiple rows for the data related to each week. But we would like to group the rows by the weeks and then put some `COUNT` at work.
+
+```sql
+SELECT
+	date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week,
+	COUNT(posts.id) AS num_posts,
+	COUNT(comments.id) AS num_comments
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id
+GROUP BY week
+ORDER BY week;
+```
+
+Results are:
+
+```
+--week--                       --num_posts-- --num_comments--
+"2010-01-11 00:00:00+03:30"	        29	             0
+"2010-01-18 00:00:00+03:30"	        31	             3
+"2010-01-25 00:00:00+03:30"	        34	             0
+"2010-02-08 00:00:00+03:30"	        29	             10
+"2010-02-22 00:00:00+03:30"	        84	             13
+"2010-03-01 00:00:00+03:30"	        33	             0
+"2010-03-08 00:00:00+03:30"	        23	             0
+"2010-03-15 00:00:00+03:30"	        81	             0
+...
+```
+
+Writing this query is a pretty nice exercise. But as we said earlier, this is a slow query. Let's now find out how to use materialized views to make it fast.
+
+## Better solution
+
+The better solution is to create a materialized view out of the query we wrote previously. So we are going to use the materialized view to only run the query at very specific times. After the query is executed, Postgres will hold on to the result set, and then we can refer back to those results anytime we want. This will cause a hige performance improvement.
+
+```sql
+CREATE MATERIALIZED VIEW weekly_likes AS (
+SELECT
+	date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week,
+	COUNT(posts.id) AS num_posts,
+	COUNT(comments.id) AS num_comments
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id
+GROUP BY week
+ORDER BY week
+) WITH DATA;
+```
+
+Running this query for the first time will take a considerable amount of time and Potgres will respond:
+
+```
+SELECT 518
+Query returned successfully in 959 msec.
+```
+
+We can now refer to the result of this materialized view with its name `weekly_likes` and run any query on those results.
+
+```sql
+SELECT * FROM weekly_likes;
+```
+
+Now this query runs pretty fast because results are being read from cache. It does not take long anymore.
+
+The downside of materialized view is that if any change is introduced to the likes or posts tables, it will not modify the materialized view cached results. In this situation, we would have to manually tell Postgres to refresh the materialized view. How?
+
+```sql
+REFRESH MATERIALIZED VIEW weekly_likes;
+```
+
+# Managing database design with schema migrations
