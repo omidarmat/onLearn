@@ -24,7 +24,7 @@ long height, width;
 create_image_file(in_name, out_name);
 // Calls routeines to determine the specific file format and create files for those formats
 get_image_size(in_name, &height, &width);
-// Determines the specific file format and the size of the image to process. Size is needed to allocate image arrays and ro pass to processing routines. It also calls routines to read the image headers.
+// Determines the specific file format and the size of the image to process. Size is needed to allocate image arrays and ro pass to processing routines. It also calls routines to read the 'image headers'.
 the_image = allocate_image_array(height, width);
 // Creates memory for arrays of numbers
 read_image_array(in_name, the_image);
@@ -39,3 +39,52 @@ free_image_array(the_image, height);
 ```
 
 This was a high-level I/O routine. These routines are the top-level of a family of routines. These hide the image file details from the programmer. The underlying routines do the specific work. This structure removes all the file I/O from the image processing routines. All routines receive an array of numbers and the size of the array. This improves the portability of the image processing routines. They do not depend on image formats or srouces.
+
+## TIFF
+
+The goals of the TIFF specification are extensibility, portability, and
+revisability. TIFF must be extensible in the future. TIFF must be able to
+adapt to new types of images and data and must be portable between different
+computers, processors, and operating systems. TIFF must be revisable — it
+is not a read-only format. Software systems should be able to edit, process,
+and change TIFF files.
+
+TIFF stands for Tag Image File Format. Tag refers to the file's basic structure. A TIFF tag provides information about the image, such as its **width**, **length**, and **number of pixels**. Tags are organized in **tag directories**. Tag directories have no set length or number, since **pointers** lead from one directory to another. Here is a list of standard tags:
+
+```
+SubfileType
+    Tag=255 (FF)    Type=short      N=1
+    Indicates the kind of data in the subfile
+
+ImageWidth
+    Tag=256 (100)   Type=short      N=1
+    The width (x or horizontal) of the image in pixels
+
+ImageLength
+    Tag=257 (101)   Type=short      N=1
+    The length (y or height or vertical) of the image in pixels
+
+RowsPerStrip
+    Tag=278 (116)   Type=long       N=1
+    The number of rows per strip
+    The default is the entire image in one strip
+
+StripOffsets
+    Tag=273 (111)   Type=short or long      N=strips per image
+    The byte offset for each strip
+
+StripByteCounts
+    Tag=279 (117)   Type=long       N=1
+    The number of bytes in each strip
+
+SamplesPerPixel
+    Tag=277 (115)   Type=short      N=1
+    The number of samples per pixel
+    (1 for monochrome data, 3 for color)
+
+BitsPerSample
+    Tag=258 (102)   Type=short      N=SamplesPerPixel
+    The number of bits per pixel. 2**BitsPerSample = # of gray levels
+```
+
+This is the strucutre of a TIFF file:
