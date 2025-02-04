@@ -149,6 +149,11 @@
   - [A slow query](#a-slow-query)
   - [Better solution](#better-solution)
 - [Managing database design with schema migrations](#managing-database-design-with-schema-migrations)
+  - [Migration files](#migration-files)
+  - [Issues solved by migrations](#issues-solved-by-migrations)
+  - [Writing migration files](#writing-migration-files)
+  - [Practical example](#practical-example)
+- [Schema vs. data migration](#schema-vs-data-migration)
 
 # Basics of SQL
 
@@ -3511,3 +3516,178 @@ REFRESH MATERIALIZED VIEW weekly_likes;
 ```
 
 # Managing database design with schema migrations
+
+Schema migration is all about making very careful and well-planned changes to the structure of a database; that is, adding columns to a table, removing columns, renaming them, adding tables and removing them and so on.
+
+Schema migration is very important especially when you work with a team. To understand what schema migration really is, we will go through a really busy day you might have working on a database. We will identify some huge issues that come up when you start changing the structure of your database, implementing them directly on the database itself. These are issues that you will certainly run into at some point.
+
+The story is about a database engineer working on the comments table in all our previous examples. You have a copy of the database on your local machine, and the original database runs on an AWS server. Whenever you want to do something, you try it on the database copy on your local machine, and then move to the original database.
+
+Now let's say that you have received a feedback from the developers team saying that the 'contents' column name in the comments table is not good and you have to rename this column. Implementing this change just on the table itself is not a hard thing to do:
+
+```sql
+ALTER TABLE comments
+RENAME COLUMN contents TO body;
+```
+
+So you would do this first on your local machine, and you are not moving any data around. You may think that everything looks good and you would continue implementing this on the original database. Once you run the statement above on the production database, you will get yourself into trouble. Why?
+
+As an application, you will have requests arriving at your API server. The API will try to extract some comment text from the request, use that text to build some kind of SQL statement to insert or create a comment, and then send it to the database. Here is the issue: you renamed the `contents` column to `body`, but you didn't update your API server to match this change. So your API will probably still continue creating SQL statements that include the `contents` column name. So postgres will return errors.
+
+Here is the first big lesson: **Changes to the database structure and changes to clients need to be made at preceisely the same time.**
+
+But even if you start database and API new version deployments at the same time, you might very well still encounter critical errors. Because, the time that takes for the database to deploy might be very shorter from the time that it takes for the API to deploy. During this window gap, you will still have requests and find yourself in the middle of thousands of errors, because while the database new version is deployed, the API new deployment is still in progress, and the currently working version of the API is still refering to the `contents` column, but the new database deployment expects `body`.
+
+The solution to this situation is something that you might have encountered many times with different applications. They usually announce that they are going to deactivate the whole application for a certain amount of time to do some changes. This is exactly when they are implementing this kind of change to their database and API. But some services and applications cannot temporarily be turned off. They should always work. For these scenarios, you cannot have that window gap.
+
+Here is the second big lesson: **When working with other engineers, we need a really easy way to tie the strucutre of our database to our code.**
+
+It is now time to understand how schema migrations solve this issue.
+
+## Migration files
+
+Previously, we tried to implement the database update by openning up the PGAdmin and implementing the change there by running some commands that alter the strucutre of the database. But as we learned, this is not a good way. Instead, we are going to author something called a schema migration file. Schema migration files are files that contain some amount of code that describe a very precise and detailed change that we want to make to our database. For instance, in the previous example, the migration file would contain some code that says we want to rename the `contents` column to `body`.
+
+But what is inside this migration file really? A migration file can be written in any programming language. In general, a schema migration file contains 2 different sections: section **Up** (upgrade) and section **Down** (downgrade). So the up section contains a statement that advances, or upgrades the structure of the database. The down section contains a statement that exactly undo's the up secton command.
+
+![sql-indexes-15](/images/sql/sql-indexes-15.jpg)
+
+Once you author a migration file, you then **apply** it to the database. This way you have thought of a way to **revert** back the change you made in the up section. A project might include several migration files during its whole working time.
+
+## Issues solved by migrations
+
+As for the first important lesson we learned previously, using migration files, updating the database and API of an application can be done very easily, following this precedure over time:
+
+![sql-indexes-16](/images/sql/sql-indexes-16.jpg)
+
+> Some other issues still exists in this flow. We will take care of them later...
+
+As for the second lesson we can do it with migration files very easily.
+
+![sql-indexes-17](/images/sql/sql-indexes-17.jpg)
+
+## Writing migration files
+
+There are multiple libraries for implementing migration files. Here is a list for JavaScript:
+
+1. `node-pg-migrate`
+2. `typeorm`
+3. `sequelize`
+4. `db-migrate`
+
+Many migration tools can automatically generate migration files for you. However, it is highly recommended that you write all migrations manually using plain SQL. This is mainly because most of the libraries, make some intrinsic assumtions around some options that might want to apply to some column. For instance, they might apply some default values.
+
+In this example, we are going to use `node-pg-migrate`, but we are actually going to write plain SQL using this library.
+
+## Practical example
+
+We first need to create a sample project with Node.
+
+```
+npm init -y
+```
+
+This will create a `package.json` file. Then install two packages, one for migration, and one for connecting to Postgres database:
+
+```
+npm install node-pg-migrate pg
+```
+
+We are now going to create a new database in PGAdmin called "socialnetwork". Before creating a migration file, we need to add a script to the `scripts` property of the package json file of the project. Go on and remove the `test` script, and write this one instead:
+
+```json
+"scripts": {
+  "migration": "node-pg-migrate"
+}
+```
+
+This script will help us access the `node-pg-migrate` CLI from the terminal.
+
+As our first migration file, we are going to use this command in the terminal:
+
+```
+npm run migrate create table comments
+```
+
+This will generate a file in our project, placed inside a `migrations` directory. The file is named with a timestamp that refers to this migration file's time of creation. This timestamp is tracked as multiple migration files would have to be executed in the correct order in time.
+
+This is the initial strucutre of the generated migration file:
+
+```js
+/**
+ * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
+ */
+exports.shorthands = undefined;
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.up = (pgm) => {};
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.down = (pgm) => {};
+```
+
+And we are going to write our migration file as:
+
+```js
+/**
+ * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
+ */
+exports.shorthands = undefined;
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.up = (pgm) => {
+  pgm.sql(`
+        CREATE TABLE comments(
+            id SERIAL PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            udpated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            contents VARCHAR(240) NOT NULL
+        );
+        `);
+};
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.down = (pgm) => {
+  pgm.sql(`
+        DROP TABLE comments;
+        `);
+};
+```
+
+Now to apply this migration, you would have to use this command in Windows Git Bash:
+
+```
+DATABASE_URL=postgres://USERNAME:PASSWORD@localhost:5432/socialnetwork npm run migrate up
+```
+
+To revert the migration:
+
+```
+DATABASE_URL=postgres://USERNAME:PASSWORD@localhost:5432/socialnetwork npm run migrate down
+```
+
+You can check the result of applying and reverting the migration in PGAdmin.
+
+Now if you create another migration file and do something different as a second step, then when you use the terminal command to run the up section of your migrations, it will automatically start with the first migration file and then continue to the second. If the first one is already done from before, it will skip the first and continue to the second. However, if you try to revert the migration down, it will go back only one step, reverting only the last migration. If you want to revert one step further, you will have to run the down command again.
+
+In all the discussion during this section, we talked about updating or changing the structure of our database, and not the data itself. For instance, you may want to merge two columns into one new column, or change the data type of a column. This would require you to apply some changes to the data itself along the migration. How would you do this?
+
+Also, you might want examine if this process of applying migrations can help you avoid any downtimes on your application. Does it help?
+
+# Schema vs. data migration
