@@ -154,6 +154,8 @@
   - [Writing migration files](#writing-migration-files)
   - [Practical example](#practical-example)
 - [Schema vs. data migration](#schema-vs-data-migration)
+  - [Dangers around data migrations](#dangers-around-data-migrations)
+  - [Properly running data and schema migrations](#properly-running-data-and-schema-migrations)
 
 # Basics of SQL
 
@@ -3691,3 +3693,25 @@ In all the discussion during this section, we talked about updating or changing 
 Also, you might want examine if this process of applying migrations can help you avoid any downtimes on your application. Does it help?
 
 # Schema vs. data migration
+
+Let's first imagine a situation. You have a posts table which holds `id`, `url`, `lat`, and `lng` columns. Years after the database and application is created and has been working, you decide for some reason to merge `lat` and `lng` columns into one `loc` column. But until then, you might already have thousands of rows inside the current version of the table. So you need to find a way to take all the already existing data in your table and merge them into one single value for the new `loc` column.
+
+You need to devise a strategy on how to merge the data of these two columns together. This could be an algorithm: First, add the column `loc` to the table. Second, copy `lat` and `lng` to `loc`. Finally, drop `lat` and `lng` columns. It is interesting to know that the first and the last step is called **Schema migration** as we observed in the prevsious section. The second step, which is a bit more complicated, is called **Data migration**. This second step is not about changing the structure of the database. It is about moving data around between different columns.
+
+## Dangers around data migrations
+
+There are several reasons not to run data migrations at the same time as schema migrations. Let's focus on one of the reasons now. You mainly need to decide between two ways:
+
+1. Doing the whole process of schema and data migration in one single migration file: This could very easily get us into a huge trouble. First step which is adding a column is quick. Second step would take a really long time if you already have millions of records in your table. Then the final step is quick.
+
+Whenever we run a migration, it is common to place the migration inside of a **transaction**. This means that if some error happens, for example, in the final step of the migration, we don't want the migration in a kind of half-executed state. So if some error happens during the migration process, we want the whole process to go back. That is why we usually execute a migration process in a transaction. There are also other cases when you don't run migrations in transactions, but they are very rare.
+
+Whenever you open up a transaction, you can imagine that we are opening a separate workspace where you are copying all of your data into it. It is essentially a snapshot of the last state of your table. This is what you can imagine to understand the situation better. It is not what really happens behind the scenes. After copying all your data into this new imaginary workspace, you do some work on it, and then if there are no errors, you commit the transaction. Commiting the transaction will merge back all the changes to the main process. Remember that the execution of the transaction can take a lot of time for moving data around, and while this process is going on, your application is online and you are still accepting requests. So while the transaction is working on the last snapshot of your table, your table is accepting new records in its current structure, not the updated structure. These rows that were added online to your table, will not be included in the transaction.
+
+So following the example we mentioned, the `loc` column is being filled with the formatted data of `lat` and `lng` columns coming from the table snapshot that was created at the beginning of the transaction, and at the same time new rows are being inserted into your table through your online application and API. These new rows are not included in the snapshot being used in the transaction, and therefore the new `loc` column for these additional rows will end up having `NULL` value.This means that you have lost the location coordinates related to these posts!
+
+This was just one reason not to run data migrations and schema migrations at the same time. There are several other reasons.
+
+## Properly running data and schema migrations
+
+2. Split the three steps into three separate migration file, and allow some amount of time to pass between each step. For the first step, we do a schema migration by creating a column called `loc` and set it to allow us to put `NULL` value in it for every row. Eventually, we will set the non-null constraint on this column, but not now. After this step and before the second step of migration, you would have to deploy the new version of API that will write values to both `lat`/`lng` and `loc` columns. Between this and the previous step you could have some days off. The specific quality of this whole approach is that it is not time-dependant. After this step, our API will continue receiving requests and all the newly inserted rows will have values for the 3 columns. But the rows that were inserted before, will have `NULL` in their `loc` column. In the next step, which is originally the second step of migration, we go for updating the rows that were in the table from before and are not holding `NULL` for `loc`. We will copy their `lat` and `lng` values to their `loc` column. Before the final migration step, we would update the API code to only write to the `loc` column and leave `lat` and `lng` columns `NULL`. Finally, at the last migration step, since the application is no longer recording values into `lat` and `lng` columns, we will eventually drop them.
