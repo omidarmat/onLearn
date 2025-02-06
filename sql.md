@@ -156,6 +156,15 @@
 - [Schema vs. data migration](#schema-vs-data-migration)
   - [Dangers around data migrations](#dangers-around-data-migrations)
   - [Properly running data and schema migrations](#properly-running-data-and-schema-migrations)
+  - [Let's run migrations in practice](#lets-run-migrations-in-practice)
+    - [Running an Express server with database connection](#running-an-express-server-with-database-connection)
+    - [Adding the `loc` column](#adding-the-loc-column)
+    - [Updating server code](#updating-server-code)
+    - [Data migration for previous data](#data-migration-for-previous-data)
+      - [Implementing the data transaction](#implementing-the-data-transaction)
+    - [Updating server code (again, to now only generate `loc` data)](#updating-server-code-again-to-now-only-generate-loc-data)
+    - [Droping `lat` and `lng` columns](#droping-lat-and-lng-columns)
+- [Accessing Postgres from APIs](#accessing-postgres-from-apis)
 
 # Basics of SQL
 
@@ -3715,3 +3724,402 @@ This was just one reason not to run data migrations and schema migrations at the
 ## Properly running data and schema migrations
 
 2. Split the three steps into three separate migration file, and allow some amount of time to pass between each step. For the first step, we do a schema migration by creating a column called `loc` and set it to allow us to put `NULL` value in it for every row. Eventually, we will set the non-null constraint on this column, but not now. After this step and before the second step of migration, you would have to deploy the new version of API that will write values to both `lat`/`lng` and `loc` columns. Between this and the previous step you could have some days off. The specific quality of this whole approach is that it is not time-dependant. After this step, our API will continue receiving requests and all the newly inserted rows will have values for the 3 columns. But the rows that were inserted before, will have `NULL` in their `loc` column. In the next step, which is originally the second step of migration, we go for updating the rows that were in the table from before and are not holding `NULL` for `loc`. We will copy their `lat` and `lng` values to their `loc` column. Before the final migration step, we would update the API code to only write to the `loc` column and leave `lat` and `lng` columns `NULL`. Finally, at the last migration step, since the application is no longer recording values into `lat` and `lng` columns, we will eventually drop them.
+
+## Let's run migrations in practice
+
+### Running an Express server with database connection
+
+First, we need to setup a Node server application using Express library, and then, establish a database connection within the server using the `pg` NPM package. We finally try the connection to see if it is set up right.
+
+```js
+const express = require("express");
+const pg = require("pg");
+
+const pool = new pg.Pool({
+  host: "localhost",
+  port: 5432,
+  database: "socialnetwork",
+  user: "postgres",
+  password: "hotButter",
+});
+
+pool.query("SELECT 1 + 1;").then((res) => console.log(res));
+```
+
+Let's now implement an express app and a middleware to allow us to receive form submissions through browser. Afterwards, we are going to set up a route handler for the GET requests on the `/posts` url.
+
+```js
+const app = express();
+
+app.use(express.urlencoded({ extended: true }));
+// This is a middleware that allows us to receive form submissions through a browser
+
+// ROUTE HANDLERS:
+app.get("/posts", async (req, res) => {
+  const { rows } = await pool.query(`
+        SELECT * FROM posts;
+        `);
+
+  res.send(`
+            <table>
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>lng</th>
+                        <th>lat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows
+                      .map((row) => {
+                        return `
+                            <tr>
+                                <td>${row.id}</td>
+                                <td>${row.lng}</td>
+                                <td>${row.lat}</td>
+                            </tr>
+                        `;
+                      })
+                      .join("")}
+                </tbody>
+            </table>
+            <form>
+                      <h3>Create post</h3>
+                      <div>
+                        <label>Lng</label>
+                        <input name="lng" />
+                      </div>
+                      <div>
+                        <label>Lat</label>
+                        <input name="lat" />
+                      </div>
+                      <button type="submit">Create</button>
+            </form>
+            `);
+});
+
+app.listen(3005, () => {
+  console.log("listening on port 3005");
+});
+```
+
+> Don't forget to make the app keep listening for incoming requests on a specific port.
+
+Then implement a POST request for `/posts` url and
+
+```js
+app.post("/posts", async (req, res) => {
+  const { lng, lat } = req.body;
+
+  await pool.query(
+    `
+            INSERT INTO posts (lat, lng)
+            VALUES ($1, $2);
+        `,
+    [lat, lng]
+  );
+
+  res.redirect("/posts");
+});
+
+app.listen(3005, () => {
+  console.log("listening on port 3005");
+});
+```
+
+You should now be able to submit some data throught the form and your database will store that data and you server application will show it to you on the HTML page.
+
+### Adding the `loc` column
+
+First, in the terminal and at the root of your project run this command to create a migration file:
+
+```
+npm run migrate create add loc to posts
+```
+
+Then go to the file in the code editor and implement the migration:
+
+```js
+/**
+ * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
+ */
+exports.shorthands = undefined;
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.up = (pgm) => {
+  pgm.sql(`
+            ALTER TABLE posts
+            ADD COLUMN loc POINT;
+        `);
+};
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.down = (pgm) => {
+  pgm.sql(`
+        ALTER TABLE posts
+        DROP COLUMN loc;
+        `);
+};
+```
+
+Then run the migration on your project terminal using this command:
+
+```
+DATABASE_URL=postgres://postgres:hotButter@localhost:5432/socialnetwork npm run migrate up
+```
+
+Then run the server again. At this point in time, your posts table is upgraded with a `loc` column, but the server application will still keep submitting values for `lat` and `lng` and your database will keep receiving them, leaving the `loc` column `NULL` for new records.
+
+### Updating server code
+
+So as the next step, we are now going to update the server code to submit data for both `lat`/`lng` and `loc` columns. So actually, you just need alter the POST route handler.
+
+```js
+app.post("/posts", async (req, res) => {
+  const { lng, lat } = req.body;
+
+  await pool.query(
+    `INSERT INTO posts (lat, lng, loc)
+        VALUES ($1, $2, $3);`,
+    [lat, lng, `(${lng}, ${lat})`]
+  );
+
+  res.redirect("/posts");
+});
+```
+
+Now you can go to the application again, submit some data and you will see that your database is now filled with data for both `lat`/`lng` and `loc` columns for the newly inserted record.
+
+### Data migration for previous data
+
+For the next step, we need to update the data that was already existing in our database, and fill their `loc` column with proper data. For this step, we have 2 solutions.
+
+1. Determine updates in JS. This means that you are going to put some instructions in a JS file where you first, query for all the rows in the table where `loc` is `NULL`. Then you run some busines logic and some validation in JavaScript. Finally, you send the updated data to the database and update the targetted records with the new data format.
+
+![sql-indexes-18](/images/sql/sql-indexes-18.jpg)
+
+This approach has a couple of downsides to it:
+
+- The query that we use to acquire all the records where `loc` is null might return with millions of records and the Node server might crash. You could use a technique called **Batching** to load only a limited set of records using the `LIMIT` clause in SQL
+- Batching could also fail halfway and leave us with the process incomplete. For instance, at the last batch, there could be some error in our logic in how we update or calculate the updated data. This will make it so that some records of the table are updated and some others are not. We could also solve this by using a transaction but that also has a couple of challenges.
+- This method requires us to manually connect to the database from a Node environment. Connecting to a database hosted on some services using JavaScript files might be a little bit challenging.
+
+The very big upsade to this approach is:
+
+- You can very easily run really complex business logic or do some kind of complex validation on all the records before you process the update. Running validations in SQL are pretty hard.
+
+2. Rely just upon SQL. You could write a simple JavaScript file that connects to the database and just send some update statement to the database. You could also write the statement directly inside PGAdmin. The upside to this approach is:
+
+- There is no moving data between database and Node application, which makes the whole process as fast as possible.
+
+However, the downside is:
+
+- It is a lot harder to implement validation or business logic.
+
+> There is one issue with which both options 1 and 2 are troubled. This happens when there are many many records inside the table. We are talking about hundreds of thousands or millions of records. With either approach, you might want to run the entire update inside a single transaction. There is a good reason for doing that; that is, if something goes wrong at the very last row, it means that there might be a bug in your updating logic. If this happens, none of the updates will be saved to the database and the transaction would be undone. But there is a little issue around a long-running transaction that you need to be aware of.
+>
+> Imagine your transaction is running and it has just finished processing a particular record. That particular record will be locked by the transaction. This row cannot be updated until either the transaction has fully commited or completely rolled back. During the locked time, if a user sends a request to the application and tries to update the record that is being locked, they will fail or they would have to wait until the migration transaction is done. Their transaction would not be allowed to run until the migration transaction finishes processing.
+
+#### Implementing the data transaction
+
+We are going to work with option 2 from the section above, and we are going to create a JS file in our server application. This JS file should be placed inside a `data` directory within the `migration` directory. This way, the `node-pg-migrate` module will only look into the `migrations` directory. Putting this file inside the `data` directory makes the module understand that this is a data migration file. The JS file name should start with `01` for the first data migration file. This number will provide the module with an index, so that it would know the order by which the data migration files should be executed.
+
+Inside this file, we are going to connect to the database and run a query to update the posts table:
+
+```js
+const pg = require("pg");
+
+const pool = new pg.Pool({
+  host: "localhost",
+  port: 5432,
+  database: "socialnetwork",
+  user: "postgres",
+  password: "hotButter",
+});
+
+pool.query(`
+    UPDATE posts
+    SET loc = POINT(lng, lat)
+    WHERE loc IS NULL;
+    `);
+```
+
+This query returns a promise to which you can attach a `then` handler.
+
+```js
+const pg = require("pg");
+
+const pool = new pg.Pool({
+  host: "localhost",
+  port: 5432,
+  database: "socialnetwork",
+  user: "postgres",
+  password: "hotButter",
+});
+
+pool
+  .query(
+    `
+    UPDATE posts
+    SET loc = POINT(lng, lat)
+    WHERE loc IS NULL;
+    `
+  )
+  .then(() => {
+    console.log("Update complete");
+  })
+  .catch((err) => console.error(err.message));
+```
+
+You can then move into the `migrations/data` directory in the terminal and run the data migration file called `01-lng-lat-to-loc.js`.
+
+```
+<!-- @ migrations/data -->
+node 01-lng-lat-to-loc.js
+```
+
+You can now go and confirm the changes in PGAdmin.
+
+### Updating server code (again, to now only generate `loc` data)
+
+From this point on, our server application will no longer store data in `lat` and `lng` columns. They will simply be left `null`.
+
+```js
+const express = require("express");
+const pg = require("pg");
+
+const pool = new pg.Pool({
+  host: "localhost",
+  port: 5432,
+  database: "socialnetwork",
+  user: "postgres",
+  password: "hotButter",
+});
+
+const app = express();
+
+app.use(express.urlencoded({ extended: true }));
+
+// ROUTE HANDLERS:
+app.get("/posts", async (req, res) => {
+  const { rows } = await pool.query(`
+        SELECT * FROM posts;
+        `);
+
+  res.send(`
+            <table>
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>lng</th>
+                        <th>lat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows
+                      .map((row) => {
+                        return `
+                            <tr>
+                                <td>${row.id}</td>
+                                <td>${row.loc.x}</td>
+                                <td>${row.loc.y}</td>
+                            </tr>
+                        `;
+                      })
+                      .join("")}
+                </tbody>
+            </table>
+            <form method="POST">
+                      <h3>Create post</h3>
+                      <div>
+                        <label>Lng</label>
+                        <input name="lng" />
+                      </div>
+                      <div>
+                        <label>Lat</label>
+                        <input name="lat" />
+                      </div>
+                      <button type="submit">Create</button>
+            </form>
+            `);
+});
+
+app.post("/posts", async (req, res) => {
+  const { lng, lat } = req.body;
+
+  await pool.query(
+    `INSERT INTO posts (loc)
+        VALUES ($1);`,
+    [`(${lng}, ${lat})`]
+  );
+
+  res.redirect("/posts");
+});
+
+app.listen(3005, () => {
+  console.log("listening on port 3005");
+});
+```
+
+### Droping `lat` and `lng` columns
+
+In this step, we are going to need another schema migration file. So in the terminal:
+
+```
+npm run migrate create drop lng and lat from posts
+```
+
+This will, again, create a migration file in the `migrations` directory and we fill it like this:
+
+```js
+/**
+ * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
+ */
+exports.shorthands = undefined;
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.up = (pgm) => {
+  pgm.sql(`
+        ALTER TABLE posts
+        DROP COLUMN lat,
+        DROP COLUMN lng;
+        `);
+};
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.down = (pgm) => {
+  pgm.sql(`
+        ALTER TABLE posts
+        ADD COLUMN lat numeric,
+        ADD COLUMN lng numeric;
+        `);
+};
+```
+
+Then run the migration using this command in the terminal:
+
+```
+DATABASE_URL=postgres://postgres:hotButter@localhost:5432/socialnetwork npm run migrate up
+```
+
+Now you can run the Node server again and everything is fine.
+
+# Accessing Postgres from APIs
+
+We are now going to learn how you should connect to your Postgres database from your server files.
