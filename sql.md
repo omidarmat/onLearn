@@ -165,6 +165,17 @@
     - [Updating server code (again, to now only generate `loc` data)](#updating-server-code-again-to-now-only-generate-loc-data)
     - [Droping `lat` and `lng` columns](#droping-lat-and-lng-columns)
 - [Accessing Postgres from APIs](#accessing-postgres-from-apis)
+  - [Building the API with users router](#building-the-api-with-users-router)
+    - [Creating the server in `app.js`](#creating-the-server-in-appjs)
+    - [Creating the routes file](#creating-the-routes-file)
+    - [Establishing connection with database](#establishing-connection-with-database)
+    - [Start the Express app and using the pool](#start-the-express-app-and-using-the-pool)
+    - [Adding methods to the pool](#adding-methods-to-the-pool)
+- [Data access patterns](#data-access-patterns)
+  - [Creating a repository](#creating-a-repository)
+    - [Creating a plain object](#creating-a-plain-object)
+    - [Creating a class](#creating-a-class)
+    - [Creating a class with static methods](#creating-a-class-with-static-methods)
 
 # Basics of SQL
 
@@ -4122,4 +4133,431 @@ Now you can run the Node server again and everything is fine.
 
 # Accessing Postgres from APIs
 
-We are now going to learn how you should connect to your Postgres database from your server files.
+We are now going to learn how you should connect to your Postgres database from a Node API. Along this entire section, we are really focused on how we work with a database from a real application.
+
+Let's basically setup a Node API application using the terminal:
+
+```
+<!-- @Desktop -->
+mkdir api
+
+cd api
+
+mkdir social-repo
+
+cd social-repo
+
+<!-- @social-repo -->
+npm init -y
+
+npm install dedent express jest node-pg-migrate nodemon pg pg-format supertest
+```
+
+Now open your code editor and let's edit the `scripts` inside the package json file.
+
+```json
+{
+  "scripts": {
+    "migrate": "node-pg-migrate",
+    "start": "nodemon index.js"
+  }
+}
+```
+
+Next, we are going to generate a new migration file to create the users table inside the social network database.
+
+```
+npm run migrate create add users table
+```
+
+Then go on and implement the migration process:
+
+```js
+/**
+ * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
+ */
+exports.shorthands = undefined;
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.up = (pgm) => {
+  pgm.sql(`
+        CREATE TABLE users (
+            id SERIAL PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            bio VARCHAR(400),
+            username VARCHAR(30) NOT NULL
+        );
+        `);
+};
+
+/**
+ * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param run {() => void | undefined}
+ * @returns {Promise<void> | void}
+ */
+exports.down = (pgm) => {
+  pgm.sql(`
+        DROP TABLE users;
+        `);
+};
+```
+
+We are using a fresh database. So we have a `socialnetwork` database, but there is no table in it. Then run the migration file:
+
+```
+DATABASE_URL=postgres://postgres:hotButter@localhost:5432/socialnetwork npm run migrate up
+```
+
+This was a quick basic setup for the Node API that we are going to develop right now.
+
+## Building the API with users router
+
+Here is a list of routes and methods that we are going to implement in the Node API:
+
+![sql-indexes-19](/images/sql/sql-indexes-19.jpg)
+
+### Creating the server in `app.js`
+
+To start implementing the application, we create a folder called `src` at the root of our project, then create a file called `app.js` in it. Within this file, you are going export a function that returns the `app` created by calling Express.
+
+```js
+// app.js
+const express = require("express");
+
+module.exports = () => {
+  const app = express();
+  app.use(express.json());
+  return app;
+};
+```
+
+This may be a little different to what you are usually used to do with Express applications. You were probably expecting to create an app by calling Express, then add some middleware and finally make the app listen to requests on a specific port number. But we are taking a different approach here, for which there is really good reason: Our testing strategy.
+
+### Creating the routes file
+
+Next, we are going to create a routes file. This file will contain all the routes definitions tied to the users resource. So inside the `src` directory, we are going to create a folder called `routes`, and in it, we are going to create a `users.js` file and set it up like this:
+
+```js
+// users.js
+const express = require("express");
+const router = express.Router();
+```
+
+Then go on and define your routes and finally export the router.
+
+```js
+// users.js
+const express = require("express");
+const router = express.Router();
+
+router.get("/users", async (req, res) => {});
+
+router.get("/users/:id", async (req, res) => {});
+
+router.post("/users", async (req, res) => {});
+
+router.put("/users/:id", async (req, res) => {});
+
+router.delete("/users/:id", async (req, res) => {});
+
+module.exports = router;
+```
+
+We are then going to import this router in the `app.js` file and associate the router with the express application.
+
+```js
+// app.js
+const express = require("express");
+const usersRouter = require("./routes/users");
+
+module.exports = () => {
+  const app = express();
+  app.use(express.json());
+  app.use(usersRouter);
+  return app;
+};
+```
+
+### Establishing connection with database
+
+To establish a connection between the Express application and the Postgres database making us able to run queries on the database, we are going to use the `pg` module. It is good to know that the `pg` module does not do any query building, it does not do any validation, it does not do any checking, it is nothing but to run some SQL. It is a very popular module in the Node community. This module can also be used to build a client. We usually don't use a client directly, because when you create a client, it can only execute one query at a time. This is a very big issue when building APIs. Because if we ever get multiple requests arriving at our API and we need to run multiple queries at the same time, with a client we would only be able to run one of those queries at a time. So rather than using a client directly, we generally use something called a **Pool**.
+
+A pool maintains a list of several different clients. Then anytime that you need to run a query, you ask the pool to run a query for you. The pool will take your query, hand it off to one of the clients that is free internally, and that client will execute the query in Postgres.
+
+> There is one scenario in which you use a client directly. That is, when you need to write or run a transaction. However, using a client or a pool is pretty similar.
+
+We are now going to create a new file called `pool.js` in the `src` directory, and we are going to make a pool inside it. Just a little point here. You would normally create and export a pool like this:
+
+```js
+// pool.js
+const pg = require("pg");
+
+const pool = new pg.Pool({
+  host: "localhost",
+  port: 5432,
+});
+
+module.exports = pool;
+```
+
+However, on this example, we are not going to do this for an extremely important reason. Again, it is related to the testing stuff that we are going to implement later. If you create a pool like this, it would make it extremely challenging to connect to multiple databases. Why would you want to connect to several databases? When you implement and run tests, you would like to be able to do it on one single application that can connect to different databases.
+
+Instead, we are going to create a pool and wrap it up inside a class.
+
+```js
+const pg = require("pg");
+
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+  }
+}
+
+module.exports = new Pool();
+```
+
+This approach allows us to tell our pool some time in the future to connect to a different database. Let's continue setting up this pool.
+
+### Start the Express app and using the pool
+
+We are now going to create a file called `index.js` at the root of our project. In this file, we are going to start the Express app, and tell our pool to connect to our local database. So first, go on and require the `app` and `pool` modules.
+
+```js
+// index.js
+const app = require("./src/app");
+const pool = require("./src/pool");
+```
+
+Then tell your app to listen for traffic, and your pool to connect to some given atabase. Make sure you make the database connection first, because we want to first check for any invalid credentials regarding the database connection, and if there are errors, we don't want our application to ever start working. Let's go through this setup which you might think will work fine:
+
+```js
+// index.js
+const app = require("./src/app");
+const pool = require("./src/pool");
+
+pool.connect({
+  host: "localhost",
+  port: 5432,
+  database: "socialnetwork",
+  user: "postgres",
+  password: "hotButter",
+});
+
+app().listen(3005, () => {
+  console.log("Listening on port 3005");
+});
+```
+
+But it does not. Creating a pool does not establish a connection with the database. It is only when a client inside the pool is created to run a query that a connection is made. So creating the pool first and then running the app on a specific port will not respond with errors if database connection credentials are invalid. So, in addition to creating the pool, we should somehow tell the pool to conenct to the database and check the credentials. The easiest way to do that is to run a simple query. So you would want to go back to the `pool.js` file and add a simple query to the `connect` function defined inside the class:
+
+```js
+// pool.js
+const pg = require("pg");
+
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+    return this._pool.query("SELECT 1 + 1;");
+    // this query will make the pool check the connection credentials. It is a common strategy used by many libraries.
+  }
+}
+
+module.exports = new Pool();
+```
+
+The query that we added to the `connect` method, will return a promise. This promise will only resolve if the query inside it runs successfully. So we would have to update the code inside `index.js` to account for this promise:
+
+```js
+// index.js
+const app = require("./src/app");
+const pool = require("./src/pool");
+
+pool
+  .connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork",
+    user: "postgres",
+    password: "hotButter",
+  })
+  .then(() => {
+    app().listen(3005, () => {
+      console.log("Listening on port 3005");
+    });
+  })
+  .catch((err) => {
+    console.error(err);
+  });
+```
+
+So the app would only start to listen if the connection is established successfully. The `catch` phrase will also be able to receive any errors if occured. Let's now go to the terminal and run the application.
+
+```
+node index.js
+<!-- Listening on port 3005 -->
+```
+
+It means that we have successfully connected our application to the database.
+
+### Adding methods to the pool
+
+Let's first add a `close` function to the pool class. This method will be able to close out the pool or essentially disconnect from the Postgres database.
+
+```js
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+    return this._pool.query("SELECT 1 + 1;");
+  }
+
+  close() {
+    return this._pool.end();
+  }
+}
+```
+
+We are then going to add a method called `query` to actually run some query or send some SQL to the databse, but this is going to expose a really big security issue. This implementation is not good enough and should be completed. We will discuss this later...
+
+```js
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+    return this._pool.query("SELECT 1 + 1;");
+  }
+
+  close() {
+    return this._pool.end();
+  }
+
+  // REALLY BIG SECURITY ISSUE HERE!
+  query(sql) {
+    return this._pool.query(sql);
+  }
+}
+```
+
+# Data access patterns
+
+Let's now implement our route handlers. For instance, If we receive a `GET` request at the `/users` route, we want to query for all the users, and return the results to the client that has requested. To run this query, we are going to use the **Repository pattern**.
+
+Let's first understand what a repository is. What we are going to do is to create a **User repository** and define some functions for it:
+
+![sql-indexes-20](/images/sql/sql-indexes-20.jpg)
+
+This user repository is going to be our central access point to perform different things on our users table. Each HTTP method will be used by one of the functions of this repository.
+
+![sql-indexes-21](/images/sql/sql-indexes-21.jpg)
+
+Note that you are not limited to these functions for the repository, and there should not necessarily be a 1-1 connection between HTTP methods and repository functions. You could, for instance, define a `fineOne` function that could also use the `GET` HTTP method.
+
+How can we implement the repository? There are a huge variety of approaches. You can define it as a plain object with some functiones defined on it. You can make it an instance of a class. You can make it a class with some static methods tied to it. You can do it in any way you want. It just has to be the central access point to a specific aspect of our database.
+
+## Creating a repository
+
+Create a file called `user-repo.js` inside a `repos` directory that is placed inside the `src` directory. Wihtin this file, you are going to create the repo.
+
+### Creating a plain object
+
+```js
+// user-repo.js
+
+const pool = require("../pool");
+
+module.exports = {
+  find() {},
+
+  findById() {},
+
+  insert() {},
+};
+```
+
+### Creating a class
+
+```js
+// user-repo.js
+const pool = require("../pool");
+
+class UserRepo {
+  find() {}
+
+  findById() {}
+
+  insert() {}
+}
+
+module.exports = new UserRepo();
+```
+
+### Creating a class with static methods
+
+```js
+// user-repo.js
+const pool = require("../pool");
+
+class UserRepo {
+  static find() {}
+
+  static findById() {}
+
+  static insert() {}
+}
+
+module.exports = UserRepo;
+```
+
+Then you could access the functions in another file like this:
+
+```js
+UserRepo.insert();
+```
+
+We are actually going to use this method. So let's continue implementing the class. Some of the functions are going to accept some argument, but all of them are similar in nature: They are all going to use the pool to run some query against the database, and then return the results.
+
+Running a query using the pool is an asynchronous operation. So in all the repository functions we are going to use the `async`/`await` syntax.
+
+```js
+class UserRepo {
+  static async find() {}
+
+  static async findById() {}
+
+  static async insert() {}
+
+  static async update() {}
+
+  static async delete() {}
+}
+```
+
+Now let's implement the functions themselves:
+
+```js
+class UserRepo {
+  static async find() {
+    const { rows } = await pool.query("SELECT * FROM users;");
+    return rows;
+  }
+
+  static async findById() {}
+
+  static async insert() {}
+
+  static async update() {}
+
+  static async delete() {}
+}
+```
