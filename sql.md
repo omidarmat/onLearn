@@ -176,6 +176,12 @@
     - [Creating a plain object](#creating-a-plain-object)
     - [Creating a class](#creating-a-class)
     - [Creating a class with static methods](#creating-a-class-with-static-methods)
+  - [Testing the API and database connection](#testing-the-api-and-database-connection)
+  - [Finding particular rows (users)](#finding-particular-rows-users)
+- [Security around Postgres](#security-around-postgres)
+  - [SQL injection exploits](#sql-injection-exploits)
+  - [Handle SQL injection with prepared statements](#handle-sql-injection-with-prepared-statements)
+  - [Reminder on POST requests](#reminder-on-post-requests)
 
 # Basics of SQL
 
@@ -4552,6 +4558,8 @@ class UserRepo {
     return rows;
   }
 
+  // There are a little bit of holes around the logic. We cannot just return the rows. We need to do some further processing.
+
   static async findById() {}
 
   static async insert() {}
@@ -4561,3 +4569,225 @@ class UserRepo {
   static async delete() {}
 }
 ```
+
+We can now use this function in our router file.
+
+```js
+// users.js
+const express = require("express");
+const UserRepo = require("../repos/user-repo");
+const router = express.Router();
+
+router.get("/users", async (req, res) => {
+  const users = await UserRepo.find();
+  res.send(users);
+});
+```
+
+## Testing the API and database connection
+
+You can run your server application in a terminal, and then, using Postman, you can send a GET request to `localhost:3005/users` and receive all the users back from the database.
+
+There is only one issue here. Naming columns in Postgres with underscores is a convention. So you have `created_at` in the data coming back from the database. However, if you are writing a Node application, this kind of naming does not comply with JavaScript variable naming conventions. The best way to go in these cases is to do some further processing in the repository functions; that is, process and format names before you return them as the final data.
+
+```js
+class UserRepo {
+  static async find() {
+    const { rows } = await pool.query("SELECT * FROM users;");
+
+    const parsedRows = rows.map((row) => {
+      const replaced = {};
+
+      for (let key in row) {
+        const camelCase = key.replace(/([-_][a-z])/gi, ($1) =>
+          $1.toUpperCase().replace("_", "")
+        );
+        replaced[camelCase] = row[key];
+      }
+
+      return replaced;
+    });
+
+    return parsedRows;
+  }
+}
+```
+
+Let's refactor this cammel case processing into its own file and make it more reusable accross the application:
+
+```js
+// repo/to-camel-case.js
+module.exports = (rows) => {
+  return rows.map((row) => {
+    const replaced = {};
+
+    for (let key in row) {
+      const camelCase = key.replace(/([-_][a-z])/gi, ($1) =>
+        $1.toUpperCase().replace("_", "")
+      );
+      replaced[camelCase] = row[key];
+    }
+
+    return replaced;
+  });
+};
+```
+
+Then we can use it in the `user-repo.js` file:
+
+```js
+// user-repo.js
+class UserRepo {
+  static async find() {
+    const { rows } = await pool.query("SELECT * FROM users;");
+
+    return toCamelCase(rows);
+  }
+}
+```
+
+## Finding particular rows (users)
+
+We are now going to implement the route handler related to finding a specific user by their ID. You can go on and implement the route handler first. You can access the ID parameter inserted into the route URL by using the `params` property of the request object.
+
+Remember that whenever someone tries to find a specific record by its ID, they might insert an ID that does not exist on our database. So you should make sure you return a specific record to the sender of the request, and if there is no record related to what they are requesting for, you should respond with a `404` error.
+
+```js
+// user.js
+router.get("/users/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const user = await UserRepo.findById(id);
+
+  if (user) {
+    res.send(user);
+  } else {
+    res.sendStatus(404);
+  }
+});
+```
+
+You now need to implement the repository function `findById`. Remember that this initial implementation has a really big security issue to it. We are going to fix it later.
+
+```js
+// user-repo.js
+class UserRepo {
+  static async findById(id) {
+    // REALLY BIG SECURITY ISSUE!
+    const { rows } = await pool.query(`
+        SELECT * FROM users WHERE id = ${id}
+      `);
+
+    return toCamelCase(rows)[0];
+  }
+}
+```
+
+You can now send a GET request to the `localhost:3005/users/:id` route and check the response.
+
+```
+localhost:3005/users/1
+```
+
+# Security around Postgres
+
+## SQL injection exploits
+
+We have been talking about a serious security issue. What is that? Let's send the previous GET request to the same URL but with some alteration:
+
+```
+localhost:3005/users/1;DROP TABLE users;
+```
+
+This will return an error, but it has actually destroyed the whole users table. The table no longer exists in our database. It is totally gone. This is called **SQL injection exploit**.
+
+You should **NEVER EVER** directly concatenate user-provided input into a SQL query. There are a variety of safe ways to get user-provided values into a string.
+
+## Handle SQL injection with prepared statements
+
+In order to get user values into queries you need to add some code to **sanitize** user-provided values. You can also rely on Postgres to sanitize values for you.
+
+Let's use Postgres to handle this issue. Currently, our code is implemented in a way that a query statement is created by ourselves in the code, it is simply passed to the `pg` module, and the module just executes the query at the database. We need to change this flow a little bit. We are going to split this process into two steps. We are going to give `pg` 2 separate things:
+
+1. A query statement which is a template. So instead of this:
+
+```sql
+SELECT * FROM users
+WHERE id = 127;
+```
+
+we are going to give it this:
+
+```sql
+SELECT * FROM users
+WHERE id = $1
+```
+
+`$1` is a kind of an identifier that says that a value should be taken from somewhere and inserted here.
+
+2. An array of values to be substituted into the query statement template: `['127']`
+
+If the query statment expects two arguments in `$1` and `$2` placeholders, you would have to provide 2 values in the value array. So the first element of the array would be replaced with `$1` and the second value in the array would be replaced by `$2`.
+
+But how is this actually used by `pg` and Postgres? The statement template is used by `pg` first. This module will create a **Prepared statement**. It will tell the database that it should get ready because we are about to execute a query like this, but we are not running it yet:
+
+```
+PREPARE sdlkfjh (string) AS
+  SELECT *
+  FROM users
+  WHERE id = $1;
+```
+
+Note that `sdlkfjh` is a unique identifier for the prepared statement. It is randomly generated by the `pg` module. The `(string)` means that the statement will receive a string as its single argument (`$1`). It could also be of type integer.
+
+Immediately afterwards, `pg` will try to execute the query:
+
+```sql
+EXECUTE sdlkfjh('127');
+```
+
+But how is this going to solve the SQL injection problem? Postgres is totally aware why you are using prepared statements. So it understands that the `EXECUTE` command should not pass any query. It should only pass the specified values. Let's implement this approach in our code:
+
+```js
+class UserRepo {
+  static async findById(id) {
+    const { rows } = await pool.query(
+      `
+        SELECT * FROM users WHERE id = $1;
+      `,
+      [id]
+    );
+
+    return toCamelCase(rows)[0];
+  }
+}
+```
+
+Remember that the `poo.query` function is what we defined in our `pool.js` file. So we need to update it to be able to receive 2 arguments as we updated the code above:
+
+```js
+// pool.js
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+    return this._pool.query("SELECT 1 + 1;");
+  }
+
+  close() {
+    return this._pool.end();
+  }
+
+  // SECURITY ISSUE SOLVED!
+  query(sql, params) {
+    return this._pool.query(sql, params);
+  }
+}
+```
+
+Now if you try to inject SQL into the query, database will respond with error, saying "invalid input syntax for type integer: "1;DROP TABLE users;".
+
+The downside to this approach is that you might very well need to accept other inputs from the client that targets some other place of the query. Not always clients should provide ID values for the query. For instance, they might want to pass identifiers for the `SELECT` statement. Prepared statements cannot be used for these cases. So let's see how we could use our first option to prevent SQL injection by sanitizing user input in our code.
+
+## Reminder on POST requests
