@@ -184,6 +184,14 @@
   - [Reminder on POST requests](#reminder-on-post-requests)
   - [Handling updates](#handling-updates)
   - [Deleting users](#deleting-users)
+- [Fast parallel testing](#fast-parallel-testing)
+  - [Assertions around user count](#assertions-around-user-count)
+  - [Connecting to database for tests](#connecting-to-database-for-tests)
+  - [Disconnecting after tests](#disconnecting-after-tests)
+  - [Multi-database setup and fixing some errors](#multi-database-setup-and-fixing-some-errors)
+  - [Issues with parallel tests](#issues-with-parallel-tests)
+  - [Isolation with schemas](#isolation-with-schemas)
+    - [How schemas work behind the scenes](#how-schemas-work-behind-the-scenes)
 
 # Basics of SQL
 
@@ -4886,7 +4894,7 @@ router.put("/users/:id", async (req, res) => {
 
   const user = await UserRepo.update(id, username, bio);
 
-  // If the user ID does not exist, the update won't be done and the 'user' will be undefined. If there is a user, we would return it. Otherwise, we would send out a 404 error response. 
+  // If the user ID does not exist, the update won't be done and the 'user' will be undefined. If there is a user, we would return it. Otherwise, we would send out a 404 error response.
   if (user) {
     res.send(user);
   } else {
@@ -4896,3 +4904,398 @@ router.put("/users/:id", async (req, res) => {
 ```
 
 ## Deleting users
+
+The code to delete a user is almost identical in nature to the `put` route handler. Again, you should check if a wrong user ID is sent by the client.
+
+```js
+router.delete("/users/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const user = await UserRepo.delete(id);
+
+  if (user) {
+    res.send(user);
+  } else {
+    res.sendStatus(404);
+  }
+});
+```
+
+Let's now implement the `delete` method of `UserRepo`.
+
+```js
+class UserRepo {
+  static async delete(id) {
+    const { rows } = await pool.query(
+      "DELETE FROM users WHERE id = $1 RETURNING *;",
+      [id]
+    );
+
+    return toCamelCase(rows)[0];
+  }
+}
+```
+
+It is now time to implement some API testing system. Note that doing this requires a deeper understanding of how you are connecting to the database and other stuff around it.
+
+# Fast parallel testing
+
+The main challenge in impelmenting tests using the Jest library is that Jest, unlike many other libraries, run multiple test files at the same time. Therefore, there might be scenarios when these test files get stuck in conflicts with each other's process. For instance, one test file might carry on the process of creating a user and then right after, getting the recently created user. This might very well get into conflict with another test file which is creating a user for another purpose. In order to solve this issue, we need to acquire a bit deeper understanding of Postgres internals. Beware that this is going to be more about Postgres rather than the testing strategies and practices.
+
+## Assertions around user count
+
+Let's start by writing some test. Inside the `src` directory, we are going to build another directory called `test`, and another directory nested under `test`, called `routes`, and in this final directory, we are going to create a file called `users.test.js`.
+
+First we are going to require the `supertest` module. It is a module that we installed its NPM package at the very beginning of our project. Then we are going to require the app that we created by calling express from the `app.js` file.
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+```
+
+You can write the test using this code:
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+
+it("create a user", async () => {
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+});
+```
+
+But to really test for the actual data at the database level, we would have to use the `UserRepo` class to reach into the database. A common pattern regarding this matter is to count the number of users before the test, and compare it with the number of users after the test. So we are now going to need to implement a functionality for the `UserRepo` to get the user count from the database.
+
+```js
+// user-repo.js
+class UserRepo {
+  static async count() {
+    const { rows } = await pool.query("SELECT COUNT(*) FROM users;");
+
+    return rows[0].count;
+  }
+}
+```
+
+We are then going to require the `UserRepo` module into the test file and use it in the testing function:
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+const UserRepo = require("../../repos/user-repo");
+
+it("create a user", async () => {
+  const startingCount = await UserRepo.count();
+  expect(startingCount).toEqual(0);
+
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+
+  const finishCount = await UserRepo.count();
+  expect(finishCount).toEqual(1);
+});
+```
+
+## Connecting to database for tests
+
+Now as we run this, we are going to see a whole barrel of different errors. To run the test, we are first going to open up our `package.json` file, and add a `test` script:
+
+```json
+{
+  "scripts": {
+    "migrate": "node-pg-migrate",
+    "start": "nodemon index.js",
+    "test": "jest"
+  }
+}
+```
+
+Then move to the terminal, stop the running server, and execute the test:
+
+```
+npm run test
+```
+
+This will return an error:
+
+```
+TypeError: Cannot read properties of null (reading 'query')
+at Pool.query (src/pool.js:16:23)
+```
+
+Let's go to the file. The error is coming from the `query` function in the pool. It seems that `this._pool` is being evaluated to `null`. Why?
+
+```js
+class Pool {
+  _pool = null;
+
+  connect(options) {
+    this._pool = new pg.Pool(options);
+    return this._pool.query("SELECT 1 + 1;");
+  }
+
+  close() {
+    return this._pool.end();
+  }
+
+  query(sql, params) {
+    return this._pool.query(sql, params);
+  }
+}
+```
+
+Remember that the `query` function can only get called after the `connect` function actually connects the application to the database. Our application starts to listen for requests only if the connection is established. When running the test, we are not telling it run the connection first. To implement this for the testing environment, we can use the `beforeAll` function at the beginning of the test file:
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+const UserRepo = require("../../repos/user-repo");
+const pool = require("../../pool");
+
+beforeAll(() => {
+  return pool.connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork",
+    user: "postgres",
+    password: "hotButter",
+  });
+});
+// pool.connect return a promise that resolves after connection to the database is successfully established. Jest understands the promise and waits for it to get resolved, and then runs the test.
+
+it("create a user", async () => {
+  const startingCount = await UserRepo.count();
+  expect(startingCount).toEqual(0);
+
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+
+  const finishCount = await UserRepo.count();
+  expect(finishCount).toEqual(1);
+});
+```
+
+Let's run the test again from the terminal. But there is another error:
+
+```
+expect(received).toEqual(expected) // deep equality
+
+    Expected: 0
+    Received: "1"
+```
+
+So the initial expectation did not work as expected. This is one problem. There is also another problem:
+
+```
+Jest did not exit one second after the test run has completed.
+```
+
+It means that after the test process was completed, our code did not quit as it should, and kept running.
+
+## Disconnecting after tests
+
+Let's fix the second problem first. This problem might seem a small thing, but it turnes out that stuff like this starts to get really important if you ever start to wire up your test suite to a CI pipeline or essentially some kind of pipeline that is going to automatically run your tests.
+
+So we created a connection at the beginning of the test file. By establishing this connection, we are actually asking `pg` to hold on to this connection unless told otherwise. We are going to use the `close` method that we define inside the `Pool` class. We can use this method in a `afterAll` function in the test file. This function will only run after the test process is complete.
+
+```js
+// users.test.js
+beforeAll(() => {
+  return pool.connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork",
+    user: "postgres",
+    password: "hotButter",
+  });
+});
+
+afterAll(() => {
+  return pool.close();
+});
+```
+
+Now if you run the test again, you will only receive the first error related to the initial expectations.
+
+## Multi-database setup and fixing some errors
+
+What we are doing with our application right now is to run it in two modes: development and testing. Currently, in both modes, our application connects to the same database.
+
+The best solution for this is to create a second database and make the application to connect to this second database whenever you want to run tests. So let's create a new table in PGAdmin and call it `socialnetwork0-test` and make our application connect to this database when testing. To do this we would have to update the `beforeAll` function like this:
+
+```js
+beforeAll(() => {
+  return pool.connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork-test",
+    user: "postgres",
+    password: "hotButter",
+  });
+});
+
+afterAll(() => {
+  return pool.close();
+});
+
+it("create a user", async () => {
+  const startingCount = await UserRepo.count();
+  expect(startingCount).toEqual(0);
+
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+
+  const finishCount = await UserRepo.count();
+  expect(finishCount).toEqual(1);
+});
+```
+
+But as you might guess, this test will still fail because in this new database we don't have any table called `users`. We just created a new database, we neither did run any migrations on it, nor creating the table manually inside PGAdmin. So let's go to the terminal and run the migration that we had previously set up:
+
+```
+DATABASE_URL=postgres://postgres:hotButter@localhost:5432/socialnetwork-test npm run migrate up
+```
+
+> note that we have updated the database name to `socialnetwork-test`.
+
+Let's now finally run the test again:
+
+```
+npm run test
+```
+
+Another error! Jest expected 0 as number, but it received 0 as string. Let's fix this:
+
+```js
+// user-repo.js
+class UserRepo {
+  static async count() {
+    const { rows } = await pool.query("SELECT COUNT(*) FROM users;");
+
+    return parseInt(rows[0].count);
+  }
+}
+```
+
+Run the test again and you'll succeed. Now try to run the test again right after. Again you will fail! This is obvious. Your test database is now failing Jest's initial expectation. The test stil expects 0 but now, after that first successful test, is receives 1.
+
+There are a couple of different things we can do for this. You could update your test logic as:
+
+```js
+it("create a user", async () => {
+  const startingCount = await UserRepo.count();
+
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+
+  const finishCount = await UserRepo.count();
+  expect(finishCount - startingCount).toEqual(1);
+});
+```
+
+This test setup will allow us to run the test against any state of the database table. This will make our test run as much as we want and will not fail. But this fix, is not goint to work all the times.
+
+Let's go on and create another test file and see what issues we would have with **parallel tests**.
+
+## Issues with parallel tests
+
+We are now going to duplicate our test file twice, and run all the test files at the same time. To be able to run simultaneous tests, you first need to update your scripts in the `package.json` file.
+
+```json
+{
+  "scripts": {
+    "migrate": "node-pg-migrate",
+    "start": "nodemon index.js",
+    "test": "jest --no-cache"
+  }
+}
+```
+
+The `--no-cache` flag will force Jest to run all our test files in parallel. Let's now duplicate our test files with names `users-two.test.js` and `users-three.test.js`. Let's now go to the terminal and run our tests:
+
+```
+npm run test
+```
+
+They will probably all fail. Maybe not all of them but some of them will definitely fail. It is kind of random what you'll get. Why is that? So each test is going through this process:
+
+1. get count
+2. create user
+3. get new count
+4. new - old === 1
+
+Running 3 tests simultaneously will make at least some of the test files fail their final expectiation. For some or all of them `new - old` might not become `1` anymore. It might be more or less than 1 depending on the execution speed.
+
+What we should do essentially, is to make each test file run in its own little isolated environment.
+
+## Isolation with schemas
+
+Currently, all the three test files are trying to access the same table inside the test database. This is the origin of conflicts in the parallel tests we just executed.
+
+The first possible solution is to make each test file gets its own database. The upside to this approach is that each test file can apply as many changes as they are inteded to with no limit. The downside, however, is that you would have to create many different databases as the number of your test files increase.
+
+Another solution is to use a little bit more complex mechanism inside Postgres. We are going to make sure each test file gets its own **Schema**. A schema is like a folder to organize things in a database. Every database gets a default schema called `public`. Each schema can have its own separate copy of a table. They can have any object in them, including tables.
+
+So as for the testing files, we can tell each of them to connect to a different schema and use the table inside it. So we are going to use different schemas inside one single database.
+
+### How schemas work behind the scenes
+
+Let's run some commands inside PGAdmin to create schemas and then create a table or two inside the schemas. What we are going to do here is to create a schema called `test` and create a copy of the users table inside it.
+
+So in the query tool of our `socialnetwork-test` database:
+
+```sql
+CREATE SCHEMA test;
+```
+
+Let's now create a users table inside this new schema. To create a table inside a specific schema, rather than the default `public` schema, there should be a slight difference in the command. You should write the schema name before the table name.
+
+```sql
+CREATE TABLE test.users(
+	id SERIAL PRIMARY KEY,
+	username VARCHAR
+);
+```
+
+We can now add some user records to this table:
+
+```sql
+INSERT INTO test.users (username)
+VALUES
+	('alex'),
+	('lajkdhflaskj');
+```
+
+In order to retrieve user records from this schema we would have to use this command:
+
+```sql
+SELECT * FROM test.users;
+```
+
+So if you ignore typing the schema name before the table's name, Postgres will, by default, access the `public` schema. You can change this default behavior. To do so, you can use an internal Postgres mechanism called **Search path**. Search path controls which schema is Postgres going to access by default, if you do not specifically mention the schema name.
+
+In order to see the value of search path in PGAdmin, you can use this command:
+
+```sql
+SHOW search_path;
+-- returns search_path = "$user", public
+```
+
+This means that Postgres will, by default, try to access the public schema if no schema name is mentioned in the query.
+
+What is the `$user` about? Whenever you connect to your Postgres instance, you are connecting as a specific user. On windows, the username of that specific user is `postgres`. This is the same username that you pass to the `connect` function of the pool. So `"$user", public` in the returned result of the `SHOW` command means that whenever you run a query, Postgres will first try to access a schema with a name that is the same as the username. If such schema is not found, Postgres will try to access the `public` schema.
