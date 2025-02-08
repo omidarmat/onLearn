@@ -192,6 +192,10 @@
   - [Issues with parallel tests](#issues-with-parallel-tests)
   - [Isolation with schemas](#isolation-with-schemas)
     - [How schemas work behind the scenes](#how-schemas-work-behind-the-scenes)
+    - [Programmatic schema creation](#programmatic-schema-creation)
+    - [Making the code attack-proof](#making-the-code-attack-proof)
+    - [Test Helpers](#test-helpers)
+    - [Post-test cleanups](#post-test-cleanups)
 
 # Basics of SQL
 
@@ -5298,4 +5302,321 @@ SHOW search_path;
 
 This means that Postgres will, by default, try to access the public schema if no schema name is mentioned in the query.
 
-What is the `$user` about? Whenever you connect to your Postgres instance, you are connecting as a specific user. On windows, the username of that specific user is `postgres`. This is the same username that you pass to the `connect` function of the pool. So `"$user", public` in the returned result of the `SHOW` command means that whenever you run a query, Postgres will first try to access a schema with a name that is the same as the username. If such schema is not found, Postgres will try to access the `public` schema.
+What is the `$user` about? Whenever you connect to your Postgres instance, you are connecting as a specific user. On windows, the username of that specific user is `postgres`. This is the same username that you pass to the `connect` function of the pool. So `"$user", public` in the returned result of the `SHOW` command means that whenever you run a query, Postgres will first try to find a schema with a name that is the same as the username. If such schema is not found, Postgres will try to access the `public` schema.
+
+Let's now alter the search path to look first for the `test` schema, and then the `public` schema:
+
+```sql
+-- PGAdmin
+SET search_path TO test, public;
+```
+
+So if you now run this SQL:
+
+```sql
+SELECT * FROM users;
+```
+
+You will get all the rows from the users table existing inside the `test` schema. If you now want the query to target the `public` schema, you would have to mention the schema name in the query:
+
+```sql
+SELECT * FROM public.users;
+```
+
+### Programmatic schema creation
+
+We are going to follow some steps and implement them in a test file. Here are the steps:
+
+1. Connect to PG as normal
+2. Generate a random string of characters like 'zxcv'
+3. Create a new user (role) with that name 'zxcv'
+4. Create a new schema with that name 'zxcv'
+5. Tell the test file to connect to the database with that name 'zxcv'
+
+Let's write these steps in code comments so that we would know exactly what to do.
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+const UserRepo = require("../../repos/user-repo");
+const pool = require("../../pool");
+
+const { randomBytes } = require("crypto");
+const { default: migrate } = require("node-pg-migrate");
+const format = require("pg-format");
+
+beforeAll(async () => {
+  // Randomly generating a role name to connect to PG as
+  // Connect to PG as usual
+  // Create a new role
+  // Create a schema with the same name
+  // Disconnect entirely from PG
+  // Run migrations in the new schema
+  // Connect to PG as the newly created role
+});
+
+afterAll(() => {
+  return pool.close();
+});
+
+it("create a user", async () => {
+  const startingCount = await UserRepo.count();
+
+  await request(buildApp())
+    .post("/users")
+    .send({ username: "testuser", bio: "test bio" })
+    .expect(200);
+
+  const finishCount = await UserRepo.count();
+  expect(finishCount - startingCount).toEqual(1);
+});
+```
+
+Let's now implement the steps one by one:
+
+```js
+// users.test.js
+beforeAll(async () => {
+  // Randomly generating a rolw name to connect to PG as
+  const roleName = "a" + randomBytes(4).toString("hex");
+  // Connect to PG as usual to create a new role
+  await pool.connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork-test",
+    user: "postgres",
+    password: "hotButter",
+  });
+  // Create a new role
+  await pool.query(`
+    CREATE ROLE ${roleName} WITH LOGIN PASSWORD '${roleName}';
+    `);
+  // Create a schema with the same name
+  await pool.query(`
+    CREATE SCHEMA ${roleName} AUTHORIZATION ${roleName};
+    `);
+  // Disconnect entirely from PG
+  await pool.close();
+  // Run migrations in the new schema
+  await migrate({
+    schema: roleName,
+    direction: "up",
+    log: () => {},
+    noLock: true,
+    dir: "migrations",
+    databaseUrl: {
+      host: "localhost",
+      port: 5432,
+      database: "socialnetwork-test",
+      user: roleName,
+      password: roleName,
+    },
+  });
+  // Connect to PG as the newly created role
+  await pool.connect({
+    host: "localhost",
+    port: 5432,
+    database: "socialnetwork-test",
+    user: roleName,
+    password: roleName,
+  });
+});
+```
+
+Let's consider some tips here:
+
+1. The `randomBytes` function generates a set of random characters, all of which can be either letters or numbers. But Postgres only accepts role names starting with letters, not numbers. This is why we added an `a` at the beginning of the random string. Note that you need to require this function from `crypto` module.
+2. When creating a new role by using the `CREATE ROLE` statement, make sure you wrap the password `roleName` between `' '`.
+3. When creating the schema using the `CREATE SCHEMA` statement, the `AUTHORIZATION ${roleName}` will authorize the user with the same name as the schema to access it. Note that you are going to connect to the database with that randomly generated username in just a few steps ahead. It is important to keep in mind that we are directly inserting the `roleName` into the query knowing that there is zero risk of SQL injection here. This is not a user-provided input. It is provided programmatically by ourselves. However, if you do want to make this part of your code attack-proof also, you need to use the `format` module that we required at the beginning of the test file. Why should we use it? Is it not possible to use the technique we used previously with `$1` and `$2` and so on along with the array? No. Postgres does not support parameters for identifiers. If you need to have dynamic database, schema, table or column names you have to use `pg-format` module for handling escaping these values to ensure you do not have SQL injection.
+4. This time you are going to run a migration programmatically. Up until this point, you ran migrations using the terminal. This programmatic migration is done using the `default` function that we renamed to `migrate` and required it from `node-pg-migrate` module. The migrate function receives a couple of different options: `schema` receives the schema name in which the migration is going to be executed. `direction` receives the direction of running the migration. `log` receives a callback function that has access to all the logs generated by the migration process. Since this is a test, we don't need the logs, so we pass it an empty function. `noLock` recevies a boolean value that determines whether the database should or should not be locked down during running a migration. In this setting, since we are going to run simultanous tests, we set it to `true`. `dir` receives the name of the folder inside the project where all the migration files are stored. `databaseUrl` receives an object with connection properties. This object would have to set the connection properties with the new random role name.
+5. After running the migrations, you need to connect to the database using the new role you created. This wraps up the whole algorithm of setting the test environment up.
+
+If you run the test using `npm run test` in the terminal now, you will see that 3 tests will run, and you can be sure that the test related to the file we just covered (`users.test.js`) will pass.
+
+### Making the code attack-proof
+
+Referring back to tip number 3 above, you can use the `pg-format` module to make your queries attack proof when you need to use dynamic identifiers in your query:
+
+```js
+await pool.query(
+  format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+);
+
+await pool.query(
+  format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+);
+```
+
+Note that `%I` is an identifier placeholer, and `%L` is a literal value placeholder.
+
+Let's now reuse the process that we implemented for other test files.
+
+### Test Helpers
+
+We want the logic that we implemented in all our test files. But how should we do that in a clean way? We should create a helper file. Inside the `test` directory, go on and create a file called `context.js`. This file will serve as the context or a place where we can store lots of different helpers.
+
+```js
+// test/context.js
+const { randomBytes } = require("crypto");
+const format = require("pg-format");
+const { default: migrate } = require("node-pg-migrate");
+const pool = require("../pool");
+
+class Context {
+  static async build() {
+    // Randomly generating a rolw name to connect to PG as
+    const roleName = "a" + randomBytes(4).toString("hex");
+    // Connect to PG as usual
+    await pool.connect({
+      host: "localhost",
+      port: 5432,
+      database: "socialnetwork-test",
+      user: "postgres",
+      password: "hotButter",
+    });
+    // Create a new role
+    await pool.query(
+      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+    );
+    // Create a schema with the same name
+    await pool.query(
+      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+    );
+    // Disconnect entirely from PG
+    await pool.close();
+    // Run migrations in the new schema
+    await migrate({
+      schema: roleName,
+      direction: "up",
+      log: () => {},
+      noLock: true,
+      dir: "migrations",
+      databaseUrl: {
+        host: "localhost",
+        port: 5432,
+        database: "socialnetwork-test",
+        user: roleName,
+        password: roleName,
+      },
+    });
+    // Connect to PG as the newly created role
+    await pool.connect({
+      host: "localhost",
+      port: 5432,
+      database: "socialnetwork-test",
+      user: roleName,
+      password: roleName,
+    });
+
+    return new Context(roleName);
+  }
+
+  constructor(roleName) {
+    this.roleName = roleName;
+  }
+}
+
+module.exports = Context;
+```
+
+We are then going to use this refactored code in the `users.test.js` file.
+
+```js
+// users.test.js
+const request = require("supertest");
+const buildApp = require("../../app");
+const UserRepo = require("../../repos/user-repo");
+const pool = require("../../pool");
+const Context = require("../context");
+
+beforeAll(async () => {
+  const context = await Context.build();
+});
+
+// rest of the file...
+```
+
+### Post-test cleanups
+
+Always remember to clean up the process you have executed for testing. You create multiple schemas and roles for your tests. Make sure you clean them up after your tests are done executing. We can now do this by implementing another function inside the `Context` class. We will name it `close`.
+
+```js
+// context.js
+class Context {
+  static async build() {
+    // Randomly generating a rolw name to connect to PG as
+    const roleName = "a" + randomBytes(4).toString("hex");
+    // Connect to PG as usual
+    await pool.connect(DEFAULT_OPTS);
+    // Create a new role
+    await pool.query(
+      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+    );
+    // Create a schema with the same name
+    await pool.query(
+      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+    );
+    // Disconnect entirely from PG
+    await pool.close();
+    // Run migrations in the new schema
+    await migrate({
+      schema: roleName,
+      direction: "up",
+      log: () => {},
+      noLock: true,
+      dir: "migrations",
+      databaseUrl: {
+        host: "localhost",
+        port: 5432,
+        database: "socialnetwork-test",
+        user: roleName,
+        password: roleName,
+      },
+    });
+    // Connect to PG as the newly created role
+    await pool.connect({
+      host: "localhost",
+      port: 5432,
+      database: "socialnetwork-test",
+      user: roleName,
+      password: roleName,
+    });
+
+    return new Context(roleName);
+  }
+
+  constructor(roleName) {
+    this.roleName = roleName;
+  }
+
+  async close() {
+    // Disconnect from PG
+    await pool.close();
+    // Reconnect as our root user
+    await pool.connect(DEFAULT_OPTS);
+    // Delete the role and schema created for testing
+    await pool.query(format("DROP SCHEMA %I CASCADE;", this.roleName));
+    await pool.query(format("DROP ROLE %I;", this.roleName));
+    // Disconnect
+    await pool.close();
+  }
+}
+```
+
+Now to execute the cleanup inside the `afterAll` function of the test file, we need to have access to the `context` that we built in the `beforeAll` function.
+
+```js
+// users.test.js
+let context;
+
+beforeAll(async () => {
+  context = await Context.build();
+});
+
+afterAll(() => {
+  return context.close();
+});
+```
+
+Now any time you run this test file, it will automatically clean up after itself. You can now use this in your other test files:
