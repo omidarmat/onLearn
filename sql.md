@@ -182,6 +182,8 @@
   - [SQL injection exploits](#sql-injection-exploits)
   - [Handle SQL injection with prepared statements](#handle-sql-injection-with-prepared-statements)
   - [Reminder on POST requests](#reminder-on-post-requests)
+  - [Handling updates](#handling-updates)
+  - [Deleting users](#deleting-users)
 
 # Basics of SQL
 
@@ -4791,3 +4793,106 @@ Now if you try to inject SQL into the query, database will respond with error, s
 The downside to this approach is that you might very well need to accept other inputs from the client that targets some other place of the query. Not always clients should provide ID values for the query. For instance, they might want to pass identifiers for the `SELECT` statement. Prepared statements cannot be used for these cases. So let's see how we could use our first option to prevent SQL injection by sanitizing user input in our code.
 
 ## Reminder on POST requests
+
+We are now going to implement the `post` route handler to be able to create users from our API. The first thing to do here is to just make sure that we can receive some kind of data inside a POST request. You have access to the user input through `req.body`; that is the `body` property of the request object.
+
+So let's see what we get in the API by updating the post route handler:
+
+```js
+// user.js
+router.post("/users", async (req, res) => {
+  console.log(req.body);
+
+  res.send("");
+});
+```
+
+Now by sending a POST request in Postman, and attaching some data in the `body` of `raw` format, you will see the data coming to your API in the terminal. Let's now implement the user insertion logic. Remember that whenever a user is created, we generally want to take the user that has been created and return it to the person who has sent the request. So the route handler should look like this for now:
+
+```js
+router.post("/users", async (req, res) => {
+  const { username, bio } = req.body;
+
+  const user = await UserRepo.insert(username, bio);
+
+  res.send(user);
+});
+```
+
+Let's implement the `UserRepo.insert` function accordingly. Note that, by default, when you send an `INSERT INTO` query to the database, you don't get back the record that was created in the table. In order to receive this newly created record, you would have to add `RETURNING *` at the end of the query:
+
+```js
+// user-repo.js
+class UserRepo {
+  static async find() {
+    const { rows } = await pool.query("SELECT * FROM users;");
+
+    return toCamelCase(rows);
+  }
+
+  static async findById(id) {
+    const { rows } = await pool.query(
+      `
+        SELECT * FROM users WHERE id = $1;
+      `,
+      [id]
+    );
+
+    return toCamelCase(rows)[0];
+  }
+
+  static async insert(username, bio) {
+    const { rows } = await pool.query(
+      "INSERT INTO users (username, bio) VALUES ($1, $2) RETURNING *;",
+      [username, bio]
+    );
+
+    return toCamelCase(rows)[0];
+  }
+}
+```
+
+You can now test the API and database functionality using Postman by sending a POST request and attaching the data in the `body` section with the `raw` format.
+
+## Handling updates
+
+To implement the updating logic, you should keep in mind that we are going to get 3 values from the user:
+
+1. The ID of the user that is going to be updated: You should first check this ID to see if the users actually exists.
+2. Username: This will be accessed through request body.
+3. Bio: This will be accessed through request body.
+
+```js
+// user-repo.js
+class UserRepo {
+  static async update(id, username, bio) {
+    const { rows } = await pool.query(
+      "UPDATE users SET username = $1, bio = $2 WHERE id = $3 RETURNING *;",
+      [username, bio, id]
+    );
+
+    return toCamelCase(rows)[0];
+  }
+}
+```
+
+Then define the related route handler:
+
+```js
+// users.js
+router.put("/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { username, bio } = req.body;
+
+  const user = await UserRepo.update(id, username, bio);
+
+  // If the user ID does not exist, the update won't be done and the 'user' will be undefined. If there is a user, we would return it. Otherwise, we would send out a 404 error response. 
+  if (user) {
+    res.send(user);
+  } else {
+    res.sendStatus(404);
+  }
+});
+```
+
+## Deleting users
