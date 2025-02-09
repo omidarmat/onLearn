@@ -5619,4 +5619,27 @@ afterAll(() => {
 });
 ```
 
-Now any time you run this test file, it will automatically clean up after itself. You can now use this in your other test files:
+Now any time you run this test file, it will automatically clean up after itself. You can now use this in your other test files. You would want to copy/paste the `Context` require statement along with the `beforeAll` and `afterAll` functions from the first test file to the second and third test files.
+
+One small improvement that you can make is to make each individual test delete all data in the database after it is done executing. This is done by implementing another function in the `Context` class.
+
+```js
+class Context {
+  async reset() {
+    return pool.query(`
+        DELETE FROM users;
+      `);
+  }
+}
+```
+
+Then use it in each test file inside a `beforeEach` function.
+
+```js
+// users.test.js
+beforeEach(async () => {
+  await context.reset();
+});
+```
+
+You can now safely run parallel tests with no worry.
