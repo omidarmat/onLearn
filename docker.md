@@ -114,3 +114,43 @@ In the rest of the course we are going to learn:
 9. Data and volumes in Kubernetes
 10. Networking in Kubernetes
 11. Deploying Kubernetes cluster
+
+# Docker images and containers
+
+We are going to learn 3 main parts:
+
+1. Two core conecpts: images and containers
+2. Using pre-built and custom images
+3. Creating and managing containers
+
+You learned that containers are small packages that contain both your application and the entire environment for running that application. It is a unit of software.
+
+But when you work with Docker you also need to know about images, since images are the blueprints or templates for containers. It is actually the image that contains the code and the required tools to execute the code. It is the container that runs and executes the code.
+
+These two concepts together allow us to create one image file, but run multiple containers on different machines or servers. So the image is that sharable package with all the instruction and all the code, and the container will be the concrete running instance of the image. This is the **core and fundamental concept** on which Docker is built.
+
+## Using external (pre-built) images
+
+In addition to creating your own images, you can use already existing (pre-built) images. You can get these images from Docker hub. You can find the Node Docker image which you can use to build a Node application.
+
+You can use the official Node Docker image in general when working with Docker, but you can also especially use it right away to get started with images and containers here.
+
+To do this you can open up the terminal, navigate to any directory, and run this command:
+
+```
+docker run node
+```
+
+This command will use the official Node image on Docker hub to create a container based on this image. Containers are the running instances of images. The node image contains the Node installation. Then you can run the image to run the application or simply run the Node interactive shell (REPL).
+
+After the installation is complete, you see nothing special in the terminal. There is container currently running based on the image, but the container is not really doing much. Node is just a software and we can execute Node to get an interactive shell, but **by default, a container is isolated from the surrounding environment**. Just because an interactive shell is running inside of a container does not mean that this shell is exposed to us as a user. Nonetheless, this user was not created. The interactive shell exposed by Node, is not automatically exposed by the container to us. You can change this by using special flags on the `docker run` command.
+
+```
+docker run -it node
+```
+
+The `-it` flag tells Docker that we want to expose an interactive session from inside the container to our hosting machine. This way you will now enter the interactive Node terminal.
+
+> It is important to note here that right now Node is not running on your machine. This is coming from the Node container, and the interesting fact about it is, again, you don't need to have a local installation of Node on your local machine to be able to run this container.
+
+So we now understand that images are used behind the scenes to hold all the logic and the code that a container needs. Then we create instances (containers) of that image using the `docker run` command.
