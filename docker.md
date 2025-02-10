@@ -312,3 +312,45 @@ EXPOSE 80
 
 CMD ["node", "server.js"]
 ```
+
+## Managing images and containers
+
+Let's focus on core configuration features on images built into Docker:
+
+1. Images can be **tagged**: naming the images
+2. Images can be **listed**: list images created in the past
+3. Images can be **analyzed**: to inspect images
+4. Images can be **removed**
+
+Let's also learn about containers:
+
+1. Containers can be **named**
+2. Containers can be **configured in detail**
+3. Containers can be **listed**
+4. Containers can be **removed**
+
+> Remember that on any Docker command you can add `--help` to see all available options.
+
+### Stopping and restarting containers
+
+To list all the running container you can use this command:
+
+```
+docker ps
+```
+
+To list all the containers no matter if they are running or stopped, you can use this command:
+
+```
+docker ps -a
+```
+
+You can restart a stopped containerl. You don't always need to run a new container. With `docker run` you create a new container. Sometimes you don't want to create a new container. If nothing has changed about your image (dependencies and source code and other settings), you don't need to create a new container. You can simply restart an existing container. To do this you can observe stopped containers using the `docker ps -a` command. To start an already existing container which is currently stopped:
+
+```
+docker start <container-name>
+```
+
+> Staring a container this way would not freeze your current terminal session. Instead, it gets back to activate your terminal. But the application is running and your server is up.
+
+> You can also use the `--help` on the `docker ps` command to see all available options on it.
