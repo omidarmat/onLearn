@@ -540,3 +540,39 @@ Execute the command and you will see that the text file you just deleted is brou
 1. It allows you to add something to a container without restarting the container and rebuilding the image. Let's say you are developing your source code. Normally, you would want to rebuild your image because of that, and restart the container. However, you can also just copy the changed code to the container. But this is not something you do typically because it is very prune to error. You might very easily forget to copy one or more files, and you will end up with an application that behaves strangely. You will learn a better way of updating code in a container without rebuilding the image later...
 2. Updating configuration files for a web server which you want to change.
 3. Copying something out of a container. If your container generates a bunch of log files, you could use the command to copy these log files to your local machine so you can read them there.
+
+## Naming and tagging containers and images
+
+Up until now, you have always used an ID when you need to refer to an image. You can tag an image and refer to that image by its tag. When you create your own images, they will appear in `docker images` returned list with `REPOSITORY` and `TAG` columns holding `<none>` as value. Also, when you run a conatiner based on an image, the created container gets a randomly generated name.
+
+You can manually give tags to your images. You can manually assign names to your containers. Let's start with containers. You can give containers your custom name using the `--name` flag on the `docker run` command:
+
+```
+docker run -p 80:3000 --rm -d --name goalsapp 4f382e3a7047
+```
+
+Then you can stop this container with the name that you already know about:
+
+```
+docker stop goalsapp
+```
+
+For images, when you create them using the `docker build .` command, they are given a randomly generated ID. You can also tag images. It works similar to names for containers. However, an image tag consists of 2 parts:
+
+1. Name: repository of your image, acting as a group name if you are going to have different, more specialized images (determined by tags).
+2. Tag: the tag name is separated from the repository name by a `:`.
+
+Why an image tag should consist of 2 parts? Because of a simple reason: With the name part, you can create a group of images. For example, the NodeJS image tag can be `node:14`. For public pre-built images existing on Docker hub, you can go to their page to see which tags are supported.
+
+To specify a tag for an image that you are going to create, you can use the `-t` flag along with the tag on the `docker build` command:
+
+```
+docker build -t goals:latest .
+```
+
+You can now run a container based on this image using this command:
+
+```
+docker run -p 80:3000 --rm -d --name goalsapp <image-tag>
+docker run -p 80:3000 --rm -d --name goalsapp goals:latest
+```
