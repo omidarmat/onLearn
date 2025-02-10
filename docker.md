@@ -48,7 +48,7 @@ But with Docker, everything is going to be different. We would like to run this 
 
 To create an image, you should create a file in the root directory of the project and name it `Dockerfile`. In this file, you should describe how your container in the end should be set up.
 
-```docker
+```Dockerfile
 <!-- Dockerfile -->
 FROM node:14-alpine
 
@@ -154,3 +154,161 @@ The `-it` flag tells Docker that we want to expose an interactive session from i
 > It is important to note here that right now Node is not running on your machine. This is coming from the Node container, and the interesting fact about it is, again, you don't need to have a local installation of Node on your local machine to be able to run this container.
 
 So we now understand that images are used behind the scenes to hold all the logic and the code that a container needs. Then we create instances (containers) of that image using the `docker run` command.
+
+## Building your own image
+
+Most of the times, you don't want to just download and run an image that gives you an interactive shell. Instead, typically you build up on those base images to create you own images. For instance, you can build up on the official Node image to then execute certain NodeJS code. This is a scenario where you need to build your own image because your exact application with your code does not exist on Docker hub, unless you share it there.
+
+Let's take a dummy NodeJS project that we want to run in a Docker container. This project containes a `package.json` file which describes the Node application. This file has nothing to do with Docker, but specifies the dependencies that our application needs to execute. If you want to run this application locally, you would have to install NodeJS on your local machine. Then in a terminal openned in your project directory, you can use the `npm install` command to install the project dependencies, and finally use `node server.js` to run the application.
+
+So what? are you going to install separate programming language engines and runtimes on your machine anytime you are going to work on a new project? It doesn't make sense. So let's see how we can create our own image that uses the base NodeJS official image.
+
+First, you need to create a file called `Dockerfile` in the root directory of your project.
+
+> In order for VS Code to be able to help you in writing the contents of the Dockerfile
+
+The `Dockerfile` will contain the instructions for Docker to build our image. Typically, you start this file with the `FROM` command. This command allows you to build your own image up on another base image. This command tells Docker that you want to start by pulling in the `node` image to create your own image.
+
+```Dockerfile
+FROM node
+```
+
+The image that you write for the `FROM` command, would be located either on your local machine or on Docker hub. If you have previously executed a container based on this same image, it would exist on your local machine. Whenever you execute a container based on some base image, that image is downloaded and cached locally by Docker.
+
+As for the next step, you would like to tell Docker which files that exist in your local project directory, should go into the image. For this, you can use the `COPY` command. The copy command receives two paths as arguments. First path is the source path, the path outside the image on your machine, where the files that should be copied into the image exist. Writing `.` for this path would tell Docker to find all the folders, files and sub-folders at the same directory where the Dockerfile is located (excluding the Dockerfile itself); most probably the root directory of your local project. The second path, the destination path argument specifies the directory inside the image where those files should be stored.
+
+> Every image has its own internal file system, totally detached from your local file system. It is a good practice not to set the root directory of the image as the destination path. It is better to send files to a particular folder under the root directory of the image file system. You can call this folder anything you want, for example `/app`. Note that this folder will be created inside the image file system if does not already exist.
+
+```Dockerfile
+FROM node
+
+COPY . /app
+```
+
+As for the next step, you would need to run `npm install` command. For a Dockerfile this would have to be written as `RUN npm install`. This is to install the application's dependencies based on the instructions provided by the `package.json` file. However, this command runs at the image file's **working directory**. The image's default working directory is the image's root directory, but it actually must run at the directory where the project files are located and that is the `/app`. So we would have to chanage the image's working directory beforehand. This should be done right after the `FROM` command. This would change all the commands location
+
+> With this change, you can also update the `COPY` command and change it's second path argument to `.`. However, it is optional. Some prefer to keep the code more readable.
+
+```Dockerfile
+FROM node
+
+WORKDIR /app
+
+COPY . /app
+
+RUN npm install
+```
+
+Finally, you would want to run your server. Without Docker, that would mean that you have to use the `node server.js` in the terminal at the root directory of your project. But it does not mean that your can use `RUN node server.js` in the Dockerfile also. It is incorrect, because this command would run when the image is being built. All of the commands written inside the Dockerfile are instructions for Docker for setting up the image. The image, is the template for the container. The image is not what you run in the end. You run a container based on an image. You would like to run your server file inside a container, not inside an image. This would make it so that if you run multiple containers, multiple server files would have to be started, not just one server file in the image. So instead of `RUN` command, you would have to use the `CMD` command in the Dockerfile as below. The `CMD` command would not run when the image is being created, but only when a container is started based on the image. For `CMD` command, the syntax is a bit different:
+
+```Dockerfile
+FROM node
+
+WORKDIR /app
+
+COPY . /app
+
+RUN npm install
+
+CMD ["node", "server.js"]
+```
+
+Now if you try to run Docker and build the container based on this image, you would not yet be able to see your application. If you take a look at the server file of the project, when the server is working, it listens on port `80`. But when this server is running inside a container, it is fully isolated from its environment. The container should also expose this port so that we would be able to access the server file. To do this, you can use the `EXPOSE` command before the `CMD` command.
+
+```Dockerfile
+FROM node:14-alpine
+
+WORKDIR /app
+
+COPY . /app
+
+RUN npm install
+
+EXPOSE 80
+
+CMD ["node", "server.js"]
+```
+
+This is the final setup for the image file. Let's now see how we can use and run it.
+
+## Running a container based on your image
+
+In order to run a conatiner based on your image file (Dockerfile), you are going to use the terminal at the root directory of your local project:
+
+```
+docker build .
+```
+
+The `.` at the end of this command tells Docker where it can find the Dockerfile. Dot means that the Dockerfile is located in the same directory where the terminal is running. You can see the output log as:
+
+```
+[1/4] FROM docker.io/library/node:14-alpine@sha256:434215b487a329c9e867202ff89e704d3a75e554822e07f3e0c0f9e606121b33
+
+CACHED [2/4] WORKDIR /app
+
+[3/4] COPY . /app
+
+[4/4] RUN npm install
+```
+
+You can then use this command in the same terminal to run the built container:
+
+```
+docker run <image-id>
+```
+
+The project will run along with its sever file. But you see that you still cannot access the server on port `localhost:80`. Why? You have `EXPOSE 80` command in your Dockerfile, but this is only for documentation purposes. It does not really do anything. It is a good practice to add it to your Dockerfile, but you need to do more. In the `docker run` command, you have to specify on which port of your local machine you need access provided to the server inside the container. That is done by the `-p` flag. The `-p` flag receives 2 port numbers: first, the port number on your local machine from which you are going to access the container, and second, the port number that the container should expose from the server file running inside it. So the flag would be `-p 3000:80`.
+
+Let's first stop the running container. To do this you can open another terminal at the same directory and use `docker ps` command to observe which container you need to stop right now. You want the running container's name. Then you can use this command to stop the running container. It will a few seconds.
+
+```
+docker stop <conatiner-name>
+```
+
+Then use this command to run the container:
+
+```
+docker run -p 3000:80 <image-id>
+```
+
+You can now access the server inside the running container using `localhost:3000` on your machine in a browser.
+
+## Images are read-only
+
+Images are read-only. Why it matters? Let's say you previously executed a container of your project on your machine, you stopped it, and now you are editing your code. You run your container again, but your don't see your last changes reflected in this newly executed container! So you changed you code, and restarted your container, so why aren't the changes showing up? To understand this you have to understand how images work.
+
+Remember that your applications source code were copied into the `/app` folder in your container's file system. This was done by the `COPY . /app` command. This copy was a snapshot of your code at the time of copying. Now after you edit your source code, you need to rebuild your image to have your updated source code copied into the image. We will find out an elegant and faster way of doing this. So, images are read-only.
+
+For now, to fix this problem, you can rebuild your image using the `docker build .` command again. Then run your container like before, with the new image ID.
+
+## Image layers
+
+Images are layer-based. When you build or re-build an image, only the instructions that have changed, along with all the instructions after them are re-evaluated.
+
+So if you run a container based on your current image, stop the container, implement NO change, and try to rebuild the image, you will see that the image creation process is done superfast, because Docker understands that nothing has changed. So it uses everything from **cache** instead of doind them all again.
+
+This is called a **layer-based architecture**. Each instruction in your image file is a layer. An image is based on multiple layers of instruction. When you run a conatiner based on the image, this container adds an extra layer on top of the image which is the `CMD` instruction that runs the application. Apart from this final layer, all other layers that relate originally to the image file instructions, are only re-evaluated if Docker detects a change in them.
+
+For instance, just like the example from the previous section, if you change your source code and rebuild the image, Docker would take the `node:14-alpine` image from cache since that didn't change. But the command after that, which is the `COPY` command will be re-executed since it has changed because of the change you implemented in the source code. Also, all the commands after the copying will be re-executed, because cannot know if they will return same or different results based on the change in the source code. So if one layer is changed, all subsequent layers are re-executed.
+
+### One important optimization potential
+
+Imagine that you have only altered your source code and for this change, you have not added any dependencies to your project. This means that for running the application, you don't need to run the `npm install` command. But how would you tell Docker not to re-execute this command layer?
+
+After setting up the `WORKDIR` of your image to `/app`, if you `COPY` the `package.json` file to the working directory, then `RUN npm install`, and only after that, implement `COPY . /app`, Docker could understand when it should run `npm install` and when not.
+
+```Dockerfile
+FROM node:14-alpine
+
+WORKDIR /app
+
+COPY package.json /app
+
+RUN npm install
+
+COPY . /app
+
+EXPOSE 80
+
+CMD ["node", "server.js"]
+```
