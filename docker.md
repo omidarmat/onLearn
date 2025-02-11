@@ -576,3 +576,88 @@ You can now run a container based on this image using this command:
 docker run -p 80:3000 --rm -d --name goalsapp <image-tag>
 docker run -p 80:3000 --rm -d --name goalsapp goals:latest
 ```
+
+## Sharing images
+
+You can share your images and containers with others. This 'others' could be other members of your team, or servers on which you want to deploy your containers. We well talk about deployment later.
+
+Everyone who has an image, can create containers based on the image. So you don't really share containers, but you share images with other people.
+
+### Pushing images to Docker hub
+
+When it comes to sharing images you have 2 ways of doing it:
+
+1. You can share the Dockerfile. If you have the Dockerfile and the source code of an application you can build your own image (using `docker build .`) and use it to run a container. This is not happening when you are basing your image on, for example, the Node official image. You are not downloading the Node's Dockerfile.
+2. You can share a built image. This way the image can be downloaded and a conatiner can be executed instantly; no build step required. This is how you typically share images with other people. To share Docker images, you can push them to Docker hub or any private registry of your choice. To do this you can push and pull images by using these commands:
+
+```
+docker push <image-name>
+docker pull <image-name>
+```
+
+For example, if you want to share your Node example project, you can go to Docker hub and create a new empty repository. You should then establish a link between the remote repository on Docker hub and your local Docker system. To do this, your image name should consist of two parts:
+
+1. Your Docker hub username followed by a `/`
+2. The repository name you created on Docker hub
+
+So you would have to build an image with this name for example:
+
+```
+omidarmat/node-hello-world
+```
+
+So you can either build your image and give it the proper name using the `-t` flag on `docker build` command. Or you can observe your previously created images and take the one that you want to push, rename or tag it with the proper name using the `docker tag` command. This command takes first, the image tag that already exists on your machine, and second, the image tag or name that you want to give it.
+
+```
+docker tag goals:latest omidarmat/node-hello-world
+```
+
+This would essentially create a clone from the image that exists on your machine.
+
+> You can also optionally provide a tag with `:` for the new image name.
+
+Then you can push this image using the `docker push` command.
+
+```
+docker push omidarmat/node-hello-world
+```
+
+However, this command might return with an 'Access denied' error. Your local Docker system does not know if you are in any way related to the remote repository to which you are pushing. So you would have to log in first.
+
+```
+docker login
+```
+
+This will then ask you for your `Username`. (omidarmat)
+
+Then you will be asked for your `Password`.
+
+> You might not need to do this login process if you logged in to Docker hub via Github.
+
+Finally, you can push your image to Docker hub using the `docker push` command.
+
+### Pulling images from Docker hub
+
+To simulate using your shared image by others, go on and remove all the images on your local machine using this command:
+
+```
+docker image prune -a
+```
+
+Let's now download the image that you pushed in the previous section.
+
+```
+docker pull omidarmat/node-hello-world
+```
+
+You will see in the process logs that Docker will, by default, use the `latest` tag on this image.
+
+> Pulling public images from Docker hub does not require you to be logged in.
+
+You can ignore using the `docker pull` command to download an image and then run a conainer based on it. You can directly use `docker run` command with the image's name. Docker will first look into your machine and if it does not find an image with the given name, it will automatically go to Dockerhub and grab the image and pull it on to your system, and then it will run a container based on it. So you could simply write this even if the image does not exist on your machine:
+
+```
+docker run omidarmat/node-hello-world
+```
+
+> If you have an image with the same name on your machine, Docker will not check if your local image is up-to-date and in sync with the latest version of the image available on Docker hub. In this case, you would have to first get the updated image using `docker pull` and then run your container on it.
