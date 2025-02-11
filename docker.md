@@ -27,6 +27,7 @@
     - [Analyzing a real-world application](#analyzing-a-real-world-application)
   - [Volumes](#volumes)
     - [How not to use volumes](#how-not-to-use-volumes)
+    - [Named volumes](#named-volumes)
 
 # What is Docker?
 
@@ -770,3 +771,28 @@ EXPOSE 80
 VOLUME ["/app/feedback"]
 CMD ["node", "server.js"]
 ```
+
+The path inserted into the `VOLUME` command refers to the **container's** file system. How can you control the destination path on your local machine? We can control it or we can let Docker control it. In this example, we will let Docker do it. So you can now rebuild your image with this Dockerfile and run a container on it:
+
+```
+docker build -t feedback-node:volumus .
+docker run -d -p 3000:80 --rm --name feedback-app feedback-node:volumus
+```
+
+You can now access the app on `localhost:3000` and submit an entry. However, if you stop and remove this container, and run another container on the same image, you will see that you lost the data again! So how is this `VOLUME` thing helping us preserving the data?
+
+### Named volumes
+
+With Docker we have two external data storage mechanisms: Volumes and Bind mounts. Let's focus on volumes now.
+
+There are two types of volumes. Currently, we are using **anonymous** volumes. We also have **named** volumes. In both cases, Docker sets up some folder and path on your local machine (you don't know where when it is anonymous), and the only way for us to get access to these volumes is with the help of `docker volume ls` command. Using it right now will return a table with one single volume with an encrypted name, because we didn't give a name to the volume. Note that this volume is there as long as your container is existent. If you remove the container, you will lose this volume.
+
+Now let's go for named volumes. Both anonymous and named volumes share one key concept (also in common with mounts). As a reminder, a volume is a defined path in the container that is mapped to some specific path on your local machine. For instance, `/some-path` on your local machine is mapped to `/app/data` on the container. This helpful, but if only the volumes could survive container deletions. The good news is that, with named volumes, that can happen. Named volumes survive container terminations. **Therefore, named volumes are great for data that should be persistent, but which you don't need to edit directly.**
+
+You cannot create a named volume inside a Dockerfile. So you can safely remove the `VOLUME` command. Instead, you need to create a named volume when you create a container. To do this you can use the `-v` flag on the `docker run` command. This flag receives first, the volume name, and second, the path in the container to where the volume mapping is attached. The two parts must be separated by a `:`.
+
+```
+docker run -d -p 3000:80 --rm --name feedback-app -v feedback:/app/feedback feedback-node:volumus
+```
+
+Now if you stop and remove this container, you can see that `docker volumes ls` command will show you that the volume is still there. So if you run another container with the same name and conatiner path for the `-v` flag, you will see that you still have access to the data that was created during the time that the previous container was live.
