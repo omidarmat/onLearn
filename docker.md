@@ -25,6 +25,8 @@
 - [Managing data and working with volumes](#managing-data-and-working-with-volumes)
   - [Data categories](#data-categories)
     - [Analyzing a real-world application](#analyzing-a-real-world-application)
+  - [Volumes](#volumes)
+    - [How not to use volumes](#how-not-to-use-volumes)
 
 # What is Docker?
 
@@ -734,8 +736,37 @@ Then you can run a container based on it:
 docker run -p 3000:80 -d --name feedback-app --rm feedback-node
 ```
 
-When this applications, you can submit a feedback to it. This will store your feedback in the `feedbacks` path in a `txt` file named by the title of your feedback. So if you submit a feedback with the title _Awesome_, you can access that feedback on `localhost:3000/feedback/awesome.txt`. However, you will not be able to see this file on your local project's `feedback` folder. Why? This data is stored in the container's file system, not on your local machine's file system. The container has the structure of your local project's file system (because of `COPY . .` command), but everything is now happening inside the container, and therefore files fetched by the running container are stored in the container's file system and not leaked outside. Now if you stop this container, because of the `--rm` flag in it running command, it will be removed and therefore all the data stored in it will also be removed. But if you
+When this applications, you can submit a feedback to it. This will store your feedback in the `feedbacks` path in a `txt` file named by the title of your feedback. So if you submit a feedback with the title _Awesome_, you can access that feedback on `localhost:3000/feedback/awesome.txt`. However, you will not be able to see this file on your local project's `feedback` folder. Why? This data is stored in the container's file system, not on your local machine's file system. The container has the structure of your local project's file system (because of `COPY . .` command), but everything is now happening inside the container, and therefore files fetched by the running container are stored in the container's file system and not leaked outside. Now if you stop this container, because of the `--rm` flag in it running command, it will be removed and therefore all the data stored in it will also be removed. But if you stop a container, not remove it, run it again and you will still have that data inside your container.
 
-The same kind of thing happens when you change something in your source code and, by default, the container will not reflect that until the image is rebuilt with the new source code.
+> Reminder: The same kind of thing happens when you change something in your source code and, by default, the container will not reflect that until the image is rebuilt with the new source code.
 
 So it is very important to review and keep in mind: **THERE IS NO CONNECTION BETWEEN YOUR IMAGE/CONTAINER AND YOUR LOCAL FILE SYSTEM. YOU INITIALIZE THE IMAGE ONCE, YOU COPY A SNAPSHOT OF YOUR FILES TO THE IMAGE, BUT THEREAFTER THERE IS NO CONNECTION BETWEEN THEM.**
+
+So the main problem is that when a container is removed, all data stored on it while running, will be removed with it. However, in reality you are going to remove containers quite a bit, but you also don't want to lose that data. What is the solution? Let's learn about Docker **volumes**.
+
+## Volumes
+
+Volumes help us with persisting data. But let's understand what volumes are and how they work.
+
+Volumes are folders on your host machine - your computer (not in the container, not in the image) - which are mounted - meaning that is made available or mapped - into containers. You make Docker aware of volumes and they will be mapped to folders inside a container. Changes in either of these folders will be reflected in the other one.
+
+> This is different from the `COPY . .` command result. The copy instruction takes just a snapshot from your local file system and put it inside a container.
+
+Because of this mechanism, volumes allow you to persist data. Volumes persist and continue to exist even if a container is shut down and removed. If you add a volume to a container, the volume will not be removed when its container is removed. Containers can write data to and read data from volumes.
+
+### How not to use volumes
+
+One of the easiest ways of adding a volume is to add a instruction to the Dockerfile. You can use the `VOLUME` command. This command takes in an array of strings, which specify the different paths inside a container file system.
+
+In the example project, we store feedback text files inside the `feedback` folder inside the container. So since the working directory of the container is the `/app` folder, the feedback folder would have to be referred to by `/app/feedback`:
+
+```Dockerfile
+FROM node:14-alpine
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY . .
+EXPOSE 80
+VOLUME ["/app/feedback"]
+CMD ["node", "server.js"]
+```
