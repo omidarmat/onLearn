@@ -22,6 +22,9 @@
   - [Sharing images](#sharing-images)
     - [Pushing images to Docker hub](#pushing-images-to-docker-hub)
     - [Pulling images from Docker hub](#pulling-images-from-docker-hub)
+- [Managing data and working with volumes](#managing-data-and-working-with-volumes)
+  - [Data categories](#data-categories)
+    - [Analyzing a real-world application](#analyzing-a-real-world-application)
 
 # What is Docker?
 
@@ -686,3 +689,53 @@ docker run omidarmat/node-hello-world
 ```
 
 > If you have an image with the same name on your machine, Docker will not check if your local image is up-to-date and in sync with the latest version of the image available on Docker hub. In this case, you would have to first get the updated image using `docker pull` and then run your container on it.
+
+# Managing data and working with volumes
+
+You have now learned about images and containers. Now you are going to learn how to manage your data inside images and containers. Of course, we already had data in our images and containers up to this point, for example, the code. But turns out that there are different kinds of data. We will face problems with the other kinds of data.
+
+So you are going to learn how images and containers can **manage data** in different ways and how you can connect to different folders. You will specifically learn about the concept of **volumes**. You are also going to learn about **arguments** and **environment variables**, and see how you can use them in images and containers.
+
+## Data categories
+
+There are different kinds of data:
+
+1. Application: code and environment which is written and provided by you (as developer) and added to an image and container during the `build` phase. Once this data is added to the image, it is fixed and cannot be changed; images are **read-only**. So this data is only stored in an image.
+2. Temporary application data: this is mainly application user inputs. This data is fetched and produced during the time that the container is running. It is stored in memory or temporary files. This kind of data is **dynamic** and changing (**read-write**), and it is also cleared regularly. So this data is stored in the container.
+3. Permanent application data: this can be user accounts stored typically in a database. This kind of data needs to persist. This kind of data is fetched and produced during the time that the container is running. It is stored in files or a database. This data must not be lost if the container stops or restarts. This is also a **read-write** data, it should be permanent and it is stored in **containers** with the help of **volumes**. Volumes is a key concept built into Docker.
+
+Here is a summary table:
+
+![docker](/images/docker/docker-01.jpg)
+
+### Analyzing a real-world application
+
+This example project is about a NodeJS server file that receives user feedback and store it. You can Dockerize the application and run it by creating this Dockerfile in the projects root directory:
+
+```Dockerfile
+FROM node:14-alpine
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY . .
+EXPOSE 80
+CMD ["node", "server.js"]
+```
+
+You can then build your image and give it a name:
+
+```
+docker build -t feedback-node .
+```
+
+Then you can run a container based on it:
+
+```
+docker run -p 3000:80 -d --name feedback-app --rm feedback-node
+```
+
+When this applications, you can submit a feedback to it. This will store your feedback in the `feedbacks` path in a `txt` file named by the title of your feedback. So if you submit a feedback with the title _Awesome_, you can access that feedback on `localhost:3000/feedback/awesome.txt`. However, you will not be able to see this file on your local project's `feedback` folder. Why? This data is stored in the container's file system, not on your local machine's file system. The container has the structure of your local project's file system (because of `COPY . .` command), but everything is now happening inside the container, and therefore files fetched by the running container are stored in the container's file system and not leaked outside. Now if you stop this container, because of the `--rm` flag in it running command, it will be removed and therefore all the data stored in it will also be removed. But if you
+
+The same kind of thing happens when you change something in your source code and, by default, the container will not reflect that until the image is rebuilt with the new source code.
+
+So it is very important to review and keep in mind: **THERE IS NO CONNECTION BETWEEN YOUR IMAGE/CONTAINER AND YOUR LOCAL FILE SYSTEM. YOU INITIALIZE THE IMAGE ONCE, YOU COPY A SNAPSHOT OF YOUR FILES TO THE IMAGE, BUT THEREAFTER THERE IS NO CONNECTION BETWEEN THEM.**
