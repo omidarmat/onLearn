@@ -28,6 +28,7 @@
   - [Volumes](#volumes)
     - [How not to use volumes](#how-not-to-use-volumes)
     - [Named volumes](#named-volumes)
+  - [Bind mounts](#bind-mounts)
 
 # What is Docker?
 
@@ -783,7 +784,7 @@ You can now access the app on `localhost:3000` and submit an entry. However, if 
 
 ### Named volumes
 
-With Docker we have two external data storage mechanisms: Volumes and Bind mounts. Let's focus on volumes now.
+With Docker we have two external data storage mechanisms: **Volumes** and **Bind mounts**. Let's focus on volumes now.
 
 There are two types of volumes. Currently, we are using **anonymous** volumes. We also have **named** volumes. In both cases, Docker sets up some folder and path on your local machine (you don't know where when it is anonymous), and the only way for us to get access to these volumes is with the help of `docker volume ls` command. Using it right now will return a table with one single volume with an encrypted name, because we didn't give a name to the volume. Note that this volume is there as long as your container is existent. If you remove the container, you will lose this volume.
 
@@ -796,3 +797,44 @@ docker run -d -p 3000:80 --rm --name feedback-app -v feedback:/app/feedback feed
 ```
 
 Now if you stop and remove this container, you can see that `docker volumes ls` command will show you that the volume is still there. So if you run another container with the same name and conatiner path for the `-v` flag, you will see that you still have access to the data that was created during the time that the previous container was live.
+
+## Bind mounts
+
+Bind mountes can help us with a different problem. Remember if you change your source code while a container is running, those changes will not be reflected in your application unless you stop that container, rebuild your image and run another container on it. But during development this would be a pain in the ass! This is where bind mountes come to help.
+
+Bind mounts have some similarities with volumes, but there is one key difference. Where volumes are managed with Docker and we don't really know where on our local machine they are, with bind mounts we do know where they are, because we, as developers, set the path to which the container's internal path should be mapped on our local machine. So you can put your source code into a bind mount, and make sure that the container is aware of that bind mount, and that the source code is not copied as a snapshot by the `COPY . .`, but instead from the bind mount. This way, the container will have always have access to the latest version of the source code.
+
+So in conclusion, bind mounts are great for persistent, editable (by you) data; that is, the source code. Again compare it to volumes. Volumes are great for persistent data, but editing that data is not really possible.
+
+But how can we add a bind mount? Again, since a bind mount is related to a container and not an image, it cannot be implemented in the Dockerfile. Instead, it should be implemented in the terminal for the `docker run` command. To do this, you would have to insert another `-v` flag to the command. This one, receives first, the absolute path to the directory of source code, then a `:`, and finally, the path in the container to which you want to map your local source code directory. So this would be the command:
+
+```
+docker run -d -p 3000:80 --rm --name feedback-app -v feedback:/app/feedback -v "C:\Users\omida\Desktop\docker-practice
+\047-data-volumes-01-starting-setup\data-volumes-01-starting-setup:/app" feedback-node:volumus
+```
+
+> Note that there are two `-v` flags. The first one is a named volume to persist user input data. The second one is a bind mount to track source code changes.
+
+> If the absolute path to the local source code directory has some special characters or some white spaces, you might want to wrap the whole bind mount flag value inside `" "`.
+
+> There is one important thing to remember: You should make sure Docker has access to the directory which you are sharing as a bind mount. You can do this by accessing the `Settings` of Docker, and going under `Resources` section. (You probably don't need to do anything if you are on windows.)
+
+Now if you run this command, you see that the container will not start. Actually, the container seems to start and shut down immediately afterwards. You can re-run the container without the `--rm` flag in order to preserve it even if it shuts down. Then inspect the container's logs using the `docker logs feedback-app`.
+
+You will see that Docker has failed because it could not find the `express` module. What is wrong? This has something to do with the bind mount.
+
+Remember what we did with the bind mount command? We copied everything inside the project root directory to the `/app` directory inside the container. We are actually replacing everything inside `/app` of the container with everything inside the project's root directory. So this command is actually overwriting three layers of Dockerfile commands:
+
+```Dockerfile
+COPY package.json .
+RUN npm install
+COPY . .
+```
+
+We are actually getting rid of the `node_modules` folder in the container's `/app` directory. We don't have the `node_modules` folder in our local directory either. So the `/app` directory inside the container will lose it also, and it would have none of the dependencies the applciation needs. How should you fix it?
+
+We can tell Docker that there are certain parts inside the container's file system that should not be overwritten from outside - in case we have such a clash. This is done by an **anonymous volume**. This is done by adding yet another `-v` flag to the `docker run` command. Look at the final `-v` flag:
+
+```
+docker run -d -p 3000:80 --rm --name feedback-app -v feedback:/app/feedback -v "C:\Users\omida\Desktop\docker-practice\047 data-volumes-01-starting-setup\data-volumes-01-starting-setup:/app" -v /app/node_modules feedback-node:volumus
+```
