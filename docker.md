@@ -1,3 +1,28 @@
+- [What is Docker?](#what-is-docker)
+- [Why Docker and containers?](#why-docker-and-containers)
+- [Docker desktop and toolbox](#docker-desktop-and-toolbox)
+- [Docker tools and building blocks](#docker-tools-and-building-blocks)
+- [Creating a simple container](#creating-a-simple-container)
+- [Docker images and containers](#docker-images-and-containers)
+  - [Using external (pre-built) images](#using-external-pre-built-images)
+  - [Building your own image](#building-your-own-image)
+  - [Running a container based on your image](#running-a-container-based-on-your-image)
+  - [Images are read-only](#images-are-read-only)
+  - [Image layers](#image-layers)
+    - [One important optimization potential](#one-important-optimization-potential)
+  - [Managing images and containers](#managing-images-and-containers)
+    - [Stopping and restarting containers](#stopping-and-restarting-containers)
+    - [Attached and detached containers](#attached-and-detached-containers)
+    - [Entering interactive mode](#entering-interactive-mode)
+    - [Deleting images and containers](#deleting-images-and-containers)
+      - [Removing stopped containers automatically](#removing-stopped-containers-automatically)
+  - [A look behind the scenes: inspecting images](#a-look-behind-the-scenes-inspecting-images)
+  - [Copying files into and from a container](#copying-files-into-and-from-a-container)
+  - [Naming and tagging containers and images](#naming-and-tagging-containers-and-images)
+  - [Sharing images](#sharing-images)
+    - [Pushing images to Docker hub](#pushing-images-to-docker-hub)
+    - [Pulling images from Docker hub](#pulling-images-from-docker-hub)
+
 # What is Docker?
 
 It is a container technology, a tool for creating and managing containers. But what is a container?
