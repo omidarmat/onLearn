@@ -36,6 +36,8 @@
     - [Container-localhost connection](#container-localhost-connection)
     - [Container-container connection](#container-container-connection)
       - [Docker networks](#docker-networks)
+      - [Final considerations](#final-considerations)
+- [Building multi-container applications](#building-multi-container-applications)
 
 # What is Docker?
 
@@ -1091,3 +1093,10 @@ docker run --name favorites --network favorites-net -d --rm -p 3000:3000 favorit
 ```
 
 > In the `docker run` command for a container, you only need to expose connection ports if you need to connect to that container from your local machine. Note that we didn't need to expose a connection port for the the database container, since we didn't need to connect to this container from our local machine. The database containers was only meant to be accessed by our web application container and this connection is established via Docker network.
+
+#### Final considerations
+
+There are some matters for which you can optimize this network of containers a bit. For instance, you always lose
+all the data stored in the database whenever you shut down its container. You can fix this with volumes. But we will deal with this and some other things when we are going to build a multi-container application in the next section.
+
+# Building multi-container applications
