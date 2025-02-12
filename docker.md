@@ -30,6 +30,12 @@
     - [Named volumes](#named-volumes)
   - [Bind mounts](#bind-mounts)
   - [Arguments and Environment variables](#arguments-and-environment-variables)
+- [Networking cross-container communication](#networking-cross-container-communication)
+  - [Three types of container communication](#three-types-of-container-communication)
+    - [Container-www connection](#container-www-connection)
+    - [Container-localhost connection](#container-localhost-connection)
+    - [Container-container connection](#container-container-connection)
+      - [Docker networks](#docker-networks)
 
 # What is Docker?
 
@@ -924,3 +930,158 @@ docker build -t feedback-node:dev --build-arg DEFAULT_PORT=8000 .
 ```
 
 So now you have two images based on the same Dockerfile. You can now be more flexible in creating images.
+
+# Networking cross-container communication
+
+Now that you know how you can persist data with containers, you need to learn about networks and how you can network multiple containers and make them communicate with each other. This section is mainly concerned with connecting containers to external networks, and also connecting containers together.
+
+## Three types of container communication
+
+### Container-www connection
+
+Imagine you have a container with your application inside it, and this application needs to talk to an API at some URL like `some-api.com/` out in the WWW. So your application needs to be able to send requests to the API on the web.
+
+### Container-localhost connection
+
+Sending HTTP requests is not the only type of connection needed for a Dockerized app inside a conatiner. Your application might also need to communicate with some other service on your local machine which might not be Dockerized.
+
+Take the example project of this section as example. This project is a web application running on our local machine, connecting to a database that is also running on our local machine. It also connects to an API on the web, but we don't need to wory about that since it already works fine and we don't need to do anything about it.
+
+At this stage, we want to Dockerizing our web server application. So our web application will run inside a container, but the database would still be live on our local machine and not inside a container. In other words, the database will not be Dockerized in this example. We will take care of that in the next part. We just want to establish a connection between a Dockerized web application and a non-Dockerized database running on the local machine.
+
+Let's build an image based on the Dockerfile existing inside the project files:
+
+```Dockerfile
+FROM node
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY . .
+CMD ["node", "app.js"]
+```
+
+Using this terminal command:
+
+```
+docker build -t favorites-node
+```
+
+> We didn't provide a tag for the image name, so we are actually using `latest` as default tag.
+
+Then run a container on this image:
+
+```
+docker run --name favorites --rm -p 3000:3000 favorites-node
+```
+
+Your container will start and crash immediately. You can see the error since we did not use the `-d` flag on the `docker run` command. It is due to database connection failure. So the application inside the container could not connect to our database running on our local machine. You can inspect the server code and you see that we are trying to connect the server to database using connection URL `mongodb://localhost:27017/swfavorites`. This connection was not successful and therefore the the `app.listen(3000)` code did not execute, which in turn, caused the container to crash. How can we establish this connection?
+
+It turnes out that for this type of communication, Docker is capable of parsing and understanding `host.docker.internal` string in the connection URL used to connect to a locally running database. Go ahead and replace `localhost` with this domain, and it will be translated to `localhost` by Docker: `mongodb://host.docker.internal:27017/swfavorites`
+
+```js
+mongoose.connect(
+  "mongodb://host.docker.internal:27017/swfavorites",
+  { useNewUrlParser: true },
+  (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      app.listen(3000);
+    }
+  }
+);
+```
+
+Obviously, for this to work, you need to have the MongoDB server installed and running on your machine. The other better way to make this whole application work, is to have the MongoDB server run inside another container. This way, you would have to establish connection between two containers; one container for your web application, and one for your database instance. This leads us to the 3rd type of communitaion, which is container-container connection.
+
+### Container-container connection
+
+Your application in a container might need to communicate with another application in another container. For example, your web server application might want to talk to a database instance running in another container. Building applications with multiple containers is quite a common scenario. This will free you from having to install the database server manually on your local machine. Docker container of the database will take care of that.
+
+> With Docker containers it is strongly recommended that each container be responsible for only one thing. So your server application must run in one container, and your database in another.
+
+So now, for the first time, we are going to create and run 2 containers at the same time, and these two containers should be able to communicate with each other.
+
+To run a container for MongoDB, you don't need to write a Dockerfile and create an image based on it. The MongoDB image file is available on Docker hub, ready to be downloaded and used. That is an official MongoDB image. So let's run a container based on this official image:
+
+```
+docker run -d --name mongodb mongo
+```
+
+You can observe the running container using the `docker ps` command. You now need to alter the web application code to be able to connect to this database container. This is the tricky part. Referring back to the previous section, `host.docker.internal` no longer works in this scenario. You can use the `docker container inspect` command to inspect the database container we just executed:
+
+```
+docker container inspect mongodb
+```
+
+In the information returned by this command, you should be able to find an `IPAddress`under`NetworkSettings` property. It is something like `172.17.0.2`. This is the IP address of the database container. You can use it to connect to this container. Go ahead and replace `host.docker.internal` string with this IP address in the database connection URL in the server code.
+
+```js
+mongoose.connect(
+  "mongodb://172.17.0.2:27017/swfavorites",
+  { useNewUrlParser: true },
+  (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      app.listen(3000);
+    }
+  }
+);
+```
+
+You can now rebuild the web server application image, since you just altered its source code, and then run a container on it.
+
+```
+docker build -t favorites-node .
+docker run --name favorites -d --rm -p 3000:3000 favorites-node
+```
+
+You should now be able to observer two containers running on your machine that are actively communicating with each other. However, it was not quite a convenient process to go through, since we had to inspect into the database container to find the IP address, and then replace it in the connection URL, and in turn, rebuild your server application image frequently. There should be a more elegant way of doing this. It turnes out there is: **Docker networks**.
+
+#### Docker networks
+
+With Docker, you can create networks. When you have multiple containers, you can put all these containers in a network by inserting `--network` option on the `docker run` command. This will automatically perform IP lookup and resolving process (we did it manually in the previous section) to create a network through which containers can connect to each other.
+
+To implement this networking system of Docker, go ahead, stop and remove both conatiners first. Now let's start MongoDB image container with the `--network` flag. Now there is a twist here. Unlike volumes, that are automatically created when you use `-v` flag in the `docker run` command, you have to create networks manually before you run a networked container. So you first need to use `docker network create` command to create a network and assign a name to it.
+
+```
+docker network create <network-name>
+docker network create favorites-net
+```
+
+You can also observe your networks using the `docker network ls` command. You will see some default networks created by Docker, which you can ignore.
+
+You can then refer to your network in the `docker run` command.
+
+```
+docker run -d --name mongodb --network favorites-net mongo
+```
+
+Now your database container is running and connected to your network. Now if you run your server application container also connected to this network, how will these containers be able to talk to each other? We should somehow get rid of hardcoding `172.17.0.2` IP address of the database from the connection URL. Docker should automatically configure that for us. It turnes out this is pretty simple. If two containers are parts of the same network, you can simply refer a container by mentioning its name. So in the connection URL, you would just have to write the database container's name which is `mongodb` as you named it when running it.
+
+```js
+mongoose.connect(
+  "mongodb://mongodb:27017/swfavorites",
+  { useNewUrlParser: true },
+  (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      app.listen(3000);
+    }
+  }
+);
+```
+
+Docker will automatically translate `mongodb` to the database container's IP address. You can now rebuild your server application image since you altered its code:
+
+```
+docker build -t favorites-node .
+```
+
+And then run a conatiner on it, this time putting this container in the `favorites-net` network too. Remember both containers should be parts of the same network.
+
+```
+docker run --name favorites --network favorites-net -d --rm -p 3000:3000 favorites-node
+```
