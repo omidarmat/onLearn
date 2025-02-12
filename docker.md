@@ -1074,7 +1074,11 @@ mongoose.connect(
 );
 ```
 
-Docker will automatically translate `mongodb` to the database container's IP address. You can now rebuild your server application image since you altered its code:
+Docker will automatically translate `mongodb` to the database container's IP address.
+
+> It is important to understand here that Docker will NOT alter your source code under the hood. It will not change `mongodb` in your connection URL. Instead, Docker owns the environment in which your application runs. So if an HTTP request leaves your application's continer, Docker detects it and then, it will parse and understand your URL.
+
+You can now rebuild your server application image since you altered its code:
 
 ```
 docker build -t favorites-node .
@@ -1085,3 +1089,5 @@ And then run a conatiner on it, this time putting this container in the `favorit
 ```
 docker run --name favorites --network favorites-net -d --rm -p 3000:3000 favorites-node
 ```
+
+> In the `docker run` command for a container, you only need to expose connection ports if you need to connect to that container from your local machine. Note that we didn't need to expose a connection port for the the database container, since we didn't need to connect to this container from our local machine. The database containers was only meant to be accessed by our web application container and this connection is established via Docker network.
