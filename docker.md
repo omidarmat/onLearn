@@ -29,6 +29,7 @@
     - [How not to use volumes](#how-not-to-use-volumes)
     - [Named volumes](#named-volumes)
   - [Bind mounts](#bind-mounts)
+  - [Arguments and Environment variables](#arguments-and-environment-variables)
 
 # What is Docker?
 
@@ -838,3 +839,88 @@ We can tell Docker that there are certain parts inside the container's file syst
 ```
 docker run -d -p 3000:80 --rm --name feedback-app -v feedback:/app/feedback -v "C:\Users\omida\Desktop\docker-practice\047 data-volumes-01-starting-setup\data-volumes-01-starting-setup:/app" -v /app/node_modules feedback-node:volumus
 ```
+
+> Note that with bind mount in place, you actually don't need to include the `COPY . .` command layer inside the Dockerfile. However, we only use the bind mound in the terminal command when we are developing the project. Remember that we use bind mount to reflect source code changes in the running container. In production, there would be no code changes, so you would not need a bind mount. In production you always want a snapshot of your code in the running container.
+
+> You don't actually need to `COPY` everything (`.`) from your local project directory into the image. You can safely ignore some files by listing them inside a `.dockerignore` file that you can create inside the root directory of your project. For instance, you almost always want to ignore the `node_modules` folder if you have executed `npm install` on your local project.
+
+```
+<!-- .dockerignore -->
+node_modules
+```
+
+## Arguments and Environment variables
+
+Docker supports **build-time** arguments (ARG) and runtime environment variables (ENV).
+
+Arguments allow you to set flexible bits of data (variables) in your Dockerfile which you can use to plug different values into certain Dockerfile instructions based on arguments that are provided with the `--build-arg` flag.
+
+Environment variables are available inside a Dockerfile and also in application code. You can set them with the `ENV` command inside a Dockerfile, and then provide concrete values for that environment variable with the `--env` option on `docker run` command.
+
+Environment variables and arguments allow you to build more flexible images and containers, because you won't have to hardcode everything into them. Instead, you can set them **dynamically** when you build an image or run a container.
+
+As an example, in the source code of the `server.js` file of the sample project, you see this code:
+
+```js
+app.listen(80);
+```
+
+The port on which a webserver listens for requests can be set via an environment variable. You can replace the hardcoded `80` with an environment variable in your code using `process.env.PORT`, and then set it using Docker. So you can update the code above as:
+
+```js
+app.listen(process.env.PORT);
+```
+
+Now to set the `PORT` environment variable with Docker, you can announce it in the Dockerfile.
+
+```Dockerfile
+# other command layers
+COPY . .
+ENV PORT 80
+EXPOSE $PORT
+```
+
+You can now rebuild your image:
+
+```
+docker build -t feedback-node:env .
+```
+
+And then run a container again:
+
+```
+docker run -d --rm -p 3000:80 --name feedback-app -v feedback:/app/feedback -v "..." -v /app/node_modules -v /app/temp feedback-node:env
+```
+
+But you are not limited to the value you have set for `ENV PORT` in the Dockerfile. You can stop this container, and set another value (for example, `8000`) for it when you are running another container using the `--env` flag on `docker run` command.
+
+```
+docker run -d --rm -p 3000:8000 --env PORT=8000 --name feedback-app -v feedback:/app/feedback -v "..." -v /app/node_modules -v /app/temp feedback-node:env
+```
+
+And note that you don't need to rebuild your image since you didn't change your Dockerfile. You set the environment variable in the terminal run command.
+
+> You can also use `-e` instead of `--env`. You can also use multiple `-e` or `--env` flags if you need to set multiple environment variables. You can also set your environment variables in an `.env` file located at the root directory of your project, and then refer to the file using the `--env-file` flag on the `docker run` command. This is probably the best way to go.
+
+```
+docker run -d --rm -p 3000:8000 --env-file ./.env --name feedback-app -v feedback:/app/feedback -v "..." -v /app/node_modules -v /app/temp feedback-node:env
+```
+
+Now let's see how we can use arguments in connection with environment variables. You set the `ENV PORT` to `80` in the Dockerfile. It is a hardcoded default value. You can still make `80` be dynamically accepted by Docker using arguments.
+
+```Dockerfile
+# other commands
+ARG DEFAULT_PORT=80
+ENV PORT $DEFAULT_PORT
+EXPOSE $PORT
+# other commands
+```
+
+You can now build more than one instances for your image, each for a different mode; `web-app` and `dev`. The `DEFAULT_VALUE` provided to the Dockerfile can be used for the `web-app` image, and for the `dev` image you can set a different default value using the `--build-arg` flag on the `docker build` command.
+
+```
+docker build -t feedback-node:web-app .
+docker build -t feedback-node:dev --build-arg DEFAULT_PORT=8000 .
+```
+
+So now you have two images based on the same Dockerfile. You can now be more flexible in creating images.
