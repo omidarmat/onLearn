@@ -41,6 +41,7 @@
   - [Dockerizing the database](#dockerizing-the-database)
   - [Dockerizing the backend app](#dockerizing-the-backend-app)
   - [Dockerizing the frontend](#dockerizing-the-frontend)
+  - [Adding Docker network](#adding-docker-network)
 
 # What is Docker?
 
@@ -1224,7 +1225,124 @@ docker build -t goals-react .
 Then run a container on this image:
 
 ```
-docker run --name goals-frontend --rm -d goals-react
+docker run --name goals-frontend --rm -d -p 3000:3000 goals-react
 ```
 
-[continue from 4:43 of 088 video]
+A container runs, but once you try to access it inyour browser on `localhost:3000`, it will crash and be removed. You can re-run the container without the `-d` flag to see its output logs. As it is said in the logs, the development server runs, but the container crashes right after it with no other log. This problem is specific to the React project setup.
+
+You need to run the frontend container with the `-it` flag. This means that the container will become interactive, although you are not really going to interact with it. However, a React project needs this _Input Trigger_ to keep the frontend server live.
+
+Up until this point, this whole application is Dockerized and all three containers are actively communicating with each other. Let's now add some other parts of our initial requirements, like persisting data. Additionally, these three containers are connecting together through your local machine. It would be much better if you could put all these containers in one Docker network, so they would be able to connect together just with their container names. Let's first stop all three containers to address these issues.
+
+## Adding Docker network
+
+Let's first list all the currently available network.
+
+```
+docker network ls
+```
+
+You can create a network and name it `goals-net` using this command:
+
+```
+docker network create goals-net
+```
+
+With this network, you can run all three containers again, this time putting them all in this network. Let's start with the database container.
+
+For the database container, we no longer need to publish an access port. Containers in the same network can easily communicate with each other. So you would only need to add the container to the network by adding `--network` flag with the network name `goals-net`.
+
+```
+docker run --name mongodb --rm -d --network goals-net mongo
+```
+
+Let's continue with the backend container. For the backend, we also need to alter the source code to account for container networking.
+
+```
+docker run --name goals-backend --rm -d --network goals-net goals-node
+```
+
+Now inside the source code, you would have to update the database connection URL, since it is currently trying to connect to the database using your local hosting machine on `host.docker.internal` string. This has to change to the database container name `mongodb`.
+
+```js
+mongoose.connect(
+  "mongodb://mongodb:27017/course-goals",
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  },
+  (err) => {
+    if (err) {
+      console.error("FAILED TO CONNECT TO MONGODB");
+      console.error(err);
+    } else {
+      console.log("CONNECTED TO MONGODB");
+      app.listen(80);
+    }
+  }
+);
+```
+
+You altered your backend source code, so now you have to rebuild your backend image.
+
+```
+docker build -t goals-node .
+```
+
+Let's now run the backend conatiner while attaching it to the same network and removing its published port.
+
+```
+docker run --name goals-backend --rm -d --network goals-net goals-node
+```
+
+Let's now go for the frontend container. In this case alse, you need to alter the source code first. So in `App.js` file inside the `frontend` directory, you would have to replace all instances of `localhost` string with the backend container name `goals-backend`.
+
+```js
+const response = await fetch("http://localhost/goals");
+// change to:
+const response = await fetch("http://goals-backend/goals");
+```
+
+Then rebuild your frontend image:
+
+```
+docker build -t goals-react .
+```
+
+Then run a container on it while adding it to the network `goals-net`. Keep in mind that you still need to expose `3000` port number since you need to access this container from your local machine.
+
+```
+docker run --name goals-frontend --network goals-net --rm -p 3000:3000 goals-react
+```
+
+However, you will now receive `ERR_NAME_NOT_RESOLVE` error. It is important to understand that all the React code (which is eventually compiled into simple JavaScript code) is executing in the browser. The browser is not inside the frontend container. So the frontend source code, in which we altered `localhost`s to `goals-backend`, will eventually end up in the browser, because the `CMD` command layer in the frontend Dockerfile uses a 3rd-party package to just serve the code to the browser. When this code goes into the browser, it won't have any idea about the backend container name. The only thing running in the frontend container is the 3rd-party development server, serving the application to the browser. This is different from the backend code. The backend Dockerfile's `CMD` layer uses node itself and runs the code inside the container. So we had no problem there.
+
+How can you fix this? So replacing `localhost`s with backend conatiner name is doing any good. You should go back to `localhost` in the React code, since this is what browsers can understand. With this revert, we also need to make sure that `/gols/` endpoint is accessible on `locahost` as it is needed in these code lines:
+
+```js
+const response = await fetch("http://localhost/goals");
+```
+
+This means that we still need to expose port `80` on the backend container, so that it would be available on `localhost`. This is all because a frontend project is meant to run some code in the browser.
+
+Now that you have, again, changed your frontend source code, you have to rebuild its image:
+
+```
+docker build -t goals-react .
+```
+
+Then run a container on it without having to add this frontend container to the `goals-net` network.
+
+```
+docker run --name goals-frontend --rm -p 3000:3000 -it goals-react
+```
+
+Now let's go back to the backend conatiner. First stop the running backend container. Then re-run it while exposing port `80`.
+
+```
+docker run --name goals-backend --rm -d -p 80:80 --network goals-net goals-node
+```
+
+Now all your containers should be up and running, and they are fully able to connect to each other.
+
+Let's now add data persistance, access limit, live source code updates and other requirements.
