@@ -43,6 +43,7 @@
   - [Dockerizing the backend app](#dockerizing-the-backend-app)
     - [Implementing additional requirements](#implementing-additional-requirements-1)
   - [Dockerizing the frontend](#dockerizing-the-frontend)
+    - [Implementing additional requirements](#implementing-additional-requirements-2)
   - [Adding Docker network](#adding-docker-network)
 
 # What is Docker?
@@ -1429,6 +1430,43 @@ A container runs, but once you try to access it inyour browser on `localhost:300
 You need to run the frontend container with the `-it` flag. This means that the container will become interactive, although you are not really going to interact with it. However, a React project needs this _Input Trigger_ to keep the frontend server live.
 
 Up until this point, this whole application is Dockerized and all three containers are actively communicating with each other. Let's now add some other parts of our initial requirements, like persisting data. Additionally, these three containers are connecting together through your local machine. It would be much better if you could put all these containers in one Docker network, so they would be able to connect together just with their container names. Let's first stop all three containers to address these issues.
+
+### Implementing additional requirements
+
+Let's also implement live source code updates to the container for the frontend container. For this, you first need to stop the frontend container. Let's then restart this container with a bind mount so changes to the code would be immediately reflected in the container.
+
+Note that all the frontend source code is located inside the `src` folder, so you don't need to mount the whole root directory of the container to your local root directory of the project. Instead, you can simply connect the two `src` folders in your local project and the container. So you would also need the absolute path to the `src` folder in your local project.
+
+```
+docker run -v "C:\Users\omida\Desktop\docker-practice\085 multi-01-starting-setup\multi-01-starting-setup\frontend\src":/app/src --name goals-frontend --rm -p 3000:3000 -it goals-react
+```
+
+Remember that in this case, you don't need Nodemon to set up a serving mechanism that watches for file changes, because the React project, by default, is configured to react to file changes.
+
+> Windows uses might confront with an error on application reloading upon code changes. This happens if you are using WSL2 for Docker. You can learn how to use the Linux file system instead on your windows machine instead of the regular windows file system. If you do this and create your project in the Linux file system, this error will be fixed. This information is available on _Access Linux filesystems in Windows and WSL 2_ on `devblogs.microsoft.com`.
+
+There is a final consideration about the image building process. It takes quite long for the frontend application to build its image. It is partly because there are more dependencies here, and `npm install` takes longer. Another reason is the order of command layers in the frontend Dockerfile:
+
+```Dockerfile
+RUN npm install
+COPY . .
+```
+
+This means that after the `node_modules` folder is downloaded to the project directory, we copy everything, including the `node_modules` to the container filesystem, and that takes a long time. The solution to this is again, a `.dockerignore` file.
+
+```
+node_modules
+.git
+Dockerfile
+```
+
+With this ignore file in place, the image building process should be much faster now.
+
+```
+docker build -t goals-react
+```
+
+And you can run a container on it.
 
 ## Adding Docker network
 
