@@ -45,6 +45,14 @@
   - [Dockerizing the frontend](#dockerizing-the-frontend)
     - [Implementing additional requirements](#implementing-additional-requirements-2)
   - [Adding Docker network](#adding-docker-network)
+  - [Some final considerations](#some-final-considerations)
+- [Docker compose: multi-container orchestration](#docker-compose-multi-container-orchestration)
+  - [What is Docker compose?](#what-is-docker-compose)
+  - [Creating a Docker compose file](#creating-a-docker-compose-file)
+    - [`version`](#version)
+    - [`services`](#services)
+    - [Configuring the database service](#configuring-the-database-service)
+  - [Docker compose up and down](#docker-compose-up-and-down)
 
 # What is Docker?
 
@@ -1580,3 +1588,182 @@ docker run --name goals-backend --rm -d -p 80:80 --network goals-net goals-node
 Now all your containers should be up and running, and they are fully able to connect to each other.
 
 Let's now add data persistance, access limit, live source code updates and other requirements.
+
+## Some final considerations
+
+1. We are currently using pretty long `docker run` commands. It is pretty easy to make mistakes in writing these commands. It would be great if we would not have to remember them all. This is what the next section is about.
+2. The container setups that we went through were **development-only setups**. This is not optimized for production. We have to do other things in order to be able to put these containers into a production server.
+
+# Docker compose: multi-container orchestration
+
+We are now going to Dockerize an application with 3 parts (database, backend, frontend) using **Docker compose**. Docker compose helps you with automating multi-container setups.
+
+## What is Docker compose?
+
+Docker compose is a tool that allows you to replace multiple `docker build` and `docker run` commands with just one configuration file, including a set of orchestration commands to start all those containers at once, and you can also use one command to stop everything. With Docker compose, there would be just one command.
+
+Let's also understand what Docker compose is NOT. Docker compost will not replace Dockerfiles for custom images. Docker compose and Dockerfiles work together. Docker componse also does not replace images or containers. It just makes working with them easier. Docker compose is not suited for managing multiple containers on different hosts (machines).
+
+Docker compose can be used for development and for production as you will learn througout this section. But let's now have an overview of how to work with Docker compose.
+
+You start by writing a Docker compose file. Docker compose is not primarily about executing commands in the terminal. Instead, you will put a lot of configuration into the Docker compose file. The hardest and most important things you must define in a Docker compose file, are the so-called services, which are somewhat the same as containers. Below every service, you can configure that service. Again, service here means a container.
+
+In a Docker compose file you can do:
+
+1. Define which ports should be published
+2. Which environment variables a service might need
+3. Define volumes for containers
+4. Assign networks
+5. And basically everything you can do with Docker commands in the terminal.
+
+The main idea behind Docker compose is to replace running Docker commands in the terminal.
+
+## Creating a Docker compose file
+
+To create a compose file, you need to create a `docker-compose.yaml` file in your project root, next to `frontend` and `backend` folders.
+
+> A `.yaml` file format is a text format where you use indentation to express dependencies between configurations inserted into the file.
+
+### `version`
+
+In a Docker compose file you should describe your multi-container environment. You always start with defining a `version` key. With version, we don't mean a version of our app. It is the version of the Docker compose specification that we are going to use. The version you define here affects the features you can use in this compose file. This is due to the fact that Docker compose specifications and its syntax is under active development. You can visit `docs.docker.com/compose/compose-file/` to learn more about different available versions.
+
+```yaml
+version: "3.8"
+```
+
+### `services`
+
+The next configuration to add is the `services` key. This key accepts nested values with indentations on the line after it. Yaml uses indentations to express dependencies. Everything indented by 2 blanks will be a child to the `services`. This key needs at least one child element. Now that you have 3 containers for your application, you will have 3 services here. You can choose names of your choice for these containers.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+  backend:
+  frontend:
+```
+
+Now you can define configurations for each container. You should do that by another level of indentation.
+
+### Configuring the database service
+
+Let's take a look back at the commands we used previously in the terminal.
+
+```
+docker run --name mongodb -v data:/data/db --rm -d --network goals-net -e MONGO_INITDB_ROOT_USERNAME=max -e MONGO_INITDB_ROOT_PASSWORD=secret mongo
+```
+
+Let's now translate this into Docker compose. We first need to mention the image name that we are going to use. We are using the official Mongo image called `mongo`. It should be mentioned under the `image` key nested inside the `mongodb` service name. For this key, you can also put a URL to an image hosted somewhere else. You can also put the name of a custom image that you have created.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+  backend:
+  frontend:
+```
+
+We also want this service to run in **detached** mode, and we also want it to be **removed** once it is shut down. Good news is that you don't need to specify these configurations, since your services are automatically removed once you shut them down. The detached mode can also be specified when you run all your services. So you don't need to mention any of these two configurations in the Docker compose file.
+
+You need to add your volumes to the configuration list. This is done using the `volumes` key at the same indentation level as `images`. The `volumes` key receives volumes with another level of indentation. Remember the for each volume that you define, you need a `-` at the beginning of the indented line. For a **named volume**, you almost use the same syntax that you inserted in the terminal:
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+  backend:
+  frontend:
+```
+
+> It is important to keep in mind that with named volumes, in addition to defining them inside a service, you should also define them in the outer most level, next to the `services` key. This key will accept nested volume names with a `:` at the end of each name. This syntax might seem a bit strange. Note that this is not needed for **anonymous volumes** and **bind mounts**.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+  frontend:
+
+volumes:
+  data:
+```
+
+> If you use the same volume name in different services, the volume will be shared between those services.
+
+Let's now add environment variable configurations. It is done using the `environment` key, at the same indentation level of volumes. This key accepts nested entries, one indentation level deeper. Each environment variable entry can have one of the two formats: `name: value` or `- name=value`.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=max
+      - MONGO_INITDB_ROOT_PASSWORD=secret
+  backend:
+  frontend:
+```
+
+> In a `.yaml` file, whenever you want to insert a single value, you need a `-`, while if you are going to insert a key-value pair, you don't need the `-` and instead of a `=`, you need a `:`.
+
+For defining environment variables, you can also refer to an environment variable file. To do this, you can create an `env` folder in your project root, and in there, create a `mongo.env` file with its environment variables:
+
+```env
+MONGO_INITDB_ROOT_USERNAME=max
+MONGO_INITDB_ROOT_PASSWORD=secret
+```
+
+And then refer to this file in the Docker compose file using the `env_file` key at the same level of volumes and image. This key accepts **relative paths** to a list of environment variable files.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+  frontend:
+```
+
+> It is important to keep in mind that when you use Docker compose, you don't really need to define the **network** in which you would want your services to run. Docker compose will automatically create an environment or network where all your services will run in it. If your serivces are all mentioned in one Docker compose file, they will all be part of a network created by the Docker compose. This does not mean that you cannot define networks manually in a Docker compose file. You can do it using the `networks` key at the same level with `image`, `volumes`, `env_file` or `environment`.
+
+## Docker compose up and down
+
+How can you start services with Docker compose? To do this, you need the terminal, navigated into the folder where the `docker-compose.yaml` exists, and then you need to run one command:
+
+```
+docker-compose up
+```
+
+This will, by default, start your services in attached mode. To run your services in detached mode you can use `-d` flag.
+
+```
+docker-compose up -d
+```
+
+Now to shut down your services, you can use:
+
+```
+docker-compose down
+```
+
+However, this command will not delete the volumes you introduced into any of your services. If you want the volumes to be removed after the services are shut down, you can use `-v` flag:
+
+```
+docker-compose down -v
+```
