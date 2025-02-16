@@ -52,6 +52,7 @@
     - [`version`](#version)
     - [`services`](#services)
     - [Configuring the database service](#configuring-the-database-service)
+    - [Configuring the backend service](#configuring-the-backend-service)
   - [Docker compose up and down](#docker-compose-up-and-down)
 
 # What is Docker?
@@ -1714,6 +1715,9 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=secret
   backend:
   frontend:
+
+volumes:
+  data:
 ```
 
 > In a `.yaml` file, whenever you want to insert a single value, you need a `-`, while if you are going to insert a key-value pair, you don't need the `-` and instead of a `=`, you need a `:`.
@@ -1738,9 +1742,100 @@ services:
       - ./env/mongo.env
   backend:
   frontend:
+
+volumes:
+  data:
 ```
 
 > It is important to keep in mind that when you use Docker compose, you don't really need to define the **network** in which you would want your services to run. Docker compose will automatically create an environment or network where all your services will run in it. If your serivces are all mentioned in one Docker compose file, they will all be part of a network created by the Docker compose. This does not mean that you cannot define networks manually in a Docker compose file. You can do it using the `networks` key at the same level with `image`, `volumes`, `env_file` or `environment`.
+
+### Configuring the backend service
+
+Let's now write the Docker compose file for the backend service. On whic image should the backend service be based? Remember from the previous section that we built an image from the backend's Dockerfile and named the image `goals-node`. But Docker compose can also receive configurations on how to build the image on its own. You don't have to do it manually in the terminal. You can do this under the `backend` key in the `.yaml` file using the `build` key, one level nested inside.
+
+The `build` key needs the path to the Dockerfile based on which it can build the image. You can use a relative path.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+  frontend:
+
+volumes:
+  data:
+```
+
+> Notice that this is the simplest form of using the `build` key. You can also consider it an object, containing multiple nested keys: `context` receives the relative path to the service's Dockerfile, and `dockerfile` key that receives the Dockerfile's name existing inside the `context` directory. This way of filling the `build` key is only necessary if you have named your Dockerfile anything other than `Dockerfile`.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+  frontend:
+
+volumes:
+  data:
+```
+
+> Notice that the `context` path provided for the `build` key should lead to a directory where not only the Dockerfile exists, but also where the Dockerfile can execute its `COPY . .` command layer in relation to that path.
+
+> If your Dockerfile uses some `ARG` command layer, you should refer to them in oyur Docker compose file using the `args` key under `build`. The `args` key acts as an object that can recive multiple other keys which are the arguments that you are going to use in the process of building the image based on the Dockerfile.
+
+Let's now implement the conatiner running commands in the Docker compose file for the backend. Since we previously exposed port `80` from the backend container, we need to do it here too. Exposing ports in the Docker compose file is done using the `ports` key under `backend`. The `ports` key acts as an object that receives multiple ports if needed, each in the form of `- "80:80"`.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+  frontend:
+```
+
+Remember that we also need to put this service into a network, but we don't need to do it manually since the Docker compose tool will automatically establish the required network for us. Also, you don't need to add any keys for the `--rm` terminal container running command since Docker compose will run containers in a way that they will automatically be removed once they are stopped.
+
+But we need to define volumes for this service:
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/app/logs
+  frontend:
+```
 
 ## Docker compose up and down
 
