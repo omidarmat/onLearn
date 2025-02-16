@@ -53,6 +53,10 @@
     - [`services`](#services)
     - [Configuring the database service](#configuring-the-database-service)
     - [Configuring the backend service](#configuring-the-backend-service)
+    - [Configuring the frontend service](#configuring-the-frontend-service)
+  - [Some final considerations](#some-final-considerations-1)
+    - [The `--build` flag on Docker compose](#the---build-flag-on-docker-compose)
+    - [Container names by Docker compose](#container-names-by-docker-compose)
   - [Docker compose up and down](#docker-compose-up-and-down)
 
 # What is Docker?
@@ -1813,11 +1817,18 @@ services:
     ports:
       - "80:80"
   frontend:
+
+volumes:
+  data:
 ```
 
 Remember that we also need to put this service into a network, but we don't need to do it manually since the Docker compose tool will automatically establish the required network for us. Also, you don't need to add any keys for the `--rm` terminal container running command since Docker compose will run containers in a way that they will automatically be removed once they are stopped.
 
-But we need to define volumes for this service:
+But we need to define volumes for this service. You know how to add a named volume, and don't forget to add it to the `volumes` key at the end of the Docker compose file.
+
+Also, notice that we need multiple volumes here. We need a bind mount. Remember from the previous section that with bind mounts a terminal command we would have to add the absolute of the project directory on the hosting machine to the directory inside the container which contains the application source code. However, with bind mounts in a Docker compose file we can use a relative path; relative to the Docker compose file leading to the directory where your source code is located. Notice that with bind mounts, we don't need to specify them in the `volumes` key at the end of the Docker compose file.
+
+We also need an anonymous volume to protect the `node_modules` folder installed in the container from being overwritten by our local directory of the project, which is most probably not going to include this folder. With anonymous volumes, again, we use a relative path to the directory inside the container which we want to protect against being overwritten.
 
 ```yaml
 version: "3.8"
@@ -1834,8 +1845,197 @@ services:
       - "80:80"
     volumes:
       - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
   frontend:
+
+volumes:
+  data:
+  logs:
 ```
+
+We are now going to add the two environment variables for the backend service. You already know how to add them. So inside the `env` folder, you need to add another, you can call it `backend.env`, then set your environment variables in it:
+
+```
+MONGODB_USERNAME=max
+MONGODB_PASSWORD=secret
+```
+
+Then in the Docker compose file you can add the `env_file` key under `backend` and then insert the relative path to the env file you just created:
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./env/backend.env
+  frontend:
+
+volumes:
+  data:
+  logs:
+```
+
+There is one more key you can use for this service in a Docker compose file. And remember, this is only available in a Docker compose file, not in a terminal command for running a container. This key is `depends_on`. Using this key, you can determine if this container should depend on another conatainer, meaining that it would only run if the container that it depends on, is successfully set up and running. For instance, in this case, we only want the backend service to run if only the database service is up. If not, we don't want the backend service to run, it won't do any good. This key acts as an object and receives a list of service names, starting with a `-` at the beginning of the line:
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./env/backend.env
+    depends_on:
+      - mongodb
+  frontend:
+
+volumes:
+  data:
+  logs:
+```
+
+> It is extremely important to notice here that the names you give to each service can be referred to inside the source codes of your application where they are needed. For instance, in the backend source code, with the current setup for the Docker compose file, the connection URL to the database is using the database service name `mongodb`, just like before when we didn't use Docker compose. So we are still using all the networking stuff. The only difference here is that we are not establishing the network manually, it is done by Docker compose:
+
+```js
+mongoose.connect(
+  `mongodb://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@mongodb:27017/course-goals?authSource=admin`,
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  },
+  (err) => {
+    if (err) {
+      console.error("FAILED TO CONNECT TO MONGODB");
+      console.error(err);
+    } else {
+      console.log("CONNECTED TO MONGODB!!");
+      app.listen(80);
+    }
+  }
+);
+```
+
+### Configuring the frontend service
+
+Let's define the configurations for the frontend service. For this service, we want it to run in interactive mode. This is something we haven't done up until this point with Docker compose. Other than this, we are completely familiar with the other configurations we are going to implement for this service.
+
+To implement the interactive mode on this service we are going to use two keys under `frontend`: `stdin_open` and `tty`. We set them both to `true`.
+
+You can also add a `depends_on` key for this service to make it depend on the `backend` service.
+
+```yaml
+version: "3.8"
+services:
+  mongodb:
+    image: "mongo"
+    volumes:
+      - data:/data/db
+    env_file:
+      - ./env/mongo.env
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./env/backend.env
+    depends_on:
+      - mongodb
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+
+volumes:
+  data:
+  logs:
+```
+
+You can now use the `docker-compose up` command:
+
+```
+docker-comspose up -d
+```
+
+Everything should work fine at this point with your applications triple services.
+
+## Some final considerations
+
+### The `--build` flag on Docker compose
+
+If you add the `--build` flag to the `docker-compose up` command, you will force Docker compose to rebuild all the images. Otherwise, if Docker compose can locate any of the images already built on the hosting machine, it will use them and not rebuild them.
+
+If you just want to build images defined in your Docker compose file (we are specifically referring to your custom images) without starting their containers you can use `docker-compose build` command in the terminal.
+
+```
+docker-compose build
+```
+
+When you run `docker-compose up` the build step is automatically included if the image is not already built.
+
+### Container names by Docker compose
+
+Once you `up` a Docker compose file, you will then be able to list the containers using `docker ps`. You will see that the created containers do not have the exact name that you defined for them in the Docker compose file. Instead, their names consists of three parts, separated with `_` in between. Technically, the names you mentioned in the Docker compose files are **service** names, not **container** names.
+
+1. Project root folder name
+2. Service name you defined in Docker compose file
+3. A number, usually starting from 1 and incrementing up
+
+For instance, in this example project, you see your services names as:
+
+```
+docker-complete_mongodb_1
+docker-complete_backend_1
+docker-complete_frontend_1
+```
+
+If you want the container names to be exactly set as you want them, you can use `container_name` key under each service.
+
+```yaml
+mongodb:
+  image: "mongo"
+  volumes:
+    - data:/data/db
+  env_file:
+    - ./env/mongo.env
+  container_name: mongodb
+```
+
+However, you may probably don't want to do thatu unless you have a specific need.
 
 ## Docker compose up and down
 
