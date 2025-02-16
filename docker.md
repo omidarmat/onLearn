@@ -58,6 +58,10 @@
     - [The `--build` flag on Docker compose](#the---build-flag-on-docker-compose)
     - [Container names by Docker compose](#container-names-by-docker-compose)
   - [Docker compose up and down](#docker-compose-up-and-down)
+- [Utility containers and executing commands in containers](#utility-containers-and-executing-commands-in-containers)
+  - [Why use utility conatiners](#why-use-utility-conatiners)
+  - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
+  - [Building a utility container](#building-a-utility-container)
 
 # What is Docker?
 
@@ -2062,3 +2066,45 @@ However, this command will not delete the volumes you introduced into any of you
 ```
 docker-compose down -v
 ```
+
+# Utility containers and executing commands in containers
+
+Utility containers are containers that only have a certain environment in them, like a NodeJS environment. The idea here is that they don't start an application when you run them, but instead you run them in conjunction with some command specified by you to execute a certain task.
+
+> Notice that "Utility conatiners" is not an official term used by Docker.
+
+## Why use utility conatiners
+
+As an example, let's take an empty directory where we want to start setting up a project. Let's say we want to create a Node application in here. Up to this point, we have always worked with applications that are finished being developed. This time we are going to start a project from scratch with the help of Docker. So we want to start writing a NodeJS project without having Node installed on our machine. So there should be way of using Docker for this.
+
+What you do with regular development processes is to start a project using `npm init` in the directory where you want to place your project. This will eventually give you a `package.json` file in which some properties are defined for you. But the problem is that, if you don't want to have NodeJS installed on your machine, you won't be able to use `npm` commands in your terminal. Let's now use Docker for this purpose. This is exactly where utility containers can help us.
+
+## Different ways of running commands in conatiners
+
+You can run the Node conatiner in interactive and detached mode; So using both `-it` and `-d` flags on `docker run`.
+
+```
+docker run -it -d node
+```
+
+This will run a container on the Node official image in interactive but detached mode. So it is waiting for commands while the terminal session is not attached to the container.
+
+Now to run some command inside the running container, you can use `docker exec` with some command specific to Node environment. Keep in mind that if your command is going to get you into an interactive session with the environment, you also need to use the `-it` flag on this command as well. Now to specify in which terminal you want your command to be executed, you must type the container's name after the `exec` word. For example, to run `npm init` inside the currently running Node container, you can do this:
+
+```
+docker exec -it vigorous_dewdney npm init
+```
+
+You will now be asked some questions which are coming from Node's `npm init` command, without having NodeJS installed on your machine.
+
+Notice that when you ran the Node container, a default command of Node was executed for you. That command made your container enter the Node's REPL environment. You can overwrite the Node conatiner's default command. To do this, you can use normal `docker run` command followed by the Node command you want to be executed inside the container right after running.
+
+```
+docker run -it node npm init
+```
+
+You will now, again, be prompted some questions related to the `npm init` command coming from Node.
+
+Now up until this point, this concept of utility containers has not been so useful. But that is going to change soon.
+
+## Building a utility container
