@@ -69,6 +69,16 @@
     - [Things to watch out for](#things-to-watch-out-for)
   - [Deployment process and providers](#deployment-process-and-providers)
   - [Example: Deploy to AWS EC2](#example-deploy-to-aws-ec2)
+    - [Bind mounts in production](#bind-mounts-in-production)
+    - [Introducing AWS and EC2](#introducing-aws-and-ec2)
+      - [Connecting to an EC2 instance](#connecting-to-an-ec2-instance)
+        - [Select an AMI](#select-an-ami)
+        - [Select an instance type](#select-an-instance-type)
+        - [Configure instance Details](#configure-instance-details)
+        - [Review instance launch](#review-instance-launch)
+      - [Installing Docker](#installing-docker)
+      - [Pushing the local image to the cloud](#pushing-the-local-image-to-the-cloud)
+      - [Running and publishing the app](#running-and-publishing-the-app)
 
 # What is Docker?
 
@@ -2279,3 +2289,180 @@ Three main steps to bring our Dockerized app on an EC2 instance:
 1. Create and launch EC2 **instance**. Also create a **VPC** (Virtual Public Cloud). Also create a **security group** to control who has access to this instance.
 2. Configure the security group to expose all required ports to the WWW, so that we can have incoming traffic to the EC2 instance.
 3. Connect to the EC2 instance via SSH (Secure Shell) allowing us to run commands on that remote computer, and we will run a command to install Docker, and then another command to pull and run our container.
+
+As for the example project in this section, let's first create the application image based on its Dockerfile.
+
+```
+docker build -t node-dep-example .
+```
+
+Then run a container on this image:
+
+```
+docker run -d --rm --name node-dep -p 80:80 node-dep-example
+```
+
+### Bind mounts in production
+
+We didn't use a bind mount on the container we started in this example. There is a reason for this. There is a difference between when we run a container in development mode and in production mode. In development, while working on the app, our container should encapsulate the runtime environment, but not necessarily the code. The code during development should be instantly reflected inside the container. However, in production, where users are going to use our application, the container should really work standalone. You should **NOT** have source code on your remote machine. This is why when you build your image for production, you use `COPY . .` in the Dockerfile, in order to capture a snapshot of your source code and put it in the container.
+
+> We don't define the bind mount in the Dockerfile since we want the image creation process to be flexible for different environments. With the `COPY` layer inside the Dockerfile, we can also add a bind mount to the `docker run` terminal command when working on our local project development. However, in production, we don't want the bind mount, so we can simply let the Dockerfile copy a snapshot of our source code into the image.
+>
+> Remember that we can have bind mounts defined in a Docker compose file. We will talk about treating Docker compose files in production later...
+
+### Introducing AWS and EC2
+
+You would probably want to rebuild your image based on your latest code changes. Then you run a container based on this image, this time, not on your local machine, but on a remote hosting machine.
+
+To do this, go to AWS, sign up or sign in, and in the _AWS Management Console_, under _AWS services_, look for `EC2`, which allows you to create virtual servers in the cloud. You would then be redirected toward the ES2 dashboard. You can then find and clik on `Launch a new instance`. This will then start a wizard.
+
+#### Connecting to an EC2 instance
+
+##### Select an AMI
+
+At the first page of the wizard, you can select an Amazon Machine Image (AMI). You can choose _Amazon Linux 2 AMI_ for `64-bit (x86)` system.
+
+##### Select an instance type
+
+You can choose a **Free tier eligible** instance. You can choose `t2.micro`.
+
+##### Configure instance Details
+
+For **Network**, make sure you have the default `vpc-37385...` option selected. You can leave all the other default settings as they are.
+
+##### Review instance launch
+
+At this stage you can review all your settings, and then click on `Launch`. You will instantly be prompted a modal window asking you to **Select an existing key pair or create a new key pair**. This key pair would be given to you eventually as a file, with which you can connect to this remote instance via SSH and to run commands on it.
+
+Go on and create a new key pair, and name it whatever you want. You can then `Download Key Pair`. If you lose this key pair, you would have shut down your instance and start a new one. The key pair file that you will dowload will be of `.pem` format.
+
+> You should not share your key pair with anyone.
+
+You can now click on `Launch instances`. You will then be presented with a page containing a report on the _Launch status_. You can click on `View instances` to visit a table which lists all your running instances.
+
+In the next step, we are going to try to connect to our running instance using SSH. SSH is a protocol for connecting from your local machine to a remote machine via the command line.
+
+> On Linux and MacOS this is easily done since the regular terminal in these OSs is, out of the box, provided with the `ssh` command. On windows, you either need to set up **WSL 2**, or you can use a tool called **PuTTY**.
+
+Now with everything set up, you can click on `Connect` in the list of running instances, and this will present you with another window providing information on how to connect to the running instance. You can choose **A standalone SSH client**. Here is the instruction list provided by AWS:
+
+1. Open an SSH client.
+2. Locate your private key file. The wizard automatically detects the key you used to launch the instance.
+3. Your key must not be publicly viewable for SSH to work. Use this command if needed:
+
+```
+chmod 400 example-1.pem
+```
+
+4. Connect to your instance using the Public DNS:
+
+```
+ec2-18-218-126-91.us-east-2.compute.amazonaws.com
+
+example:
+ssh -i "example-1.pem" ec2-user@ec2-18-218-126-91.us-east-2.compute.amazonaws.com
+```
+
+Remember that connecting to your running instance is required in order to be able to install Docker and run conatiners on your remote instance.
+
+> Keep in mind that you should still create and configure a security group. You can do it after starting your Docker container on the running instance. So we are keeping our focus on running a Docker container on the running instance.
+
+In the bash terminal located at the root of your local project, where the `.pem` file exists, use this command to make sure that this key file has the right permissions to continue.
+
+```
+chmod 400 example-1.pem
+```
+
+Then use the example code provided by AWS in your bash terminal:
+
+```
+ssh -i "example-1.pem" ec2-user@ec2-18-218-126-91.us-east-2.compute.amazonaws.com
+```
+
+You will be prompted _Are you sure you want to continue connecting?_ where you can say `yes`.
+
+Your terminal will now get connected to the running instance, and your terminal cursor will how that by a prefix of `[ec2-user@ip-172-31-45-61 ~]$`.
+
+You can now install Docker here.
+
+#### Installing Docker
+
+To install Docker on the running instance, you can use this command:
+
+```
+sudo yum update -y
+```
+
+This will ensure all packages on the remote machine are updated and using their latest version. Then use:
+
+```
+sudo amazon-linux-extras install docker
+```
+
+> On the Amazon-based virtual instances, `amazon-linux-extras` command is available for you to install extra softwares like Docker.
+
+After installation is done, you can use this command to run Docker on the running instance:
+
+```
+sudo service docker start
+```
+
+You can now use all Docker commands you learned, like `docker run` and everything else. This proves that now Docker is available on the running instance.
+
+#### Pushing the local image to the cloud
+
+You now need to push your local image to the remote machine. For this, you can select between two approaches:
+
+1. Deploy your source code. In this approach, you copy everything in your project directory to the remote machine, and then you build your image there. This approach poses unnecessary complexity to the remote machine.
+2. Build your image ahead of time. In this approach, you build your image on your local image and then deploy the built image on to the remote machine and then run a container on it. You can also build your image locally, push it to Docker hub, the pull it on the remote machine, and run it there.
+
+We proceed with the 2nd approach. Make sure you are logged in to Docker hub:
+
+- Create a new public repository and give it a name (e.g. `node-example-1`).
+- Acquire the repository name and use it to push your image into it.
+
+> Don't forget to open up a new local terminal. You cannot use the terminal connected to the remote running instance.
+
+> You may want to add a `.dockerignore` file to your local project to prevent some files or folders, like `node_modules` or `Dockerfile`, from being included in the image. Don't forget to exclude `*.pem` files from your image.
+
+```
+sudo docker build -t node-dep-example-1 .
+```
+
+Now you have the image on your local machine. You can now push it to Docker hub by renaming it using the `docker tag` command.
+
+```
+sudo docker tag node-dep-example-1 omidarmat/node-example-1
+```
+
+This will now allow you to push this renamed image to Docker hub into your recently created repository.
+
+```
+sudo docker push omidarmat/node-example-1
+```
+
+> Remember that you have to be logged in to your Docker hub account via your local terminal in order to be able to use `docker push` command.
+
+#### Running and publishing the app
+
+Now with our image existing on the Docker hub repository, it is pretty easy to run it on the running instance. Let's proceed to the terminal that is connected to the remote instance.
+
+```
+sudo docker run -d --rm -p 80:80 omidarmat/node-example-1
+```
+
+You can then list your running containers on the remote instance using `docker ps`.
+
+Your application container is actually running on the remote instance. Now the question is, how can we test it there? To do this, you can go back to AWS, on the page where you running instances are listed, and find the `IPv4 Public IP` column in the table, related to your currently running instance. This is the public IP address of your remote machine. You can optionally add a custom domain name on it. But for now we will keep using the IP.
+
+So go to the browser and proceed to `18.218.126.91`. (This will be different for your instance) You will see nothing! This is because of a security feature. By default, your instance is disconnected from everything in WWW. No one is able to connect to this container except you with the SSH. This is where the **security group** comes to help.
+
+To configure your security group, find and clik on the `security group` in your dashboard's left pane. You will most probably see a security group that is automatically created by EC2 launch wizard. It is currently attached to your instance. To prove this, you can go back to the running instances table, and inside the bottom sheet, you can find the `Security groups` key and observe its value.
+
+This group controls which traffic is allowed on our EC2 instance. At the bottom of the `Security groups` page, you can find `Inbound rules` and `Outbound rules`. `Inbound` controls which traffics are allowed toward the instance, while `Outbound` controls which traffics are allowed to leave the instance to somewhere else.
+
+You can see that, by default, every traffic is allowed in outbound. That is actually why the `docker run` command worked on your remote instance. So the terminal could reach out to Docker hub and download the image from there. For inbound rules, you see that only one port `22` of type `SSH` is open and allowed. So we now need to allow `HTTP` traffic to access this instance. Port `80` exposed by the terminal is the HTTP port. So currently, the application is connected to the running container inside the instance through port `80`, but the server instance itself is blocking all inbound traffic.
+
+Go on and try to edit your inbound rules by adding a new rule to it. Select the type `HTTP`, which will automatically set the port to `80`, and make sure `Source` is set to `Anywhere`. Then click on `Save rule`. You have now created and configured the security group for your instance.
+
+You can now try to access the IPv4 address of your instance in your browser, it works fine. Your application is officially up and running on the WWW.
