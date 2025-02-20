@@ -62,6 +62,7 @@
   - [Why use utility conatiners](#why-use-utility-conatiners)
   - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
   - [Building a utility container](#building-a-utility-container)
+  - [Utilizing `ENTRYPOINT`](#utilizing-entrypoint)
 
 # What is Docker?
 
@@ -2108,3 +2109,40 @@ You will now, again, be prompted some questions related to the `npm init` comman
 Now up until this point, this concept of utility containers has not been so useful. But that is going to change soon.
 
 ## Building a utility container
+
+To create a utility container, you will need your own image, so you have to create a `Dockerfile` at the project root directory.
+
+```Dockerfile
+FROM node:14-alpine
+WORKDIR /app
+CMD ["npm", "init"]
+```
+
+The point is that we don't want to limit the image to only execute the `npm init` command. We want to make it flexible so that the user of this utility container can run any command against this image. So we are going to delete the `CMD` layer:
+
+```Dockerfile
+FROM node:14-alpine
+WORKDIR /app
+```
+
+And then build the image:
+
+```
+docker build node-util .
+```
+
+Then run a container on it in interactive mode. Additionally, we want to mirror the `/app` working directory of the container to the local root directory of the project. This way, anything you create inside the container will be available on your local project too. So you will be able to create a project on your local machine with the help of a container. This is the whole idea behind utility containers. To implement this, we can use a bind mount.
+
+```
+docker run -it -v "C:\Users\omida\Desktop\docker-practice\util-cont-proj\Dockerfile:/app" node-util npm init
+```
+
+This will run the container and enter interactive mode, so that you can answer the questions of `npm init` command to initiate a project. Once you are done with the questions, you will see that a `package.json` file appears in your local root directory of the project. This file is actually mirrored from the `/app` directory of the project to your local directory.
+
+This is good, but we actually don't want literally ANY command being executed against the container, we only want `npm` commands allowed on this container.
+
+## Utilizing `ENTRYPOINT`
+
+We are now going to restrict our utility container to only accept `npm` commands; For example, `npm init` or `npm install`. We can also implement this contstraint in a way that the user can enter `docker run -it -v ... install` command and the container will automatically prepend `npm` to the user's `install` command. To do this, we can add another instruction layer to the Dockerfile using `ENTRYPOINT`.
+
+`ENTRYPOINT` is pretty similar to the `CMD` command, but there is a slight difference. When you have a `CMD` in your Dockerfile and then insert a command in `docker run`, this command will override the `CMD` command specified in the Dockerfile, if there is one. But with `ENTRYPOINT`, any command that you insert into the terminal command, will be appended to the commanded added to the `ENTRYPOINT` layer in the Dockerfile.
