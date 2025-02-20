@@ -63,6 +63,8 @@
   - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
   - [Building a utility container](#building-a-utility-container)
   - [Utilizing `ENTRYPOINT`](#utilizing-entrypoint)
+    - [Using Docker compose](#using-docker-compose)
+- [Deploying Docker containers](#deploying-docker-containers)
 
 # What is Docker?
 
@@ -2146,3 +2148,82 @@ This is good, but we actually don't want literally ANY command being executed ag
 We are now going to restrict our utility container to only accept `npm` commands; For example, `npm init` or `npm install`. We can also implement this contstraint in a way that the user can enter `docker run -it -v ... install` command and the container will automatically prepend `npm` to the user's `install` command. To do this, we can add another instruction layer to the Dockerfile using `ENTRYPOINT`.
 
 `ENTRYPOINT` is pretty similar to the `CMD` command, but there is a slight difference. When you have a `CMD` in your Dockerfile and then insert a command in `docker run`, this command will override the `CMD` command specified in the Dockerfile, if there is one. But with `ENTRYPOINT`, any command that you insert into the terminal command, will be appended to the commanded added to the `ENTRYPOINT` layer in the Dockerfile.
+
+So you can specify `npm` in the `ENTRYPOINT` command layer of Dockerfile.
+
+```Dockerfile
+FROM node:14-alpine
+WORKDIR /app
+ENTRYPOINT ["npm"]
+```
+
+You can now append any npm command after the image name on the container that you want to run. Let's first rebuild the image since we have altered the Dockerfile.
+
+```
+docker build -t mynpm .
+```
+
+Then run the container with `init` command which would be converted to `npm init` automatically because of the `ENTRYPOINT` layer.
+
+```
+docker run -it -v "/home/omidarmat/Desktop/docker-practice/Dockerfile:/app" mynpm init
+```
+
+You will now be asked the npm questions, then you will have a `package.json` file mirrored to your local project folder.
+
+This will shut down the container right after, and you would have to use the `docker run` command again to execute another command on the container, for example, `npm install` to install all the required dependencies:
+
+```
+docker run -it -v "/home/omidarmat/Desktop/docker-practice/Dockerfile:/app" mynpm install
+```
+
+You can also use this command to install specific Node packages of your choice, for instance, Express:
+
+```
+docker run -it -v "/home/omidarmat/Desktop/docker-practice/Dockerfile:/app" mynpm install express --save
+```
+
+You will eventually be provided with `node_modules` folder as a result of the installation process.
+
+Notice that we are, again, using pretty long terminal commands, for which we learned a solution; Docker compose.
+
+### Using Docker compose
+
+You can use Docker compose even if you are only working with one single container. To do this, first create a `docker-compose.yaml` file in the local root directory of your project. Then define your services in it.
+
+> Refere to [Docker compose](#docker-compose-multi-container-orchestration) to remind you of command descriptions.
+
+```yaml
+version: 3.8
+services:
+  npm:
+    build: ./
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/app
+```
+
+Now to build the image and run a conatiner on it, you might think that `docker-compose up` will simply work. It works of course, but with a strange behavior. This behavior is due to the presence of `ENTRYPOINT` of `npm` in the Dockerfile. So it seems that the container tries to execute `npm ` command. To make this work fine, you need to use another command for Docker compose, which is `run`.
+
+As more detailed information, keep in mind that `docker-compose up` is meant to be used with application containers, which are containers that start and should keep running. Here, however, we are talking about a utility container. You need to use `run` with the specific service name you want to start, followed by the command you want to run. So it would be:
+
+```
+docker-compose run npm init
+```
+
+> Notice that the `npm` mentioned in the command above is the service name. It is not a part of `npm init` command. The `npm` in the `npm init` command is appended to your command from the `ENTRYPOINT` layer of the Dockerfile.
+
+You will now, again, be prompted the project initialization questions. And right after, the container shuts down. You might now need to run the service again with the `install` command.
+
+> Remember that `docker-compose up` command, starts your container in a way that it would be removed automatically when it is shut down using the `docker-compose down` command. However, with `docker-compose run` command, this is not the case. You would have to add `--rm` flag to the command if you want the conatiner to be automatically removed once it shuts down.
+
+```
+docker-compose run --rm npm init
+```
+
+# Deploying Docker containers
+
+In this module you are going to learn how to move from **local development** to **production**. We will go oever deployment overview and the general process. We will also review the pain points of the process.
+
+> We are focusing on web app deployment in this section.
