@@ -65,6 +65,10 @@
   - [Utilizing `ENTRYPOINT`](#utilizing-entrypoint)
     - [Using Docker compose](#using-docker-compose)
 - [Deploying Docker containers](#deploying-docker-containers)
+  - [From development to production](#from-development-to-production)
+    - [Things to watch out for](#things-to-watch-out-for)
+  - [Deployment process and providers](#deployment-process-and-providers)
+  - [Example: Deploy to AWS EC2](#example-deploy-to-aws-ec2)
 
 # What is Docker?
 
@@ -2227,3 +2231,51 @@ docker-compose run --rm npm init
 In this module you are going to learn how to move from **local development** to **production**. We will go oever deployment overview and the general process. We will also review the pain points of the process.
 
 > We are focusing on web app deployment in this section.
+
+## From development to production
+
+Containers are independant, isolated packages full of application code and environment which we can ship anywhere where Docker can run. Since they are standardized, Docker can run them anywhere where Docker is installed. Therefore, Docker conatiners can help us with problems we might face when shipping applications.
+
+Without Docker, we would most probably end up in different development and production environments. This means that code which works fine locally, might not work at all once it is deployed on to a remote host on a remote server.
+
+With Docker containers we benefit from isolated, standalone environment both during development as well as in production. Docker provides us with reproducable environment, easy to share and use. Therefore, what works on your local machine in a container, will also work in production, when your project is deployed on to a remote server.
+
+### Things to watch out for
+
+1. During development we use bind mounts a lot, but in production, when your container is deployed to a remote server, we should not really use them. Why? later...
+2. Your containerized apps might need different setups for development and for production, which might sound strange at first. Some applications, like React apps, need a build step where the code is converted and optimized. This build step happens after development and before the app is deployed. Even with this in mind, you will learn how to ensure that you ship containers with reproducable environments.
+3. With bind mounts, we should not use them in production, but we do use them in development. We will still learn how this will not contradict the idea behind containers, and it won't lead to different containers in development and production.
+4. With multi-container projects, you will learn to figure out if you need to split your containers across multiple remote hosting machines. While you might be able to test everything with Docker compose on your local machine, for deployment, you might consider splitting your containers across multiple hosting machines.
+5. In some situations we might go for a solution where we have less control over the deployment platform (on a remote host) and therefore, have less responsibility. That might be worth it as you will learn. It turns out that if you have to manage a remote host on your own, it brings a lot of responsibility. This lets us developers have easier time.
+
+## Deployment process and providers
+
+There are different kinds of projects you could be working on which utilize Docker. You might have one or more containers, deployed on one or more remote servers. We are going to look at each and every scenario.
+
+We are going to start with a very simple NodeJS application with no database. It is just one image and one application in it. For this basic example, we are going to start with one basic possible deployment approach. In this approach:
+
+1. where we set up a remote server
+2. Then install Docker on that remote host (connecting via SSH for instance)
+3. Then push our Docker image from our local machine where we developed the application to a Docker registry like Docker hub.
+4. Pull that image from the remote repository to the remote hosting machine.
+5. Run a container on the remote hosting machine and expose all ports to WWW, so end users can visit the application.
+
+So in order to get started, we are going to need a remote server, a remote hosting machine. There are multiple hosting providers out in the world. Among them, there are free major hosting providers:
+
+1. AWS: Amazon Web services
+2. Microsoft Azure
+3. Google Cloud
+
+These are more than just hosting providers. These are cloud service providers which can help you with anything that you might want to do in the cloud, from web development, hosting, all the way up to machine learning and other stuff.
+
+In this course we are going to learn different ways of bringin our Docker containers to life on AWS.
+
+## Example: Deploy to AWS EC2
+
+EC2 is a service that allows you to spin up your own remote hosting machine; your own computer in the cloud. You can then connect to these computers to then install any software on them, in our case Docker.
+
+Three main steps to bring our Dockerized app on an EC2 instance:
+
+1. Create and launch EC2 **instance**. Also create a **VPC** (Virtual Public Cloud). Also create a **security group** to control who has access to this instance.
+2. Configure the security group to expose all required ports to the WWW, so that we can have incoming traffic to the EC2 instance.
+3. Connect to the EC2 instance via SSH (Secure Shell) allowing us to run commands on that remote computer, and we will run a command to install Docker, and then another command to pull and run our container.
