@@ -68,7 +68,7 @@
   - [From development to production](#from-development-to-production)
     - [Things to watch out for](#things-to-watch-out-for)
   - [Deployment process and providers](#deployment-process-and-providers)
-  - [Example: Deploy to AWS EC2](#example-deploy-to-aws-ec2)
+  - [Example: Deploy to AWS EC2 (DIY approach)](#example-deploy-to-aws-ec2-diy-approach)
     - [Bind mounts in production](#bind-mounts-in-production)
     - [Introducing AWS and EC2](#introducing-aws-and-ec2)
       - [Connecting to an EC2 instance](#connecting-to-an-ec2-instance)
@@ -79,6 +79,10 @@
       - [Installing Docker](#installing-docker)
       - [Pushing the local image to the cloud](#pushing-the-local-image-to-the-cloud)
       - [Running and publishing the app](#running-and-publishing-the-app)
+      - [Managing and updating the conatiner image](#managing-and-updating-the-conatiner-image)
+        - [Terminating an instance](#terminating-an-instance)
+        - [Disadvantages of DIY approach](#disadvantages-of-diy-approach)
+  - [From manual deployment (DIY) to managed services](#from-manual-deployment-diy-to-managed-services)
 
 # What is Docker?
 
@@ -2280,7 +2284,7 @@ These are more than just hosting providers. These are cloud service providers wh
 
 In this course we are going to learn different ways of bringin our Docker containers to life on AWS.
 
-## Example: Deploy to AWS EC2
+## Example: Deploy to AWS EC2 (DIY approach)
 
 EC2 is a service that allows you to spin up your own remote hosting machine; your own computer in the cloud. You can then connect to these computers to then install any software on them, in our case Docker.
 
@@ -2466,3 +2470,59 @@ You can see that, by default, every traffic is allowed in outbound. That is actu
 Go on and try to edit your inbound rules by adding a new rule to it. Select the type `HTTP`, which will automatically set the port to `80`, and make sure `Source` is set to `Anywhere`. Then click on `Save rule`. You have now created and configured the security group for your instance.
 
 You can now try to access the IPv4 address of your instance in your browser, it works fine. Your application is officially up and running on the WWW.
+
+#### Managing and updating the conatiner image
+
+Imagine your app is online and running, and you need to update something in your code locally. Of course, this change would not be automatically reflected to the container image on the remote server. The process of updating the app on the remote server is easy though:
+
+1. Build your image with the new updated code
+2. Push your image to Docker hub
+3. Make sure the updated image is used on the remote server
+
+```
+docker build -t node-dep-example-1 .
+```
+
+```
+docker tag node-dep-example-1 omidarmat/node-example-1
+docker push omidarmat/node-example-1
+```
+
+Now on a terminal connected to your remote EC2 instance, you need to find and stop the running container, which includes your previous version of code.
+
+```
+sudo docker ps
+sudo docker stop <container-name>
+```
+
+But if you try to run a new container, it will first check if there is an image available on the server itself, and start a container on that. It won't go to Docker hub to get the new image. So to around this, you first need to manually pull the updated image from Docker hub into your remote server:
+
+```
+sudo docker pull omidarmat/node-example-1
+```
+
+Then run a new container on the updated image:
+
+```
+sudo docker run -d --rm -p 80:80 omidarmat/node-example-1
+```
+
+##### Terminating an instance
+
+To terminate a running instance, you need to go to the instances table page, make sure your instance is selected, the under `Actions`, choose `Instance state` and then `Terminate`.
+
+##### Disadvantages of DIY approach
+
+The main thing to keep in mind in this approach is that you fully own the remote machine. You are fully responsible for it and for its security. You are also responsible for the configuration of the remote machine. You should also keep essentials software updated. You have to manage network and sercurity groups and firewalls. Therefore, if you don't know what you are doing here, you could easily set up an insecure EC2 instance that can be hacked or abused.
+
+Additionally, SSHing into a machine is a bit annoying. Instead, you might very well prefer a deployment workflow where you don't need to do SSH things.
+
+Of course, it is recommended to use easier approaches to deploy web applications. The DIY approach might not be suitable for complicated projects with multiple containers. It would require a whole different set of skills.
+
+## From manual deployment (DIY) to managed services
+
+Instead of running our own EC2 machines, you might very well want to use a managed service. This helps you avoid doing things that a developer natively is not trained for. The DIY approach is very nice if you are an experienced admin or cloud expert.
+
+The more managed and automated service on AWS is called **ECS**. ECS stands for Elastic Container Service. Other cloud providers also provides this service. The advantage of this kind of managed services is that the creation, management, updating is handled automatcally, monitoring and scaling is simplified, because AWS takes care of them all. Therefore, using a managed service is great if you simply want to deploy your application or containers. In this approach you have less control and therefore less responsibility.
+
+However, using this kind of managed services means that you can't use Docker anymore. Instead, you will now use a service provided by the cloud provider and you would have to follow the rules of that service. Of course, while you cannot use Docker commands on this kind of services, you can still apply what you learned about Docker containers to the managed service that you are going to use. You will see that you are still able to work with images and containers, but now in conjunction with some other service.
