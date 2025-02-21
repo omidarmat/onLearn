@@ -83,6 +83,12 @@
         - [Terminating an instance](#terminating-an-instance)
         - [Disadvantages of DIY approach](#disadvantages-of-diy-approach)
   - [From manual deployment (DIY) to managed services](#from-manual-deployment-diy-to-managed-services)
+  - [Example: Deploy to AWS ECS](#example-deploy-to-aws-ecs)
+    - [Container definition](#container-definition)
+      - [Multiple container definition](#multiple-container-definition)
+    - [Task definition](#task-definition)
+    - [Service definition](#service-definition)
+    - [Cluster configuration](#cluster-configuration)
 
 # What is Docker?
 
@@ -2523,6 +2529,58 @@ Of course, it is recommended to use easier approaches to deploy web applications
 
 Instead of running our own EC2 machines, you might very well want to use a managed service. This helps you avoid doing things that a developer natively is not trained for. The DIY approach is very nice if you are an experienced admin or cloud expert.
 
-The more managed and automated service on AWS is called **ECS**. ECS stands for Elastic Container Service. Other cloud providers also provides this service. The advantage of this kind of managed services is that the creation, management, updating is handled automatcally, monitoring and scaling is simplified, because AWS takes care of them all. Therefore, using a managed service is great if you simply want to deploy your application or containers. In this approach you have less control and therefore less responsibility.
+The managed and automated service on AWS is called **ECS**. ECS stands for Elastic Container Service. Other cloud providers also provides this service. The advantage of this kind of managed services is that the creation, management, updating is handled automatcally, monitoring and scaling is simplified, because AWS takes care of them all. Therefore, using a managed service is great if you simply want to deploy your application or containers. In this approach you have less control and therefore less responsibility.
 
-However, using this kind of managed services means that you can't use Docker anymore. Instead, you will now use a service provided by the cloud provider and you would have to follow the rules of that service. Of course, while you cannot use Docker commands on this kind of services, you can still apply what you learned about Docker containers to the managed service that you are going to use. You will see that you are still able to work with images and containers, but now in conjunction with some other service.
+However, using this kind of managed services means that you can't use Docker anymore. Instead, you will now use a service determined by the cloud provider and you would have to follow the rules of that service. Of course, while you cannot use Docker commands on this kind of services, you can still apply your knowledge about images and containers to the managed service that you are going to use. You will see that you are still able to work with images and containers, but now in conjunction with some other service.
+
+## Example: Deploy to AWS ECS
+
+Find ECS in AWS and click on it. ECS might not be covered to include a free tier plan. The page will walk you thorugh some steps to get started with Amazon ECS using a service called **Fargate**.
+
+In this approach, we are still going to deploy the same image that we used in the previous approach. In the Amazon ECS introduction page, click on `Get started`. This will lead you toward a page where you find 4 steps of setting up Amazon ECS using Fargate.
+
+Amazon ECS containes 4 objects related to each other:
+
+1. Container definition
+2. Task definition
+3. Service
+4. Cluster
+
+### Container definition
+
+At this stage, there are some example setups, but you need to click on `custom` with no preset image, memory and cpu. This will open a side drawer where you can define your custom container. It is important to understand that this drawer is asking you for fields that their values will otherwise be used as `docker run` flags like `-p`, `-v` and `--env`. Start filling in the required fields:
+
+1. `Container name`: you can write any name, for instance `node-demo`.
+2. `Image`: you need to write the image repository and name where your actual image is located. It can be `omidarmat/node-example-1`. If you are using some other registry service to host your image, you should write it's full URL address.
+3. `Memory limits`: You can leave it as it is.
+4. `Port mappings`: If you ran your container locally, you would use `-p 80:80` on the Docker command. You should do the same in this field. However, you don't need to specify 2 numbers for port mapping. The container's internal port will be automatically set to the same port number on the remote machine. So just put `80` here.
+5. `Environment variables`: you can define your environment variables with `Key` and `Value` pairs.
+6. `Network settings`: you are going to use this section when you need to deploy multiple containers.
+7. `Storage and logging`: you can define bind mounts and volumes in this section.
+8. `Log configuration`: you can configure an AWS logging service to persist your container logs so you can track them later.
+
+You can finally click on `Update` and your container definition is complete.
+
+#### Multiple container definition
+
+### Task definition
+
+A task is a blueprint for your application (according to AWS), and describes one or more containers through attributes. Some attributes are configured at the task level but the majority of attributes are configured per container.
+
+Here you can tell AWS how it should launch your container; not how it should execute `docker run`, but how the server should be configured.
+
+The task could be thought of as a remote server that runs one or more containers; a bit like EC2 instance, but managed and maintained by AWS. We just tell AWS how our containers should run and describe our environment. Here we are using `Fargate`. This is a specific way of launching containers, which launches containers in a **server-less mode**. So AWS does not really create an EC2 instance, but instead it stores your container, and whenever there is a request, it starts the container, handles the request, and shuts the container down again. This is a very cost-effective plan which will charge you the exact same amount as your container was overally up and running. You won't pay for the time duration when your container is idle and not running. You can then click `Next`.
+
+### Service definition
+
+A service allows you to run and maintain a specified number of simultaneous instances of a task definition in an ECS cluster. This, in the end, controls how the task shold be executed. It is here that you can add a `Load balancer` that manages all the heavy lifting of redirecting the incoming requests to the running containers.
+
+You can click `Next`.
+
+### Cluster configuration
+
+It is the overall network in which our service will run. You can group multiple containers in one cluster, so that they will belong to each other logically, and that they can talk to each other.
+
+Click on `Next`. And finally, after reviewing all your configuration, you can click on `Create`.
+
+After the the creation process is done, you can click on `View service`. Here you can see all the information about your service. You can go to `Tasks` tab, and see the running task. Here you can find a `Public IP`. You can either type this IP directly into your browser, or map your domain name to this IP. You will see your application is live and running.
