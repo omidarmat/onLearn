@@ -2621,3 +2621,5 @@ With Kubernetes, we have a way of defining our deployments, our scaling of conta
 Kubernetes allows you to write down some configuraion file where you define your desired deployment (which conatiners you want to deploy, how many instances, if they should scale up and down), and then pass this configuration with certain tools to any cloud provider (any machine configured correctly and owned by you). This macine would then pick up the configuration file to create the required resources and the deployments specified inside the configuration file.
 
 > Kubernetes configuration files will be understood by machines that support Kubernetes. Even if the machine does not support Kubernetes, you can manually install some Kubernetes software on it.
+
+**Kubernetes is like Docker compose for multiple machines**. So it is like Docker compose with some convenient deployment-specific features for running and managing your containerized application on a multi-machine setup.
