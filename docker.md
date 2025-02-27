@@ -89,6 +89,10 @@
     - [Task definition](#task-definition)
     - [Service definition](#service-definition)
     - [Cluster configuration](#cluster-configuration)
+- [Getting started with Kubernetes](#getting-started-with-kubernetes)
+  - [Problems with manual deployment](#problems-with-manual-deployment)
+  - [Why Kubernetes?](#why-kubernetes)
+  - [What is Kubernetes?](#what-is-kubernetes)
 
 # What is Docker?
 
@@ -2584,3 +2588,36 @@ It is the overall network in which our service will run. You can group multiple 
 Click on `Next`. And finally, after reviewing all your configuration, you can click on `Create`.
 
 After the the creation process is done, you can click on `View service`. Here you can see all the information about your service. You can go to `Tasks` tab, and see the running task. Here you can find a `Public IP`. You can either type this IP directly into your browser, or map your domain name to this IP. You will see your application is live and running.
+
+# Getting started with Kubernetes
+
+In this and next sections we are digging deeper into a very specific way of deploying Docker containers. It is mainly about Docker and Kubernetes. Kubernetes is not a separate tool, but it is actually a framework, or a standard, which helps us with container orchestration in large scale deployments independant of the cloud provider you might be using.
+
+In this specific section, you will be learning about some challenges in deploying containers, and then learnwhat is Kubernetes and how it is going to help you with these challenges. You will also learn about Kubernetes concepts and components. You will finally learn how you can use Kubernetes to put containers in production on a real cloud provider.
+
+## Problems with manual deployment
+
+According to Kubernetes website, Kubernetes is an open-source system for automating deployment, scaling, and management of containerized applications.
+
+So Kubernetes is not a single software, but it is a system, a collection of tools to help you with container deployments. Kubernetes is all about deployment, although you can use it locally.
+
+When deploying containers manually by manually managing servers for them (creating EC2 instances etc.), there are a couple of challenges:
+
+1. Manual deployment of containers is hard to maintain, error-prone and annoying. There are concerns beyond security and configuration.
+2. Containers might crash and might need to be replaced with new containers. Something might fail in your containerized application, making the container unusable and therefore, your application will not be accessible. In this situation you would have to monitor and restart your conatiner manually.
+3. You might need more container instances upon traffic spikes. If traffic increases, your containers might be stuck finishing one task before starting the next; the next incoming request for example. Also, you might want to remove some containers if the traffic goes down. All this would have be done manually.
+4. When running multiple containers on the same image to be able to handle high traffic peaks, you need a mechanism to evenly distribute the incoming traffic across multiple containers. In real-world applications you need multiple containers running based on the same image in order to be able to handle heavy loads of incoming requests.
+
+## Why Kubernetes?
+
+The ECS service on AWS might be able to help you with a lot of challenges mentioned above. For instance, it can automatically check the health of your contaiers, and it will automatically restart them if they crash. ECS also performs autoscaling tasks to handle traffic spikes. ECS also provides a load balancer service that will split the incoming traffic spike evenly across multiple containers it starts and maintains automatically.
+
+However, using a service like AWS has a big disadvantage. That is, it basically locks you into itself. You should and only can configure everything based on how they are defined by AWS. There is no room for customization and you don't have fine-grained access for detailed optimization. If you decide to move from AWS to another cloud provider, your previous configurations will be of np use. So you would have to learn specific configurations and settings for the new provider. Therefore, learning Docker alone is not enough. This is where Kubernetes comes to play.
+
+## What is Kubernetes?
+
+With Kubernetes, we have a way of defining our deployments, our scaling of containers, and how containers should be monitored and restarted if they crash. With Kubernetes, we have a way of defining all these things independant of the cloud provider. This is because Kubernetes is an open-source system and de-factor standard for orchestrating container deployments. It can also help you with automatic deployment, scaling and load balancing, and container management.
+
+Kubernetes allows you to write down some configuraion file where you define your desired deployment (which conatiners you want to deploy, how many instances, if they should scale up and down), and then pass this configuration with certain tools to any cloud provider (any machine configured correctly and owned by you). This macine would then pick up the configuration file to create the required resources and the deployments specified inside the configuration file.
+
+> Kubernetes configuration files will be understood by machines that support Kubernetes. Even if the machine does not support Kubernetes, you can manually install some Kubernetes software on it.
