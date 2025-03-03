@@ -816,7 +816,7 @@ FROM
 
 With all the queries you have written so far you have just essentially pulled out some set of rows, which was more or less the exact information passed into the database. However, as we move towards more complicated queries, we are going to introduce two additional techniques: groupings and aggregation.
 
-The goal with these two techniques is to take a big set of values or rows and somehow condense them down to a smaller set of values. It would be challenging to select data or select columns out of the grouped information. To avoid this challenge, it is key to visualize what happens when you apply the group by keyword.
+The goal with these two techniques is to take a big set of values or rows and somehow condense them down to a smaller set of values. It would be challenging to select data or select columns out of the grouped information. To avoid this challenge, it is key to visualize what happens when you apply the `GROUP BY` keyword.
 
 ### Grouping
 
@@ -828,13 +828,13 @@ FROM comments
 GROUP BY user_id;
 ```
 
-The `GROUP BY` keyword, your database will take a look all the rows that you have selected. Here we have selected all the rows of the comments table. It will now try to find all the unique values for `user_id` and it will create a separate row in an imaginary table. The database will then take each of the rows from the selected table and assign it to a different group row based upon that row's `user_id`.
+With the `GROUP BY` keyword, your database will take a look all the rows that you have selected. Here we have selected all the rows of the comments table. It will now try to find all the unique values for `user_id` and it will create a separate row in an imaginary table. The database will then take each of the rows from the selected table and assign it to a different group row based upon that row's `user_id`.
 
 It is extremely important to remember that in this imaginary grouped table, you can only select the `user_id` column which is the `GROUP BY` argument in the query above. If you want to select columns related to the comments table inside the new imaginary grouped table, you must use aggregate functions.
 
 ### Aggregates
 
-The goal of aggregation is to take a set of rows and somehow calculate a single value out of them. Calculating 'most', 'least', 'greatest', 'average', etc. you are probably going to need to use aggragation. This is done by using the **aggregate functions**.
+The goal of aggregation is to take a set of rows and somehow calculate a single value out of them. If you are going to calculate 'most', 'least', 'greatest', 'average', etc. you are probably going to need to use aggragation. This is done by using the **aggregate functions**.
 
 Here are some different aggregate functions that we can use:
 
@@ -851,7 +851,7 @@ SELECT MAX(id)
 FROM comments;
 ```
 
-This will simply return the commet record with the maxium value for the `id` comlumn. You can use any other aggregate function and see the results. You can understand the all these functions actually take a big column of values and performs some kind of calculation or math operation on all those different values and return just one single value.
+This will simply return the comment record with the maxium value for the `id` column. You can use any other aggregate function and see the results. All these functions actually take a big column of values and performs some kind of calculation or math operation on all those different values and return just one single value.
 
 Remember that when using an aggregate function, we cannot do a normal select next to it. For instance, you cannot `SUM(id)` and `SELECT id` at the same time in a query:
 
@@ -885,7 +885,7 @@ FROM comments
 GROUP BY user_id;
 ```
 
-> A corner case about the `COUNT` aggregate function: the count function does not count if the given argument is `NULL`. For instance, if we count the rows in the photos table by the `user_id` column, only the photo rows that have an actualy user ID will be counted. If there is a photo with the `user_id` set to `NULL`, the `COUNT` aggregate function will not count it. To go around this limit you can pass `*` to the `COUNT` function. This is true in almost any case that we are using the `COUNT` function.
+> **A corner case about the `COUNT` aggregate function:** the count function does not count if the given argument is `NULL`. For instance, if we count the rows in the photos table by the `user_id` column, only the photo rows that have an actual user ID will be counted. If there is a photo with the `user_id` set to `NULL`, the `COUNT` aggregate function will not count it. To go around this limit you can pass `*` to the `COUNT` function. This is true in almost any case that we are using the `COUNT` function.
 
 ```sql
 SELECT COUNT(*) FROM photos;
