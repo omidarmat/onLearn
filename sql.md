@@ -594,7 +594,7 @@ What happens we you want to delete a record that involves a foreign key? Imagine
 
 In order to prevent this situation, when we make use of foreign keys, we can specify some options or exactly what we want to have happen when we want to delete a record that some other rows in some other table are dependant upon. Here are some options available:
 
-1. `ON DELETE RESTRIC`: This is the default option. When you try to delete a user to which a photo is referencing, Postgres will throw an error.
+1. `ON DELETE RESTRICT`: This is the default option. When you try to delete a user to which a photo is referencing, Postgres will throw an error.
 2. `ON DELETE NO ACTION`: This option also throws an error but with a small difference [later...]
 3. `ON DELETE CASCADE`: This will delete the user and also delete the photos related to that user.
 4. `ON DELETE SET NULL`: This will set the `user_id` on the related photos to `NULL`. So the photos will remain in the database but will no longer refer to any user.
