@@ -339,7 +339,7 @@ WHERE
   area > 4000
 ```
 
-> To filter rows you can use many comparison math operators like `=`, `>`, `<`, `>=`, `<=`, `IN` (is the value present in a list?), `<>` (are the values not equal), `!=`, `BETWEEN` (is the value between two other values?), `NOT IN` (is the value not present in a list?).
+> To filter rows you can use many comparison math operators like `=`, `>`, `<`, `>=`, `<=`, `IN` (is the value present in a list?), `<>` (are the values not equal), `!=`, `BETWEEN` (is the value between two given values?), `NOT IN` (is the value not present in a list?).
 
 Let's use the `BETWEEN` operator:
 
@@ -445,7 +445,7 @@ The most important question you want to ask yourself is: **What Tables should we
 
 A lot of time for any application you make, chances are it is going to have many features that are common among many other applications. There are many features out in the world (e.g. authentication, liking system, commenting systems) that many different web apps implement. Therefore, there are tons of resources online to give you suggestions on how to structure your database to implement these features.
 
-However, you are probably going to create an app with some features that no one has ever built. To address this case, you need to take a look at some mockups of your application to see what the user interface looks like and what is the purpose of your application. Out goal here is to identify the different kinds of resources that exists inside your app. So you need to ask yourself: **What type of resources exist in your app?** Then as the first step, you might want to create a separate table for each of these features or resources.
+However, you are probably going to create an app with some features that no one has ever built. To address this case, you need to take a look at some mockups of your application to see what the user interface looks like and what is the purpose of your application. Our goal here is to identify the different kinds of resources that exists inside your app. So you need to ask yourself: **What type of resources exist in your app?** Then as the first step, you might want to create a separate table for each of these features or resources.
 
 Then for each of these resources, you might want to find relationship or ownership between two types of resources. These relationships must be reflected in the database design. This is only achievable in a practical example.
 
@@ -455,14 +455,14 @@ To represent relationships, we need some data somewhere that says, for instnace,
 
 ### Types of relationships
 
-1. One-to-Many: for example, a user can own many photos. Also, a photo can have many different comments tied to it.
-2. One-to-One: for example, a boat can only have one captain. A company can only have one CEO. A CEO can relate to only one company at a time. A student has one desk, and a desk can only belong to one student.
-3. Many-to-Many: this is a bit trickier. For example, many students may be related to many classes. Many tasks may be assigned to many engineers. Many movies have many actors in them. Multiple sessions of conference calls can involve multiple employees.
-4. Many-to-One: it is kind of the opposite direction of One-to-Many relationship. Many different comments can belong to one photo.
+1. **One-to-Many:** for example, a user can own many photos. Also, a photo can have many different comments tied to it.
+2. **One-to-One:** for example, a boat can only have one captain. A company can only have one CEO. A CEO can relate to only one company at a time. A student has one desk, and a desk can only belong to one student.
+3. **Many-to-Many:** this is a bit trickier. For example, many students may be related to many classes. Many tasks may be assigned to many engineers. Many movies have many actors in them. Multiple sessions of conference calls can involve multiple employees.
+4. **Many-to-One:** it is kind of the opposite direction of One-to-Many relationship. Many different comments can belong to one photo.
 
 #### Primary keys
 
-Primary keys are additional columns that you add to a lot of different tables inside all the different database your create. Every single table you make will have a primary key. The goal of a primary key is to identify an individual row inside a table. Every value inside the primary key volumn is going to be some kind of a unique value in that column. It is basically the ID of each row.
+Primary keys are additional columns that you add to a lot of different tables inside all the different database your create. Every single table you make will have a primary key. The goal of a primary key is to identify an individual row inside a table. Every value inside the primary key column is going to be some kind of a unique value in that column. It is basically the ID of each row.
 
 #### Foreign key
 
@@ -474,7 +474,7 @@ For instance, imagine we have a table of photos and users. So to represent the r
 
 ##### Example 2: One-to-Many relationship
 
-For instance, imaine a system like Instagram where comments are related to users and also comments are relate to a photos. Comments have one user and comments have one photo. Looking at the oposite direction, we would say that a user has many comments, and a photo has many comments. We now have to decide which table will receive the foreign keys. Here is the key: **The many side of our relationship is always going to get the foreign key column**. So now that we know a photo can have many comments, the many side is the comments. So the comments table will get the foreign keys pointing at a photo.
+For instance, imagine a system like Instagram where comments are related to users and also comments are relate to a photo. Comments have one user and comments have one photo. Looking at the oposite direction, we would say that a user has many comments, and a photo has many comments. We now have to decide which table will receive the foreign keys. Here is the key: **The many side of our relationship is always going to get the foreign key column**. So now that we know a photo can have many comments, the many side is the comments. So the comments table will get the foreign keys pointing at a photo.
 
 #### Wrap up
 
@@ -496,7 +496,7 @@ For instance, imaine a system like Instagram where comments are related to users
 
 ### Autogenerated IDs
 
-When we implement a table that should have a primary key column, we can use a Postres feature which automatically creates a random ID when a new record is inserted into the row. To do this, we create the table with this syntax:
+When we implement a table that should have a primary key column, we can use a Postgres feature which automatically creates a random ID when a new record is inserted into the row. To do this, we create the table with this syntax:
 
 ```sql
 CREATE TABLE users (
@@ -538,7 +538,7 @@ CREATE TABLE photos (
   );
 ```
 
-Note that the foregin key column is define as the `user_id`, which holds the `INTEGER` value type, which `REFERENCES` to the `id` column of the `users` table. Marking a column as foreign key enforces some level of data consistency.
+Note that the foreign key column is define as the `user_id`, which holds the `INTEGER` value type, which `REFERENCES` to the `id` column of the `users` table. Marking a column as foreign key enforces some level of data consistency.
 
 Let's now insert rows into this table.
 
@@ -553,7 +553,7 @@ VALUES
   ('http://six.jpg', 4);
 ```
 
-We can now see that in the record of this photo in the table, we have a `user_id` of `4`. But how is this going to help us with the relationship? There two big advantages here:
+We can now see that in the record of this photo in the table, we have a `user_id` of `4`. But how is this going to help us with the relationship? There are two big advantages here:
 
 1. We can start to write a lot of interesting queries that allow us to fetch all the different photos that are associated with a user.
 2. We also start to get a little bit of **data consistency**.
@@ -1998,10 +1998,10 @@ ALTER COLUMN price
 SET NOT NULL;
 ```
 
-There is a gotcha around this approach. When you are using this command to update the configuration of a previously created table, you will end up in an error if the target column already has null values inserted into it. The error would say: "column "price" of relation "products" contains null values". In this situations there are two options:
+There is a gotcha around this approach. When you are using this command to update the configuration of a previously created table, you will end up in an error if the target column already has null values inserted into it. The error would say: 'column "price" of relation "products" contains null values'. In this situations there are two options:
 
 1. Find all the rows that have `null` for the target column and delete them. Then, you can run the command above.
-2. Fina all the rows that have `null` for the target column and change their null to something else, like `99999` or anything special that will remind you that you need to update them with real data.
+2. Find all the rows that have `null` for the target column and change their null to something else, like `99999` or anything special that will remind you that you need to update them with real data.
 
 As for the second approach, you can use the query below to update the null values for the price column:
 
