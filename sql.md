@@ -761,9 +761,9 @@ RIGHT JOIN users ON users.id = photos.user_id;
 
 #### Full join
 
-Photos table | USers table
+Photos table | Users table
 
-This join tells that just give me everything and I dont' care whether or not there is any correct merging going on, just try to merge as many rows as possible and if you can't just include the rest of the records in the result set.
+This join tells that just give me everything and I don't care whether or not there is any correct merging going on, just try to merge as many rows as possible and if you can't just include the rest of the records in the result set.
 
 ```sql
 SELECT url, username
@@ -773,7 +773,7 @@ FULL JOIN users ON users.id = photos.user_id;
 
 ### `WHERE` with `JOIN`
 
-Imagine you are going to write a query to answer this question: Users can comment on photos that they posted. List the url and contents for every photo/comment where this occured. This is easily solved by using a joins along with the `WHERE` statement. This means that you should basically try to find photos and comments that have the same `user_id`, which means users that have commented under their own photos.
+Imagine you are going to write a query to answer this question: Users can comment on photos that they posted. List the url and contents for every photo/comment where this occured. This is easily solved by using a `JOIN` along with the `WHERE` statement. This means that you should basically try to find photos and comments that have the same `user_id`, which means users that have commented under their own photos.
 
 The way to go is to first join the comments and photos tables where the comment's `photo_id` equals the `id`s in the photos table. This will give us the comments that are posted under some specific photos. Now in this joined table, we would want to find records where the `user_id` in both comments and photos are the same.
 
