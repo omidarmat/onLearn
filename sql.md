@@ -1584,11 +1584,11 @@ SELECT
   );
 ```
 
-You will need to use a single `SELECT` with subqueries whenever you want calculate one row of values or calculate the result of some math around some different values combined together.
+You will need to use a single `SELECT` with subqueries whenever you want to calculate one row of values or calculate the result of some math around some different values combined together.
 
 # Selecting `DISTINCT` records
 
-The `DISTINCT` keyword is always places inside a `SELECT` clause. `DISTINCT` will return all the different unique values inside a column.
+The `DISTINCT` keyword is always placed inside a `SELECT` clause. `DISTINCT` will return all the different unique values inside a column.
 
 For instance, if you want to see what unique departments there are in your products table, you can use this query:
 
@@ -1625,7 +1625,7 @@ You can use the `GREATEST` function to calculate the maximum value among some gi
 SELECT GREATEST(20, 10, 30);
 ```
 
-This returns `30` as result. But how would you use this on a real table? Let's go over an example: Compute the cost to ship each item in a products table. Note that shipping is the maximum of weight\*2$ or 30$.
+This returns `30` as result. But how would you use this on a real table? Let's go over an example: Compute the cost to ship each item in a products table. Note that shipping is the maximum of weight\*2$ and 30$.
 
 ```sql
 SELECT name, weight, GREATEST(weight * 2, 30)
@@ -1645,7 +1645,7 @@ FROM products;
 
 ## `CASE` keyword
 
-Let's go over an example to understand this: Print each product and its price. Also print a description of the price, meaning that if price is heigher then 500 then print 'hight', if it is higher than 300 then print 'medium' and else, print 'cheap'.
+Let's go over an example to understand this: Print each product and its price. Also print a description of the price, meaning that if price is heigher then 500 then print 'high', if it is higher than 300 then print 'medium' and else, print 'cheap'.
 
 The `CASE` keyword is always used together with `WHEN` and `THEN` keywords.
 
@@ -1654,7 +1654,7 @@ SELECT
   name,
   price,
   CASE
-    WHEN price > 600 THEN 'hight'
+    WHEN price > 600 THEN 'high'
     WHEN price > 300 THEN 'medium'
     ELSE 'cheap'
   END
