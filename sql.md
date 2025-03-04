@@ -1152,7 +1152,7 @@ UNION
 SELECT * FROM products;
 ```
 
-2. Two queries can be joined with the `UNION` keyword only if the result set of both queries have the same columns and the data type inside them must be the same also. For example, these queries cannot be unioned:
+1. Two queries can be joined with the `UNION` keyword only if the result set of both queries have the same columns and the data type inside them. For example, these queries CANNOT be unioned:
 
 ```sql
 SELECT name FROM products
@@ -1219,7 +1219,7 @@ WHERE price > (
   );
 ```
 
-Understanding subqueries can be difficult since they can be used in many places in another query. But why is it hard? Because anywhere you use a subquery, you have to change the shape or type of its returned data so that it would be usable in its outer query. Some queries might produce a single value, while others will return some rows. Some of them might even produce a column. Therefore, understanding the **shape** of query result is key.
+Understanding subqueries can be difficult since they can be used in many places in another query. But why is it hard? Because anywhere you use a subquery, you have to change the shape or type of its returned data so that it would be usable in its outer query. Some queries might produce **a single value**, while others will return **some rows**. Some of them might even produce **a column**. Therefore, understanding the **shape** of query result is key.
 
 Take these queries as examples:
 
@@ -1386,9 +1386,9 @@ FROM
 
 ## Subqueries in `WHERE`
 
-This probably the most useful case of using subqueries. Let's go over an example: Show the ID of orders that involve a product with a price/weight ratio greater than 5.
+This is probably the most useful case of using subqueries. Let's go over an example: Show the ID of orders that involve a product with a price/weight ratio greater than 5.
 
-Using subqueries inside a `WHERE` clause will require you to understand and remember how this clause works in general. The `WHERE` clause is used to filter some rows of table. There are a couple of operators that can be used inside a `WHERE` clause.
+Using subqueries inside a `WHERE` clause will require you to understand and remember how this clause works in general. The `WHERE` clause is used to filter some rows of a table. There are a couple of operators that can be used inside a `WHERE` clause.
 
 The structure of data allowed to be returned by a subquery inside a `WHERE` statement changes depending on the comparison operator used.
 
