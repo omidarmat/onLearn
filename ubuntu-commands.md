@@ -371,6 +371,48 @@ ls | wc -l
 
 # 3rd-party packages
 
+To manage 3rd-party packages (services etc.) you can use several different commands.
+
+For instance, to see the current status of a service you can use this command:
+
+```
+sudo service status <service-name>
+```
+
+To make an existing service go active on boot:
+
+```
+sudo systemctl enable <service-name>
+```
+
+To prevent a service from going active on boot:
+
+```
+sudo systemctl disable <service-name>
+```
+
+To start a service:
+
+```
+sudo systemctl start <service-name>
+sudo service <service-name> start
+```
+
+To stop a service:
+
+```
+sudo systemctl stop <service-name>
+sudo service <service-name> stop
+```
+
+To restart a service:
+
+```
+sudo service <service-name> restart
+```
+
+> Depending on the package you are using, you may need to use `service` instead of `systemctl`.
+
 ## WGET
 
 wget is a GNU free software package that is used for retrieving files over the web.
