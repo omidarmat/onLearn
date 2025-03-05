@@ -65,6 +65,9 @@
 - [Postgres complex data types](#postgres-complex-data-types)
   - [Data types](#data-types)
     - [Numeric types](#numeric-types)
+      - [Numbers without decimal points](#numbers-without-decimal-points)
+      - [Numbers without decimal points but with auto increment:](#numbers-without-decimal-points-but-with-auto-increment)
+      - [Numbers with decimal points](#numbers-with-decimal-points)
       - [Rules on number type](#rules-on-number-type)
     - [Character types](#character-types)
     - [Boolean types](#boolean-types)
@@ -1691,38 +1694,40 @@ The first four categories are probably all you would have to remember to get on 
 
 Here is a list of number data type category:
 
-Numbers without any decimal points:
+#### Numbers without decimal points
 
-- smallint: between -32768 and +32767
-- integer: between -2147583648 and -2147583647
-- bigint
+- **smallint**: between -32768 and +32767
+- **integer**: between -2147583648 and -2147583647
+- **bigint**
 
-Numbers without decimal points but with auto increment:
+#### Numbers without decimal points but with auto increment:
 
-- smallserial: 1 to 32767
-- serial: 1 to 2147483647
-- bigserial: 1 to ...
+- **smallserial**: 1 to 32767
+- **serial**: 1 to 2147483647
+- **bigserial**: 1 to ...
 
-Numbers with decimal points: Here we have 2 sub-categories again
+#### Numbers with decimal points
+
+Here we have 2 sub-categories again
 
 - Extreme precision:
-  - decimal: 131072 digits before decimal point, 16383 after
-  - numeric: 131072 before decimal point, 16383 after
+  - **decimal**: 131072 digits before decimal point, 16383 after
+  - **numeric**: 131072 before decimal point, 16383 after
 - Normal precision:
-  - real: 1E-37 to 1E37 with at least 6 places precision
-  - double precision: 1E-307 to 1E308 with at least 15 place precision
-  - float: same as real or double precision
+  - **real**: 1E-37 to 1E37 with at least 6 places precision
+  - **double precision**: 1E-307 to 1E308 with at least 15 place precision
+  - **float**: same as real or double precision
 
 You can use each of these sub-type names to determine what type of value you can insert into a column cell.
 
 #### Rules on number type
 
-There 4 main rules that you need to understand:
+There are 4 main rules that you need to understand:
 
 1. To define the `id` column of a table, mark the column as `SERIAL`.
 2. To store a number with no decimal points, mark the column as `INTEGER`.
-3. To store an extremely accurate number with decimals, for example for bank balances, grams of gold, or scientific calculations, mark the column as `NUMERIC`.
-4. To store a number with decimals where the number doesn't need to be scientifically accurate, for example for kilograms of trash in a landfill, liters of water in a lake, air pressure in a tire, mark the column as `DOUBLE PRECISION`.
+3. To store an extremely accurate number with decimals, for example for **bank balances**, **grams of gold**, or **scientific calculations**, mark the column as `NUMERIC`.
+4. To store a number with decimals where the number doesn't need to be scientifically accurate, for example for **kilograms** of trash in a landfill, **liters** of water in a lake, **air pressure** in a tire, mark the column as `DOUBLE PRECISION`.
 
 Let's now explore some detailed rules. To do this we need to execute some queries inside PGAdmin.
 
@@ -1766,7 +1771,7 @@ SELECT (1.99999::REAL - 1.99998::REAL);
 -- returns 0.00001001358 (!)
 ```
 
-You would normally expect the result to be `0.00001`. But what you actually get is different: `0.00001001358`. Why? Because Postgres, treats `REAL`, `DOUBLE PRECISION`, and `FLOAT` with floating point math. This kind of calculations are notorious for being womewhat inaccurate. However, since they are very efficient and fast for running calculations, they are used when you don't need extreme precision in your numeric values. Now to calculate the query precisely:
+You would normally expect the result to be `0.00001`. But what you actually get is different: `0.00001001358`. Why? Because Postgres, treats `REAL`, `DOUBLE PRECISION`, and `FLOAT` with floating point math. This kind of calculations are notorious for being somewhat inaccurate. However, since they are very efficient and fast for running calculations, they are used when you don't need extreme precision in your numeric values. Now to calculate the query precisely:
 
 ```sql
 SELECT (1.99999::DECIMAL - 1.99998::DECIMAL);
@@ -1932,11 +1937,11 @@ SELECT
 
 # Database-side validation and constraints
 
-When a user sends some data to the server to be stored on the database, there should be some validation process on the way in order to prevent not relevant values or types to be inserted into the database. For instance, the price of a product can never have a negative value, or some fields are strictly required and cannot be left empty. There are some solutions for this. In some situations you can do validations on the back-end (server) while in others you may do it directly inside the database. This was the first scenario. The second scenario is a bit different.
+When a user sends some data to the server to be stored on the database, there should be some **validation** process on the way in order to prevent not relevant values or types to be inserted into the database. For instance, the price of a product can never have a negative value, or some fields are strictly **required** and cannot be left empty. There are some solutions for this. In some situations you can do validations on the back-end (server) while in others you may do it directly inside the database. This was the first scenario. The second scenario is a bit different.
 
 Imagine the company doesn't have the required resources to create a user interface and web server to power it. So data would have to be inserted directly into the database by an admin user. Now that data validation should be performed by the database itself. Postgres has a way of implementing data validation.
 
-So, where should you implement validations eventually? The best approach is to spread validations accross all three. There are benefits for doing it in both:
+So, where should you implement validations eventually? The best approach is to spread validations accross both. There are benefits for doing it in both:
 
 | Web server                                        | Database                                                             |
 | ------------------------------------------------- | -------------------------------------------------------------------- |
@@ -1973,7 +1978,7 @@ Now as you try to insert a row into this database like below, without defining t
 ```sql
 INSERT INTO products (name, department, weight)
 VALUES
-	('Pants', 'CLothes', 3);
+	('Pants', 'Clothes', 3);
 ```
 
 But we now want to apply a null constraint so as to prevent such behavior for a value that we don't want to be left undefined. There are 2 ways to apply this constraint:
@@ -1998,10 +2003,10 @@ ALTER COLUMN price
 SET NOT NULL;
 ```
 
-There is a gotcha around this approach. When you are using this command to update the configuration of a previously created table, you will end up in an error if the target column already has null values inserted into it. The error would say: 'column "price" of relation "products" contains null values'. In this situations there are two options:
+There is a gotcha around this approach. When you are using this command to update the configuration of a previously created table, you will end up in an error **if the target column already has null values inserted into it**. The error would say: 'column "price" of relation "products" contains null values'. In this situations there are two options:
 
 1. Find all the rows that have `null` for the target column and delete them. Then, you can run the command above.
-2. Find all the rows that have `null` for the target column and change their null to something else, like `99999` or anything special that will remind you that you need to update them with real data.
+2. Find all the rows that have `null` for the target column and change their value to something else, like `99999` or anything special that will remind you that you need to update them with real data.
 
 As for the second approach, you can use the query below to update the null values for the price column:
 
