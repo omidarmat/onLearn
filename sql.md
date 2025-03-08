@@ -2172,7 +2172,7 @@ In this section of this tutorial we are going to simulate the database structure
 
 ## Building some schema
 
-You can use the code below to create your diagrams in dbdiagram.io web application.
+You can use the code below to create your diagrams in `dbdiagram.io` web application.
 
 ```sql
 Table users {
