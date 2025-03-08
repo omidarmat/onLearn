@@ -3622,7 +3622,7 @@ There are multiple libraries for implementing migration files. Here is a list fo
 3. `sequelize`
 4. `db-migrate`
 
-Many migration tools can automatically generate migration files for you. However, it is highly recommended that you write all migrations manually using plain SQL. This is mainly because most of the libraries, make some intrinsic assumtions around some options that might want to apply to some column. For instance, they might apply some default values.
+Many migration tools can automatically generate migration files for you. However, it is highly recommended that you write all migrations manually using plain SQL. This is mainly because most of the libraries, make some intrinsic assumptions around some options that might want to apply to some column. For instance, they might apply some default values.
 
 In this example, we are going to use `node-pg-migrate`, but we are actually going to write plain SQL using this library.
 
