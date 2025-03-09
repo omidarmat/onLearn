@@ -4380,7 +4380,7 @@ app().listen(3005, () => {
 });
 ```
 
-But it does not. Creating a pool does not establish a connection with the database. It is only when a client inside the pool is created to run a query that a connection is made. So creating the pool first and then running the app on a specific port will not respond with errors if database connection credentials are invalid. So, in addition to creating the pool, we should somehow tell the pool to conenct to the database and check the credentials. The easiest way to do that is to run a simple query. So you would want to go back to the `pool.js` file and add a simple query to the `connect` function defined inside the class:
+But it does not. Creating a pool does not establish a connection with the database. It is only when a client inside the pool is created to run a query that a connection is made. So creating the pool first and then running the app on a specific port will not respond with errors if database connection credentials are invalid. So, in addition to creating the pool, we should somehow tell the pool to connect to the database and check the credentials. The easiest way to do that is to run a simple query. So you would want to go back to the `pool.js` file and add a simple query to the `connect` function defined inside the class:
 
 ```js
 // pool.js
