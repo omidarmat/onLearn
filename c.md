@@ -83,7 +83,44 @@ Here is a list of parameter types that can be inserted into the format string:
 
 ### `scanf()`
 
-This function is used to read input data.
+This function is used to read input data. The function accepts multiple arguments; first, the format string, and then, pointer variables, or array variables (treated as a pointer variables) being used as format string parameters.
+
+```c
+char name[40];
+scanf("%39s", name);
+```
+
+The reason this function takes a pointer is that it is going to update the contents of the pre-defined array. Functions that **update** a variable, don't need the value of the variable, they want its **address**.
+
+#### Entering numbers with `scanf`
+
+If you want to receive input data using the `scanf` function, take this code as example:
+
+```c
+int age;
+scanf("%i", &age);
+```
+
+Just like with strings, you need to give the `scanf` function a pointer. The reason you need to use `&` with an `int` variable but not with a `char`, is the way integers and strings are stored in memory.
+
+#### Buffer overflow with `scanf`
+
+If you forget to limit the length of the string that you read with `scanf()` function, the extra data gets written into memory that has not been properly allocated by the computer. You might get lucky and the data will simply be stored and not cause any problems. However, it is very likely that buffer overflows will cause bugs. It might be called a _segmentation fault_ or an _abort trap_. You program will crash.
+
+To go around this risk, you can use `fgets()` function.
+
+### `fgets()`
+
+Just like `scanf()`, this function takes a `char` pointer, but unlike `scanf()`, this function must be given a maximum length. The first argument received by this function is a pointer to a buffer. The second argument is the maximum size of the string. The third argument determines where the input data is coming from. `stdin` means the data will come from the keyboard.
+
+```c
+char food[5];
+fgets(food, sizeof(food), stdin);
+```
+
+> The buffer size passed as the second argument, includes the sentinel character `\0`. So with `fgets` you don't need to subtract 1 from the maximum string length like what you did to limit input in `scanf`.
+
+> Be careful with the `sizeof` operator that you usually use in the second argument of the function. If you give it a pointer variable, you will receive the size of the pointer, which would be 4 or 8, and not the size of the data itself.
 
 ## `<stdlib.h>`
 
@@ -95,7 +132,7 @@ C is a more low-level than most other languages. Because of that, instead of str
 char some_string[5];
 ```
 
-It is extremly important to remember that when you define a string array like this, you will actually be able to store strings with 4 characters. Why not 5? Because whenever you store a string in memory, C will always place a _sentinel character_ (`\0`) at the end of the string. So, for example, if you insert `fork` as string into the `some_string` variable, the array would actually be like:
+This allocates memory for a string with a length of 5 characters. It is extremly important to remember that when you define a string array like this, you will actually be able to store strings with 4 characters. Why not 5? Because whenever you store a string in memory, C will always place a _sentinel character_ (`\0`) at the end of the string. So, for example, if you insert `fork` as string into the `some_string` variable, the array would actually be like:
 
 ```
 {'f', 'o', 'r', 'k', '\0'}
@@ -114,7 +151,15 @@ some_string[2];
 
 You can define your strings as either **string literals** or **explicit arrays**. Stirng literals are the usual and easier way to go. There is only one difference however: string literals are **constant**. This means that once you define your string as a string literal and store it in a variable, you will no longer be able to change its individual characters. If you try to do so, GCC will return a _bus error_. This error means that your program cannot update that piece of memory where your string is stored.
 
-## Passing strings to a functions
+You should understand that defining strings in the form of arrays has a very important implication. When you create an array, the array variable can be used as a pointer that refers to the start of the array in memory. It means that when C reads a line of code like this:
+
+```c
+char quote[] = "Cookies make you fat";
+```
+
+the computer will set aside space on the stack for each of the characters in the string, plus the `\0` end character. It will also associate the **address of the first character** with the `quote` variable. So every time the `quote` variable is used in the code, the computer will replace it with the address of the first character of the string. In fact, the array variable is just like a pointer.
+
+## Passing strings to a function
 
 Passing simple values to functions is easy, but what if you want to send a string to a function, regarding that a string is actually an array of single characters? In order to be able to receive a string in a function, you should define the function in a way that it is ready to receive an array of characters:
 
@@ -126,6 +171,8 @@ void print_message(char msg[]) {
 char quote[] = "Cookies make you fat";
 print_message(quote);
 ```
+
+Since strings are defined as arrays in C, it is important to go deep into how pointers and arrays work together in the [pointers and arrays section](#pointers-and-arrays).
 
 # Pointers
 
@@ -195,3 +242,57 @@ int value_stored = *address_of_x;
 ```c
 *address_of_x = 99;
 ```
+
+## Pointers and arrays
+
+C behaves a little complicated when it comes to array variables and pointers. Let's review some facts from before.
+
+Array variables are like pointers. They are NOT pointers, but they can be used a pointers. When you define an array like this:
+
+```c
+char quote[] = "Cookies make you fat";
+```
+
+and pass it to a function defined as:
+
+```c
+void print_message(char msg[]) {
+    printf("Message is: %s", msg);
+}
+```
+
+the `msg` variable defined as the function's argument will only contain the address pointing to the start of the array. The `msg` variable is not the array itself. The `quote` variable is the actual array variable. This variable is not a pointer, it is the array itself.
+
+So array variables are not pointers, although they can be used as pointers, but there are 3 important differences. To understand these, take this code as an example:
+
+```c
+char s[] = "How big is it?";
+char *t = s;
+```
+
+1. `sizeof(an array)` is the size of an array: If you give an array variable to the `sizeof` operator, although the array variable holds the address to the start of the array, but C is smart enough to understand that you want the size of the actual array, not the pointer that points to the start of the array. So regarding the code above, `sizeof(s)` will return with the size of array, which is `15`, whereas `sizeof(t)` will return with the size of the pointer, which can either be `4` or `8`.
+2. The address of the array is the address of the array: Althouth an array variable actually points to the start of the array, it is different than a regular pointer variable. If you use the `&` operator on an array variable, it will return with the array variable itself. So the address of the `s` variable is just `s`, while the address of `t` is the address of the variable that points to the `s` array.
+
+```
+&s == s
+&t != t
+```
+
+3. An array variable cannot point anywhere elese: When you create an array, the computer will allocate space to store the array, but it will not allocate any memory to store the array variable. The compiler simply plugs in the address of the start of the array. Compare this to a pointer variable that upon creation, the machine will allocate 4 or 8 bytes of space to store the variable itself. Since array variables don't have allocated storage, it means you cannot point them at anything else:
+
+```c
+c = t;
+// results in compile error
+```
+
+### Pointer decay
+
+Because array variables are slightly different from pointer variables, you need to be careful when you assign arrays to pointers. If you assign an array to a pointer variable, then the pointer variable will only contain the address of the array. The pointer does not know anything about the size of the array, so a little information has been lost. That loss of information is called _decay_.
+
+Every time you pass an array to a function, you'll decay to a pointer, so it is unavoidable. But you need to keep track of where arrays decay in your code, because it can cause very subtle bugs.
+
+## Pointers have types
+
+We can do arithmatic operations with pointers. But this arithmatic is sneaky. If you add 1 to a `char` pointer, the pointer will point to the very next memory address. But that is just because a `char` occupies 1 byte of memory. With `int` pointer, knowing that integers usually take 4 bytes of space, if you add 1 to the pointer, the compiled code will actually add 4 to the memory address. So the pointer types exist so that the compiler knows how much to adjust the pointer arithmatic.
+
+> Pointer arithmatics is the actual reason why array indexes start from 0.
