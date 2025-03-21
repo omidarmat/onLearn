@@ -38,6 +38,26 @@ When the computer runs your program, it will need to have some way of deciding i
 
 > Generally, functions in C can return any type of value. In case the function is not expected to return anything, you can set the return type to `void`.
 
+The main function, like any other function in programming, can accept arguments. These arguments would have be received from the user of the program through the terminal when they are using the execution command. It would look like something like this:
+
+```
+./categorize mermaid mermaid.csv elvis elvises.csv the_rest.csv
+```
+
+In order to be able to receive these command arguments in the `main` function is to declare `argc` and `argv` arguments to the function:
+
+```c
+int main(int argc, char *argv[]) {}
+```
+
+As it is clear from the declaration above, the main function can read the command-line arguments as an **array of strings** (`char *argv[]`). To be more precise, since C does not really have strings built in, it reads them as **as array of character pointers to strings**. So the terminal command above will be received by the main function as these elements:
+
+```
+"./categorize" "mermaid" "mermaid.csv" "elivs" "elives.csv" "the_rest.csv"
+```
+
+Now in order for C to know how long the array is, it uses `argc`. So `argc` is an integer representing the number of elements in the array. According to the elements above, `argv[0]` will be the program's name that should be executed, and the first proper command-line argument is `argv[1]`. Accessing these arguments in the `main` function will enable you to allow your users to configure the way the program works according to their needs. It makes your program more flexible to respond to your users' needs.
+
 # Understanding the memory structure
 
 ## Stack
@@ -74,6 +94,53 @@ or this command on Windows:
 echo %ErrorLevel%
 ```
 
+# Standard input and output
+
+There is a fundamental concept you need to understand about each and every program running on an operating system. There are three communicating channels or **data streams** established by the operating system for the program: Standard Input, Standard Output, and Standard Error. This way, the operating system controls how data gets into and out of the standard input and output. If you run a program from the command prompt or terminal, the operating system will send all of the keystrokes from the keyboard into the standard input. If the operating system reads any data from the standard output, by default, it will send that data to the display. There is a very good reason why operating systems commiunucate with programs using the standard input and standard output: You can **redirect** the standard input and standard output so that they read and write data somehwere else, such as to and from **files**.
+
+As an example, imagine you have written a C program called `geo2json.c` that takes input data using the `scanf` function of the `<stdio.h>` header file. When you run your program in the terminal:
+
+```
+gcc geo2json.c -o geo2json
+./geo2json
+```
+
+you would have type in the input data in the terminal. However, you can redirect the standar input from keyboard to a file, for example `locations.csv`. Redirecting the standard input is done using the `<` operator.
+
+```
+./geo2json < locations.csv
+```
+
+Now in the same program, if you are using the `printf` function to output processed data, it will by default, appear in the terminal screen, but you can redirect the output data to a file too. This is done using the `>` operator.
+
+```
+./geo2json < locations.csv > output.json
+```
+
+This way you will no longer see the output data on the terminal screen. The problem with this redirection of standard output, is that you will probably output your program's errors to the output file too. That is not what you want. In fact, there is a solution for this.
+
+## Standard error
+
+Every C program will have one input and two outputs, as mentioned before. The two outputs are: standard output and **standard error**. The standard error is designed to output errors resulting from exceptions happening in your program. By default, the standard error is sent to the display.
+
+So if you use the standard error in your program while trying to redirect the standard input and output, you will still be able to receive error messages on your terminal display. You can redirect the standard error output using `2>` sign in order to store error messages in a file.
+
+```
+./geo2json < locations.csv > output.json 2> errlogs.txt
+```
+
+So you can redirect standard input, output and error in the terminal, but you can also do it within your program code using the [`<stdio.h>`](#stdioh) functions.
+
+## Connecting output to input
+
+You can connect (or pipe) the output of one program to the input of another program in the terminal using the `|` sign. For instance, if you want to first execute the `bermuda` program to filter some data and insert the filtered data into the `geo2json` program you can do this in the terminal:
+
+```
+(./bermuda | ./geo2json) < locations.csv > output.json
+```
+
+> Notice tat if two programs are piped together, both programs run at the same time. As output is produced by the first program, it can be consumed by the second program.
+
 # Header files
 
 C is a very, very small language and it can do almost nothing without the use of external libraries. You will need to tell the compiler what external code to use by including **header files** for the relevant libraries. Here is a list of header files you can `include`.
@@ -103,6 +170,15 @@ Here is a list of parameter types that can be inserted into the format string:
 
 > Remember to use double quotes (`" "`) for strings, and single quotes (`' '`) for individual characters.
 
+The `printf` function is just a version of a more general function called `fprintf`. The `fprintf` function sends data to a data stream of your choice. The function receives multiple arguments: first, the data stream you want your data to be sent to. You can choose between `stdout` (which will make `fprintf` the same as `printf`), `stderr`, or you can also establish your own data stream. Second, the data that will be sent which can be in the form of a format string including some parameters. Arguments after this will be the parameters of the format string.
+
+```c
+fprintf(stdout, "I like turtles!");
+fprintf(stderr, "There was an error reading the file!");
+```
+
+Now when you need a data stream of your own other than standard output and standard error, you can use the `fopen` function.
+
 ### `scanf()`
 
 This function is used to read input data. The function accepts multiple arguments; first, the format string, and then, pointer variables, or array variables (treated as a pointer variables) being used as format string parameters.
@@ -113,6 +189,35 @@ scanf("%39s", name);
 ```
 
 The reason this function takes a pointer is that it is going to update the contents of the pre-defined array. Functions that **update** a variable, don't need the value of the variable, they want its **address**.
+
+The `scanf` function is a version of a more general function called `fscanf`. The `fscanf` function is used to redirect the standard input to a data stream of your choice. You can choose `stdin` (which would make this function the same as `scanf` funciton), or you could create your own input data stream. This function receives first the data stream from which you want to read data. Second, it receives the format string probably with some paramteres, and after that, it receives the variable into which it has to store the input data.
+
+```c
+fscanf(stdin, "%79[^\n]\n")
+```
+
+### `fopen()`
+
+Each data stream is represented by a pointer to file, and you can create a new data stream using the `fopen` function. The function receives first the file name that you want to be used as your input data stream, and second, the mode which can either be `"r"` for read or `"w"` for write, or `"a"` for append.
+
+```c
+FILE *in_file = fopen("input.txt", "r");
+FILE *out_file = fopen("output.txt", "w");
+```
+
+Once you have created your custom data streams you can read data from or write data to them using the `fprintf` and `fscanf` functions:
+
+```c
+fprint(out_file, "Don't wear %s with %s", "red", "green");
+fscanf(in_file, "%79[^\n]\n", sentence);
+```
+
+Finally, when you are done using your data streams, it is a very good practice to close them using the `fclose` function.
+
+```c
+fclose(in_file);
+fclose(out_file);
+```
 
 #### Entering numbers with `scanf`
 
