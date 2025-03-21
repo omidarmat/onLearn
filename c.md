@@ -44,6 +44,8 @@ The main function, like any other function in programming, can accept arguments.
 ./categorize mermaid mermaid.csv elvis elvises.csv the_rest.csv
 ```
 
+## Running `main` with arguments
+
 In order to be able to receive these command arguments in the `main` function is to declare `argc` and `argv` arguments to the function:
 
 ```c
@@ -57,6 +59,21 @@ As it is clear from the declaration above, the main function can read the comman
 ```
 
 Now in order for C to know how long the array is, it uses `argc`. So `argc` is an integer representing the number of elements in the array. According to the elements above, `argv[0]` will be the program's name that should be executed, and the first proper command-line argument is `argv[1]`. Accessing these arguments in the `main` function will enable you to allow your users to configure the way the program works according to their needs. It makes your program more flexible to respond to your users' needs.
+
+## Running `main` with options
+
+Chances are, any program you write is going to need options. Command line options are the little switches you often see and use with command-line tools:
+
+```
+ps -ae
+<!-- Displays all the processes, including their environments -->
+```
+
+In order to be able to deal with command-line options, you can use a the `getopt()` function coming from `<unistd.h>` header file. Each time you call this function, it returns the next option it finds on the command line.
+
+> In the case of running a program with command-line options and command-line arguments, after you have processed the command-line options in your code, `argv[0]` of the `main` function will no longer be the program's name, but instead it will be the first command-line argument.
+
+To learn more about this function refer to [`getopt`](#getopt) function.
 
 # Understanding the memory structure
 
@@ -292,6 +309,57 @@ Find out more about `string.h` functions at:
 ```
 http://tinyurl.com/82acwue
 ```
+
+## `<unistd.h>`
+
+Library description...
+
+### `getopt()`
+
+This function is used to get command line options that are used along with a program execution command. Each time you call this function, it will return the next option it finds on the command line.
+
+For instance, imagine you have a program that can take a set of different options:
+
+```
+./rocket_to -e 4 -a Brasilia Tokyo London
+```
+
+Based on this command, this program takes these options:
+
+1. one option that takes a value: `-e` referring to 'engines' and `4` as value.
+2. one option that is simply on or off: `-a`
+3. The `Brasilia Tokyo London` arguments are the arguements by which the `main` function is going to be called. They are not command-line options. We will write a special code to move to these arguments after the command-line options are read.
+
+You can handle these options by calling `getopt` in a loop:
+
+```c
+#include <unistd.h>
+
+// some code
+
+while ((ch = getopt(argc, argv, "ae:")) != EOF)
+    switch(ch) {
+        // some code
+        case 'e':
+            engine_count = optarg;
+        // some code
+    }
+
+argc -= optind;
+argv += optind;
+```
+
+inside the `while` condition statement, the `"ae:"` inserted as the 3rd argument of the `getopt` function means that both `a` and `e` options are valid, and also because of `:` the `e` option needs an argument (value). Then inside the switch statement, on case `e`, you are actually using the value passed for the `e` option using the `optarg` keyword.
+
+The two lines after the the loop make sure that you skip past the options that are read. `optind` stores the number of strings read from the command line to get past the options. So `Brasilia Tokyo London` are the arguments by which the `main` function of the program is going to be called. So:
+
+```c
+argv[0] == "Brasilia";
+argv[1] == "Tokyo";
+argv[2] == "London";
+```
+
+Unlike when you run a program with no options, but with arguments for the `main` function, where `argv[0]` is the program's name, here it is not the case since we are using command-line options before command-line arguments.
 
 # Working with strings
 
