@@ -38,6 +38,28 @@ When the computer runs your program, it will need to have some way of deciding i
 
 > Generally, functions in C can return any type of value. In case the function is not expected to return anything, you can set the return type to `void`.
 
+# Understanding the memory structure
+
+## Stack
+
+This is the section of memory used for **local variable** storage. Every time you call a function, all of the function's local variables get created on the stack. It is called the _stack_ because it is like a stack of plates. Variables get added to the stack when you enter a function, and get taken off the stack when you leave that function. Weird thing is, the stack actually works upside down. It starts at the top of the memory and grows downward.
+
+## Heap
+
+This is a section of memory we have not really used yet. The heap is for **dynamic memory**; that is, pieces of data that get created when the program is running and then hand around a long time.
+
+## Globals
+
+A global variable is a variable that lives outside of all the functions and is visible to all of them. Globals get created when the program first runs, and you can update them freely, unlike constants.
+
+## Constants
+
+Constants are also created when the program first runs, but they are stored in read-only memory. Constants are things like stirng literals that you will need when the program is running, but you will never want them to change.
+
+## Code
+
+A lot of operating systems place the code right down in the lowest memory addressed. The code segment is also read-only. This is the part of the memory where the actual assembled code gets loaded.
+
 # Side notes
 
 If you want to check the exit status of a program that has just run on your machine you can use this command on Linux or Mac:
@@ -124,6 +146,48 @@ fgets(food, sizeof(food), stdin);
 
 ## `<stdlib.h>`
 
+## `<string.h>`
+
+This is a part of the C standard library that is dedicated to **string manipulation**. Concatenenating strings together, copying one string to another, comparing two strings and searching within strings are among the functionalities provided to you by this header file.
+
+### `strchr()`
+
+This function returns the location of a character inside a
+
+### `strstr()`
+
+This function receives two stirng arguments. The second one is the string that you want to look for inside the first string. The function returns the address of the second string in memory.
+
+```c
+char s0[] = "dysfunctional";
+char s1[] = "fun";
+
+if(strstr(s0, s1))
+    puts("I found fun in dysfunctional!");
+```
+
+### `strcmp()`
+
+This function compares two strings.
+
+### `strcpy()`
+
+This function copies one string to another.
+
+### `strlen()`
+
+This function returns the length of a string.
+
+### `strcat()`
+
+This function concatenates two strings.
+
+Find out more about `string.h` functions at:
+
+```
+http://tinyurl.com/82acwue
+```
+
 # Working with strings
 
 C is a more low-level than most other languages. Because of that, instead of strings, C uses something similar to strings: **an array of single characters**. With this in mind, in order to define a variable that can hold a string, we would actually have to define an **array** that its **elements** are single **characters** in addition to the arrays's **length**. This would look like:
@@ -159,6 +223,48 @@ char quote[] = "Cookies make you fat";
 
 the computer will set aside space on the stack for each of the characters in the string, plus the `\0` end character. It will also associate the **address of the first character** with the `quote` variable. So every time the `quote` variable is used in the code, the computer will replace it with the address of the first character of the string. In fact, the array variable is just like a pointer.
 
+> IMPORTANT: The array variable is actually not a pointer variable, but it can be used or treated as a pointer in some situations. You will learn about this later.
+
+Let's now go over 2 examples in defining a string.
+
+### Define a pointer variable for a literal string
+
+Imagine you are defining a string likes this:
+
+```c
+char *cards = "JKQ";
+```
+
+When the computer reads this line of code, it proceeds over 3 steps:
+
+1. The computer loads the string literal: When the computer loads the program into memory, it puts all of the **constant values** - like the string literal "JKQ" - into the **constant memory block**. This section of memory is **read-only**.
+2. The program creates the cards variable on the stack: The stack is the section of memory that the computer uses for **local variables**; that is, variables inside functions.
+3. The `cards` variable is set to the address of the "JKQ" literal string: The `cards` variable will contain the address of the string literal assigned to it. String literals are usually stored in read-only memory to prevent anyone from changinig them.
+
+Now if the computer tries to change the string, based on some instructions in your code, it won't succeed because the string is read-only.
+
+### Define an array variable for a literal string
+
+Imagine you define a string in your code like this:
+
+```c
+char cards[] = "JKQ";
+```
+
+When the computer reads this line of code, it proceeds over 3 steps:
+
+1. The computer loads the string literal: Just like before, the computer stores the constant values like the literal string into read-only memory.
+2. The program creates a new array on the stack: Since you are declaring an array, the program will create one large enough to store the "JKQ" string.
+3. The program **initializes** the array: As well as allocating the space for the array, the program will also copy the contents of the string literal into the stack memory.
+
+The difference between the two mentioned approaches is that the first one used a pointer to point to a read-only string literal, but the second one deifnes an array in the stack and initializes the array with the string literal, so you would have a copy of the letters of the string and you can change them as much as you need.
+
+> There is nothing wrong with defining a pointer variable that points to a literal string as long as you are not intending to modify the string literal later in your code. Therefore, as a good practice, it is recommended to mark such pointer variable with `const` so if you accidentally try to modify the string at some point in your code, the compiler will let you know with an error. The `const` modifier is actually used on any variable that you need to prevent its value from being modified.
+
+```c
+const char *s = "some string";
+```
+
 ## Passing strings to a function
 
 Passing simple values to functions is easy, but what if you want to send a string to a function, regarding that a string is actually an array of single characters? In order to be able to receive a string in a function, you should define the function in a way that it is ready to receive an array of characters:
@@ -173,6 +279,29 @@ print_message(quote);
 ```
 
 Since strings are defined as arrays in C, it is important to go deep into how pointers and arrays work together in the [pointers and arrays section](#pointers-and-arrays).
+
+## Defining a sequence of strings
+
+When you want to store a list or a sequence of strings, you need to define it as an array of arrays, where inner arrays store characters. For exmple, if you want to store a list of music track by their names, you can define an array of arrays like this:
+
+```c
+char tracks[][80] = {
+    "I left my heart in Harvard Med School",
+    "Newark, Newark - a wonderful town",
+    "Dancing with a Dork",
+    "From here to maternity",
+}
+```
+
+In `tracks[][80]` the second set of brackets indicate the size of inner arrays that store track names. We are defining them to be of length 80. The first set of brackets defines the outer array, which wraps the inner ones. We didn't specify the length of the outer array because we are initializing the outer array right at the point of declaration. So the compiler will understand its length.
+
+Another option to define a sequence of strings is to create an array of pointers.
+
+```c
+char char *names_for_dog[] = {"Bowser", "Bonza", "Snodgrass"};
+```
+
+This way, there will be one pointer for each string literal, and these pointers will be stored in the defined array.
 
 # Pointers
 
