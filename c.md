@@ -44,7 +44,7 @@ The main function, like any other function in programming, can accept arguments.
 ./categorize mermaid mermaid.csv elvis elvises.csv the_rest.csv
 ```
 
-## Running `main` with arguments
+## Running `main` with command-line arguments
 
 In order to be able to receive these command arguments in the `main` function is to declare `argc` and `argv` arguments to the function:
 
@@ -52,7 +52,7 @@ In order to be able to receive these command arguments in the `main` function is
 int main(int argc, char *argv[]) {}
 ```
 
-As it is clear from the declaration above, the main function can read the command-line arguments as an **array of strings** (`char *argv[]`). To be more precise, since C does not really have strings built in, it reads them as **as array of character pointers to strings**. So the terminal command above will be received by the main function as these elements:
+As it is clear from the declaration above, the main function can read the command-line arguments as an **array of strings** (`char *argv[]`). To be more precise, since C does not really have strings built in, it reads them as **as array of character pointers to strings**. In other words, command-line arguments are passed to the `main` function as an argument count and an array of pointers to the argument strings. So the terminal command above will be received by the main function as these elements:
 
 ```
 "./categorize" "mermaid" "mermaid.csv" "elivs" "elives.csv" "the_rest.csv"
@@ -60,7 +60,7 @@ As it is clear from the declaration above, the main function can read the comman
 
 Now in order for C to know how long the array is, it uses `argc`. So `argc` is an integer representing the number of elements in the array. According to the elements above, `argv[0]` will be the program's name that should be executed, and the first proper command-line argument is `argv[1]`. Accessing these arguments in the `main` function will enable you to allow your users to configure the way the program works according to their needs. It makes your program more flexible to respond to your users' needs.
 
-## Running `main` with options
+## Running `main` with command-line options
 
 Chances are, any program you write is going to need options. Command line options are the little switches you often see and use with command-line tools:
 
@@ -109,6 +109,79 @@ or this command on Windows:
 
 ```
 echo %ErrorLevel%
+```
+
+# Data types
+
+## List of data types in C
+
+### `char`
+
+Each character is stored in the computer's memory as a character code. That is just a number. So when the computer sees 'A', it is the same as seeing the literal number `65`, which is the ASCIII code for 'A'.
+
+### `int`
+
+If you need to store a whole number, you can generally just use an `int`. The exact maximum size of an `int` can vary, but it is guaranteed to be at least 16 bits. In general, an `int` can store numbers up to a few million.
+
+### `short`
+
+Sometimes you want to save a little memory. Why use an `int` if you just want to store numbers up to few hundreds or thousands? That is what a `short` is for. A `short` number usually takes up about half the space of an `int`.
+
+### `long`
+
+If you want to store a really large count, the `long` data type is here to help. On some machines, the `long` data type takes up twice the memory of an `int`, and it can hold numbers up in the billions. But because most computers can deal with really large `int`s, on a lot of machines the `long` data type is exactly the same size as an `int`. The maximum size of `long` is guaranteed to be at least 32 bits.
+
+### `float`
+
+This is the basic data type for string floating-point numbers. For most everyday floating-point numbers - like the amount of fluid in your orange mocha frappuccino - you can use a `float`.
+
+### `double`
+
+If you want to get really precise, or if you want to perform calculations that are accurate to a large number of decimal places, then you might want to use a `double`. A `double` takes up twice the memory of a `float`, and it uses that extra space to store numbers that are larger and more precise.
+
+### `unsigned` keyword
+
+Using the `unsigned` keyword before an `int` variable, will make the number always be positive. Since the variable does not need to worry about recording negative numbers, `unsigned` numbers can store larger numbers, because there is now one more bit to work with. So an `unsigned int` stores numbers from 0 to a maximum value that is about twice as large as the maximum number that can be stored inside an `int`. As another example, an `unsigned char` will probably store numbers from 0 to 255.
+
+### `long` keyword
+
+You can prefix a data type with the word `long` and make it longer. So a `long int` is a longer version of `int`, and a `long long` is longer than `long`. You can also use `long double` which is really really precise.
+
+## Putting big values in small variables
+
+If you try to put an `int` value into a `short` variable, your program might show you no error and silently respond with wrong answers. For instance, take this code:
+
+```c
+int x = 100000;
+short y = x;
+print("The value of y = %hi\n", y);
+```
+
+Sometimes the compiler can find out your mistakes about this and warn you about them. But most of the times, it doesn't. So it will fit in as many 1s and 0s of `100000` as it can in the `short` variable and leave the rest out. Therefore, the number that ends up stored inside the `short` variable will be very different from the one you tried to insert into it.
+
+```
+The value of y = -31072
+```
+
+## Casting
+
+If you divide two `int` values and expect to receive a `float` value, you will be surprised that you will not receive what you expect.
+
+```c
+int x = 7;
+int y = 2;
+float z = x / y;
+printf("z = %f\n", z);
+// returns 3.0000
+```
+
+Dividing integers will always give you rounded-off whole numbers. In order to make this work you can use casting to convert integers to floats on the fly:
+
+```c
+int x = 7;
+int y = 2;
+float z = (float)x / (float)y;
+printf("z = %f\n", z);
 ```
 
 # Standard input and output
@@ -183,6 +256,9 @@ Here is a list of parameter types that can be inserted into the format string:
 - `%s`: string
 - `%i`: integer
 - `%f`: float
+- `%.2f`: formats a floating point number to two decimal places
+- `%hi`: short integer
+- `%li`: long integer
 - `%p`: pointer
 
 > Remember to use double quotes (`" "`) for strings, and single quotes (`' '`) for individual characters.
@@ -204,6 +280,8 @@ This function is used to read input data. The function accepts multiple argument
 char name[40];
 scanf("%39s", name);
 ```
+
+> Remember that `scanf` returns the number of parameters it reads from the input.
 
 The reason this function takes a pointer is that it is going to update the contents of the pre-defined array. Functions that **update** a variable, don't need the value of the variable, they want its **address**.
 
@@ -360,6 +438,123 @@ argv[2] == "London";
 ```
 
 Unlike when you run a program with no options, but with arguments for the `main` function, where `argv[0]` is the program's name, here it is not the case since we are using command-line options before command-line arguments.
+
+> Since the command-line options are read using a switch statement, it does not matter if you change the order you enter them in your command.
+
+> The program will consider all values starting with `-` in the terminal as command-line options only if they are inserted before the command-lind arguments.
+
+## `<limits.h>`
+
+This library is used to observe the values for integer types like `int` and `char`.
+
+```c
+#include <stdio.h>
+#include <limits.h>
+
+int main() {
+    printf("The value of INT_MAX is %i\n", INT_MAX);
+    printf("The value of INT_MIN is %i\n", INT_MIN);
+
+    printf("The value of CHAR_MAX is %i\n", CHAR_MAX);
+    printf("The value of CHAR_MIN is %i\n", CHAR_MIN);
+}
+```
+
+> The values may differ on different machines.
+
+## `<float.h>`
+
+This library is used to observe the values for `float` and `double` types.
+
+```c
+#include <stdio.h>
+#include <float.h>
+
+int main() {
+    printf("The value of FLT_MAX is %f\n", FLT_MAX);
+    printf("The value of FLT_MIN is %f\n", FLT_MIN);
+
+    printf("The value of DBL_MAX is %f\n", DBL_MAX);
+    printf("The value of DBL_MIN is %f\n", DBL_MIN);
+}
+```
+
+> The values may differ on different machines.
+
+## Your own header files
+
+To create your own header files, you need to do 2 things:
+
+1. Create a new file with `.h` extension: If you are writing a program called `totaller`, then create a file called `totaller.h` and write your declarations inside it:
+
+```c
+// totaller.h
+float add_with_tax(float f);
+```
+
+> You don't need to include a `main` function here in the header file, because nothing else will need to call it.
+
+2. Include your header file in your main program: At the top of your program, you should add an extra `include` statement:
+
+```c
+// totaller.c
+#include <stdio.h>
+#include "totaller.h"
+```
+
+When the compiler reads the `#include` statement, it will read the contents of the header file, just as if it had been typed into the code.
+
+Separating the declarations into a separate header file keeps your main code a little shorter. This technique is especially useful when you want to get yourself out of trouble with thinking about the order of function declarations in your program. This also has another big advantage.
+
+There are other situations when you need to reuse a specific functionality that you have written previously in multiple other programs. This basically means that you would have a special functionality written in a `.c` file, and you would like to share it in some other `.c` files. If the compiler can somehow include the shared code when it is compiling your program, you will be able to reuse the same code in multiple applications. But there is a problem. Up until this point you have only ever created programs from one single `.c` file. What we are talking about right now is a program that consists of multiple `.c` programs. In other words, you now want to give the compiler a set of source code files, and not just one source code file. It means that the compiler would have to create a single executable program from several files. How is it going to work?
+
+1. To do this, you first need to create a header file for the shared code. If you are going to share the `encrypt.c` code between programs, you need some way to tell those programs about te encrypt code. You do this with a header file.
+
+```c
+// encrypt.h
+void encrypt(char *message);
+```
+
+2. Then you include the header inside `encrypt.c` file:
+
+```c
+// encrypt.c
+void encrypt(char *message) {
+    char c;
+    while (*message) {
+        *message = *message ^ 31;
+        message++;
+    }
+}
+```
+
+3. You can then include `encrypt.h` in your program. This time you are not using the header file to just record the functions. You are using it to tell other programs about the `encrypt()` function:
+
+```c
+// message_hider.c
+#include <stdio.h>
+#include "encrypt.h"
+
+int main() {
+    char msg[80];
+    while(fgets(msg, 80, stdin)) {
+        encrypt(msg);
+        printf("%s", msg);
+    }
+}
+```
+
+4. Finally, to compile everything together you just need to pass the source files to `gcc`:
+
+```
+gcc message_hider.c encrypt.c -o message_hider
+```
+
+> You now know how to share functions between different files. But what if you want to share variables? Source code files normally contain their own separate variables to prevent a variable in one file affecting a variable in another file with the same name. But if you are really going to share variables, you should declare them in your header file and prefix them with `extern` keyword:
+>
+> ```c
+> extern int passcode;
+> ```
 
 # Working with strings
 
