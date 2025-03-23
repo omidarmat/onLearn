@@ -20,6 +20,7 @@
   - [Renaming files or directories](#renaming-files-or-directories)
   - [Deleting files or directories](#deleting-files-or-directories)
   - [Creating command pipelines](#creating-command-pipelines)
+  - [Opening file explorer](#opening-file-explorer)
 - [3rd-party packages](#3rd-party-packages)
   - [WGET](#wget)
   - [Wireguard](#wireguard)
@@ -368,6 +369,16 @@ Let's explore this concept through an example. Imagine you want to read the numb
 ```bash
 ls | wc -l
 ```
+
+## Opening file explorer
+
+In order to open file explorer at the directory where terminal is running you can use this command:
+
+```
+nautilus .
+```
+
+This will engage terminal in a running process and you won't be able to work with it, unless you exit the process using `^c`.
 
 # 3rd-party packages
 

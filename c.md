@@ -602,7 +602,80 @@ Ok, everything seems to work fine, but we have another problem. It is really har
 
 ## The make tool
 
-Thinking about the source files and their object files this way enables us to automate this process: If `thruster.c` is newer than `thruster.o` regarding when it was last updated, you need to recompile it, so as to update the object file with the new version of source code. If `thruster.o` is newer than `thruster.c`, then everything is fine and you don't need to recompile.
+Thinking about the source files and their object files this way enables us to automate this process: If `thruster.c` is newer than `thruster.o` regarding its timestamp, you need to recompile it, so as to update the object file with the new version of source code. If `thruster.o` is newer than `thruster.c`, then everything is fine and you don't need to recompile. This is exactly how the make tool works. Before being able to use the make tool, you need to tell `make` about your source code and how you want to build the code.
+
+Every file that `make` compiles is called a **target**. For every target,`make` needs to be told 2 things:
+
+1. The dependencies: which files the target is going to be generated from.
+2. The recipe: the set of instructions it needs to run to generate the file.
+
+Together, the dependencies and the recipe form a **rule**.
+
+> The make tool is not limited to compiling files. A **target** is any file that is generated from some other file. So a target migh be a zip archive that is generated from the set of files that need to be compressed.
+
+### How make works
+
+Let's go over an example. If you want to compile `thruster.c` into some object code in `thruster.o`, the **target** is the object file, and the **dependency** is the source `.c` file, because the compiler needs it to generate the object file. The recipe or the **rule** would be the compile command that you enter in terminal:
+
+```
+gcc -c thruster.c
+```
+
+Now that `make` knows the dependency and the recipe, you can leave it to `make` to decide when it needs to recompile.
+
+As for the next step, once your object files are created, you are going to use them to create the `launch` program, which is the final executable file. This means that the `launch` file can also be set up as a **target**. The **dependencies** for this file are all the `.o` files. So the rule for this step would be:
+
+```
+gcc *.o -o launch
+```
+
+When `make` knows about all dependencies and rules, all you have to do is tell it to create the `launch` (final executable) file. Then `make` will take care of all the details.
+
+### The `makefile`
+
+All details about the targets, dependencies, and recipes need to be stored in a file called either `makefile` or `Makefile`. Imagine you have a set of source files that together create the `launch` executable program.
+
+![project_structure](/images/c/project_structure.png)
+
+The `launch` executable is made by linking the `launch.o` and `thruster.o` files. These files are, in turn, compiled from their matching `.c` and `.h`files, but notice that the `launch.o` also depends on `thruster.h` file because it contains code that will need to call a function in the `thruster.c` file. So this would be how you should describe everything for `make` in the `makefile`:
+
+```makefile
+launch.o: launch.c launch.h thruster.h
+    gcc -c launch.c
+
+thruster.o: thruster.h thruster.c
+    gcc -c thruster.c
+
+launch: launch.o thruster.o
+    gcc launch.o thruster.o -o launch
+```
+
+> Notice that all recipes must begin with a **tab** character.
+
+After writing the `makefile`, you need to save it in the same directory of your project, and then open up the console and type:
+
+```
+make launch
+```
+
+You will see:
+
+```
+gcc -c launch.c
+gcc -c thruster.c
+gcc launch.o thruster.o -o launch
+```
+
+Now if, during development, you make a change to, for example, the `thruster.c` file and then run `make` again, you will see:
+
+```
+gcc -c thruster.c
+gcc launch.o thruster.o -o launch
+```
+
+Notice that `make` no longer needs to compile `launch.c` since it did not change. The only file that was recompiled was `thruster.c`. Then it would also need to do the linking again and regenerate the executable `launch` file.
+
+> `make` is most commonly used to compile code. But it can also be used as a command-line installer, or a source control tool. In fact, you can use `make` for almost any task that you can perform on the command line.
 
 # Working with strings
 
