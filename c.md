@@ -99,6 +99,8 @@ A lot of operating systems place the code right down in the lowest memory addres
 
 # Side notes
 
+## Inspect program's exit status
+
 If you want to check the exit status of a program that has just run on your machine you can use this command on Linux or Mac:
 
 ```
@@ -110,6 +112,10 @@ or this command on Windows:
 ```
 echo %ErrorLevel%
 ```
+
+## Object and memory in C
+
+In languages like Java, if you assign an object to a variable, it does not copy the object, it just copies a reference. In C, all assignments **copy data**. If you want to copy a reference to a piece of data, you should assign a pointer.
 
 # Data types
 
@@ -182,6 +188,178 @@ int x = 7;
 int y = 2;
 float z = (float)x / (float)y;
 printf("z = %f\n", z);
+```
+
+## `struct`s
+
+C can handle a lot of different data types, but quite often, when you are recording data about something in the real world, you will find out that you need to use more than one piece of data. You would also have to work with the same set of data in multiple functions in your program. Repeating reference to and instance of this data makes your code a bit dirty. To go around this problem, wee need something that lets us refer to a whole set of data of different types all at once, as if it were a single piece of data. This is where `struct` comes to play, standing for **structured data type**.
+
+```c
+struct fish {
+    const char *name;
+    const char *species;
+    int teeth;
+    int age;
+};
+```
+
+> Notice that the `name` variable will only store an address that points to the fish name, and the string literal of the fish name will be stored somewhere else in the memory.
+
+> A huge advantage of using structs is that when you are using a specific structured data type in multiple functions in your program, and if you decide sometime in the future to add some data to the structure, you will no longer have to update your functions to cope with the change. Your functions don't know and don't care what data is included in the `struct` as long as the `struct` has the data they need.
+
+Then to create pieces of data that uses this structured data type, you must follow the array syntax, meaning that you should initialize an array and follow the same order of the `struct`:
+
+```c
+struct fish snappy = {"Snappy", "Piranha", 69, 4};
+```
+
+Now as you pass the data stored inside the `snappy` variable to a function, you can use individual fields of its data using the `.` notation and the field's name. For instance:
+
+```c
+struct fish snappy = {"Snappy", "piranha", 69, 4};
+printf("Name = %s\n", snappy.name);
+```
+
+You can also declare your custom functions in a way that they are able to receive your structured data type. Take this function as example:
+
+```c
+void catalog(struct fish f) {
+    printf("%s is a %s with %i teeth. He is %i\n", f.name, f.species, f.teeth, f.age);
+}
+```
+
+> IMPORTANT: a `struct` is not an array. It is just like an array. It groups a number of pieces of data together. Also, a `struct` variable, unlike an array variable which is just a pointer to the array, is not a pointer, but is a name for the struct itself.
+
+> `struct`s are a bit similar to classes in other languages, but it is not so easy to add methods to them.
+
+### Nesting `struct`s
+
+You can also create structs from other structs. This is also called **nesting** structs inside other structs. Here is an example:
+
+```c
+struct preferences {
+    const char *food;
+    float exercise_hours;
+}
+
+struct fish {
+    const char *name;
+    const char *species;
+    int teeth;
+    int age;
+    struct preferences care;
+}
+```
+
+Now to create instances of data:
+
+```c
+struct fish snappy = {"Snappy", "piranha", 69, 4, {"meat", 7.5}};
+```
+
+As you pass this instance to a function, you can access nested fields using a chain of `.` operators:
+
+```c
+printf("Snappy likes to eat %s", snappy.care.food);
+```
+
+### `struct` alias
+
+Notice that you have to write the word `struct` both when you are defining the struct and then agein, when you are defining an instance of the struct. You can go around this by creating an **alias** for your struct. Here is the syntax:
+
+```c
+typedef struct cell_phone {
+    int cell_no;
+    const char *wallpaper;
+    float minutes_of_charge;
+} phone;
+```
+
+In this example, `phone` is the alias for `struct cell_phone`. You can use this alias to refer to the struct wherever you need.
+
+```c
+phone p = {5557879, "sinatra.png", 1.35};
+```
+
+> There are 2 names you need to decide on: name of the struct (`struct cell_phone`) and the name of the type which is also called the alias (`phone`). You can also skip the name of the struct and simply refer to it by the alias. Even if you choose a name for the `struct`, you can always refer to it using the alias. Most of the time, if you create an alias for the `struct`, you won't need a name.
+
+```c
+typedef struct {
+    float tank_capacity;
+    int tank_psi;
+    const char *suit_meterial;
+} equipment;
+
+typedef struct scuba {
+    const char *name;
+    equipment kit;
+} diver;
+
+void badge(diver d) {
+    printf("Name: %s Tank: %2.2f(%i) Suit: %s\n", d.name, d.kit.tank_capacity, d.kit.tank_psim d.kit.suit_material);
+}
+
+int main() {
+    diver randy = {"Randy", {5.5, 3500, "Neoprene"}};
+    badge(randy);
+    return 0;
+}
+```
+
+### Updating `struct` instances
+
+To update a struct, you can use the `.` notation:
+
+```c
+fish snappy = {"Snappy", "piranha", 69, 4};
+snappy.teeth = 68;
+```
+
+### `struct`s in memory
+
+When you define a `struct` you are not actually creating anything in memory. But when you define a new variable, the computer will need to create some space in memory for an **instance** of the `struct`. That space in memor will need to be big enough to contain all of the fields within the `struct`.
+
+If you assign a `struct` to another variable, the computer will create a new copy of the struct. This means that it will need to allocate another piece of memory of the same size, and then copy over each of the fields.
+
+```c
+struct fish snappy = {"Snappy", "piranha", 69, 4};
+struct fish gnasher = snappy;
+```
+
+In this example, `gnasher`, the new instance of the `struct`, will point to the same string literals as `snappy`.
+
+![struct-in-memory](/images/c/struct_in_memory.png);
+
+### `structs` passed as function arguments
+
+Remember that whenever you pass a data using its variable to a function, what the function receives is not the data itself, but it is a copy of the data. So if you modify the data in the function, the original data will still remain untouched. In other words, in C, paramteres are passed to functions **by value**. It is as if the function now has a clone of the original data.
+
+In order to be able to modify the original struct instance in a function, you need a pointer to the struct.
+
+> Reminder: When you passed a variable to the `scanf` function, you could not pass the variable itself, you had to pass a pointer. That is because if you tell the `sacnf` function where the variable lives in memory, then the function will be able to update the data stored at that place in memory, which means it can update the variable. You can do the same with struct updates.
+
+If you want a function to update a struct instance, you can't just pass the struct as a parameter because that will simply send a copy of the data to the function. Instead, you need to pass the address of the struct instance using the `&` operator, and you also need to define your function in a way that it would receive a pointer:
+
+```c
+void happy_birthday(turtue *t) {
+    (*t).age = (*t).age + 1;
+    printf("Happy birthday %s! You are now %i years old!\n", (*t).name, (*t).age);
+}
+
+// some code
+happy_birthday(&mytrtle)
+```
+
+> Notice that `(*t).age` and `*t.age` are very different. The first one is the age of the turtle struct referred to by `*t`. The second one is the value stored at the address given by `t.age`. So `*t.age` is really `*(t.age)`. To make this easier, inventors of C came up with another syntax. So `(*t).age` can be written as `t->age`. This means that you can use it in a function like this:
+
+```c
+void happy_birthday(turtue *a) {
+    a->age = a->age + 1;
+    printf("Happy birthday %s! You are now %i years old!\n", a->name, a->age);
+}
+
+// some code
+happy_birthday(&mytrtle)
 ```
 
 # Standard input and output
