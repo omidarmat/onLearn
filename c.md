@@ -1,3 +1,82 @@
+- [C programming setup](#c-programming-setup)
+- [The `main` function](#the-main-function)
+  - [Running `main` with command-line arguments](#running-main-with-command-line-arguments)
+  - [Running `main` with command-line options](#running-main-with-command-line-options)
+- [Understanding the memory structure](#understanding-the-memory-structure)
+  - [Stack](#stack)
+  - [Heap](#heap)
+  - [Globals](#globals)
+  - [Constants](#constants)
+  - [Code](#code)
+- [Side notes](#side-notes)
+  - [Inspect program's exit status](#inspect-programs-exit-status)
+  - [Object and memory in C](#object-and-memory-in-c)
+- [Data types](#data-types)
+  - [List of data types in C](#list-of-data-types-in-c)
+    - [`char`](#char)
+    - [`int`](#int)
+    - [`short`](#short)
+    - [`long`](#long)
+    - [`float`](#float)
+    - [`double`](#double)
+    - [`unsigned` keyword](#unsigned-keyword)
+    - [`long` keyword](#long-keyword)
+  - [Putting big values in small variables](#putting-big-values-in-small-variables)
+  - [Casting](#casting)
+  - [`struct`s](#structs)
+    - [Nesting `struct`s](#nesting-structs)
+    - [`struct` alias](#struct-alias)
+    - [Updating `struct` instances](#updating-struct-instances)
+    - [`struct`s in memory](#structs-in-memory)
+    - [`structs` passed as function arguments](#structs-passed-as-function-arguments)
+  - [`union`s](#unions)
+    - [`union`s and `struct`s](#unions-and-structs)
+  - [`enum`s](#enums)
+  - [`bitfield`s](#bitfields)
+- [Standard input and output](#standard-input-and-output)
+  - [Standard error](#standard-error)
+  - [Connecting output to input](#connecting-output-to-input)
+- [Header files](#header-files)
+  - [`<stdio.h>`](#stdioh)
+    - [`printf()`](#printf)
+    - [`scanf()`](#scanf)
+    - [`fopen()`](#fopen)
+      - [Entering numbers with `scanf`](#entering-numbers-with-scanf)
+      - [Buffer overflow with `scanf`](#buffer-overflow-with-scanf)
+    - [`fgets()`](#fgets)
+  - [`<stdlib.h>`](#stdlibh)
+  - [`<string.h>`](#stringh)
+    - [`strchr()`](#strchr)
+    - [`strstr()`](#strstr)
+    - [`strcmp()`](#strcmp)
+    - [`strcpy()`](#strcpy)
+    - [`strlen()`](#strlen)
+    - [`strcat()`](#strcat)
+  - [`<unistd.h>`](#unistdh)
+    - [`getopt()`](#getopt)
+  - [`<limits.h>`](#limitsh)
+  - [`<float.h>`](#floath)
+  - [Your own header files](#your-own-header-files)
+    - [Frsutrating problems](#frsutrating-problems)
+  - [The make tool](#the-make-tool)
+    - [How make works](#how-make-works)
+    - [The `makefile`](#the-makefile)
+- [Working with strings](#working-with-strings)
+  - [Defining strings](#defining-strings)
+    - [Define a pointer variable for a literal string](#define-a-pointer-variable-for-a-literal-string)
+    - [Define an array variable for a literal string](#define-an-array-variable-for-a-literal-string)
+  - [Passing strings to a function](#passing-strings-to-a-function)
+  - [Defining a sequence of strings](#defining-a-sequence-of-strings)
+- [Pointers](#pointers)
+  - [How to work with pointers](#how-to-work-with-pointers)
+  - [Pointers and arrays](#pointers-and-arrays)
+    - [Pointer decay](#pointer-decay)
+  - [Pointers have types](#pointers-have-types)
+- [Data structures and Dynamic memory](#data-structures-and-dynamic-memory)
+  - [Linked list](#linked-list)
+    - [Creating a linked list](#creating-a-linked-list)
+    - [Inserting values into the linked list](#inserting-values-into-the-linked-list)
+
 # C programming setup
 
 In order to be able to write and execute C programs, you need to have `gcc` compiler installed on your machine. You would then write your programs in files with `.c` extension (e.g. `code.c`).
@@ -353,7 +432,7 @@ happy_birthday(&mytrtle)
 > Notice that `(*t).age` and `*t.age` are very different. The first one is the age of the turtle struct referred to by `*t`. The second one is the value stored at the address given by `t.age`. So `*t.age` is really `*(t.age)`. To make this easier, inventors of C came up with another syntax. So `(*t).age` can be written as `t->age`. This means that you can use it in a function like this:
 
 ```c
-void happy_birthday(turtue *a) {
+void happy_birthday(turtle *a) {
     a->age = a->age + 1;
     printf("Happy birthday %s! You are now %i years old!\n", a->name, a->age);
 }
@@ -1268,3 +1347,61 @@ Every time you pass an array to a function, you'll decay to a pointer, so it is 
 We can do arithmatic operations with pointers. But this arithmatic is sneaky. If you add 1 to a `char` pointer, the pointer will point to the very next memory address. But that is just because a `char` occupies 1 byte of memory. With `int` pointer, knowing that integers usually take 4 bytes of space, if you add 1 to the pointer, the compiled code will actually add 4 to the memory address. So the pointer types exist so that the compiler knows how much to adjust the pointer arithmatic.
 
 > Pointer arithmatics is the actual reason why array indexes start from 0.
+
+# Data structures and Dynamic memory
+
+It is interesting to know that C does not really come with any data structures built in. You have to create them yourself.
+
+## Linked list
+
+When you need to store a list of some data and you are not sure about the length of this list, an array might not be a good choice. You would probably have to use a **linked list**.
+
+Linked lists of like chains of data. It is also an example of an **abstract data structure**. It is called abstract because a linked list is _general_: it can be used to store a lot of different kinds of data.
+
+A linked list stores **a piece of data**, and **a link to another piece of data**. In such list, as long as you know where the list starts, you can travel along the list of links, from one of piece of data to the next, until you reach the end of the list. With linked lists, it is really easy to insert a new piece of data into the list, even in the middle. But with arrays, it is really hard to insert new data in the middle. Therefore, linked lists allow you to store a **variable amount of data** and they make it simple to **add more data**.
+
+### Creating a linked list
+
+Each one of the `struct`s in the list will need to connect to the one next to it. A `struct` that contains a link to another `struct` of the same type is called a **recursive structure**. This is how you define a recursive `struct` for a linked list:
+
+```c
+typedef struct island {
+    char *name;
+    char *opens;
+    char *closes;
+    struct island *next;
+} island;
+```
+
+> Remember that when you use the `typedef` command you can normally skip giving the `struct` a name. Here, however, notice that you MUST give the structure a name, and you cannot omit it like you did before. This is because you need to refer to the `struct` inside itself since it is a recursive structure.
+
+To store a link from one struct the next, you need a **pointer**. So the island data will contain the address of the next island. Whenever our code is at one island, it will always be able to hop over to the next island.
+
+Let's now, as an example, create some islands:
+
+```c
+island amity = {"Amity", "09:00", "17:00", NULL};
+island craggy = {"Craggy", "09:00", "17:00", NULL};
+island isla_nublar = {"Isla Nublar", "09:00", "17:00", NULL};
+island shutter = {"Shutter", "09:00", "17:00", NULL};
+```
+
+> Notice that `NULL` in C has the value of 0, but it is set aside for setting pointers.
+
+Let's now link these islands together:
+
+```c
+amity.next = &craggy;
+craggy.next = &isla_nublar;
+isla_nublar.next = &shutter;
+```
+
+### Inserting values into the linked list
+
+You can insert islands just like you did earler, by changing the values of the pointers between islands:
+
+```c
+island skull = {"Skull", "09:00", "17:00", NULL};
+isla_nublar.next = &skull;
+skull.next = &shutter;
+```
