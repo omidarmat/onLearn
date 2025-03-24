@@ -445,6 +445,99 @@ In the dot notation used above, you can see that `.amount` is for the `struct` a
 >
 > But later in your code you might try to read `order.count` by mistake. Some programmers create an `enum` to avoid making such mistakes with unions.
 
+## `enum`s
+
+Sometimes you don't want to store a number or a piece of test. Instead, you want to store something from a **limited list of symbols**. If you want to record a day of the week, you only want to store "MONDAY", "TUESDAY", "WEDNESDAY", etc. You don't need to store the text, because there are only ever going to be seven different values to choose from. To create an `enum` you do this:
+
+```c
+enum colors {RED, GREEN, PUCE};
+```
+
+> You can also give the enum a proper name using `typedef`.
+
+Any variable defined with a type of `enum colors` can then only be set to one of the keywords in the list. Here is how you can define an `enum colors` variable:
+
+```c
+enum colors favorite = PUCE;
+```
+
+Under the hood, the computer will just assign numbers to each of the symbols in your list, and the `enum` will just store a number. But you don't need to worry about what the numbers are, your C code can just refer to the symbold. Advantages of using `enum`s are:
+
+1. Your code becomes easier to read
+2. It will prevent storing values like `REB` or `PUSE` by mistake
+
+Now how do `enum`s help you keep track of `union`s? Here is an example:
+
+```c
+#include <stdio.h>
+
+typedef enum {
+    COUNT, POUNDS, PINTS
+} unit_of_measure;
+
+typedef union {
+    short count;
+    float weight;
+    float volume;
+} quantity;
+
+typedef struct {
+    const char *name;
+    const char *country;
+    quantity amount;
+    unit_of_measure units;
+} fruit_order;
+
+void display(fruit_order order) {
+    printf("This order contains");
+
+    if(order.units == PINTS)
+        printf("%2.2f pints of %s\n", order.amount.volume, order.name);
+    else if (order.units == POUNDS)
+        printf("%2.2f  lbs of %s\n", order.amount.weight, order.name);
+    else
+        printf("%i %s\n", order.amount.count, order.name);
+}
+
+int main() {
+    fruit_order apples = {"apples", "England", .amount.count = 144, COUNT};
+
+    fruit_order strawberries = {"strawberries", "Spain", .amount.weigt = 17.6, POUNDS};
+
+    fruit_order oj = {"orange juice", "U.S.A", .amount.volume = 10.5, PINTS};
+
+    display(apples);
+    display(strawberries);
+    display(oj);
+    return 0;
+}
+```
+
+## `bitfield`s
+
+Let's say you need a `struct` that will contain a lot of yes/no values. You could create the `struct` with a series of `short`s, but the problem is that `short` fields will take up a lot more space than the **single bit** that you need for **true/false** values. This is where `bitfield`s come to play.
+
+A `bitfield` lets you specify how many bits an individual field will store. For instance, you could write your `struct` like this:
+
+```c
+typedef struct {
+    unsigned int low_pass_vcf:1;
+    unsigned int filter_coupler:1;
+    unsigned int reverb:1;
+    unsigned int sequential:1;
+} synth;
+```
+
+Notice that `:1` at the end of each declaration line means that the field will only use 1 bit of storage.
+
+> It is important to notice that if you have a sequence of bitfields, the computer can squash them together to save space. In other words, bitfields can save space if they are collected together in a `struct`. But if the compiler finds a single bitfield on its own, it might still have to pad it out to the size of a word. That is why bitfields are usually grouped together. So if you have 8 single-bit bitfields, the computer cna store them in a single byte.
+
+> Notice that bitfields can also be useful for other short-range values like months of the year. If you want to store a month number in a `struct`, you know it will have a value between 0 and 11. So you would only need 4 bits of space to store this type of value. That will be:
+>
+> ```c
+> unsigned int month_no:4;
+> ```
+
 # Standard input and output
 
 There is a fundamental concept you need to understand about each and every program running on an operating system. There are three communicating channels or **data streams** established by the operating system for the program: Standard Input, Standard Output, and Standard Error. This way, the operating system controls how data gets into and out of the standard input and output. If you run a program from the command prompt or terminal, the operating system will send all of the keystrokes from the keyboard into the standard input. If the operating system reads any data from the standard output, by default, it will send that data to the display. There is a very good reason why operating systems commiunucate with programs using the standard input and standard output: You can **redirect** the standard input and standard output so that they read and write data somehwere else, such as to and from **files**.
