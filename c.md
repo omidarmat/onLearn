@@ -56,6 +56,9 @@
     - [`getopt()`](#getopt)
   - [`<limits.h>`](#limitsh)
   - [`<float.h>`](#floath)
+  - [`<stdlib.h>`](#stdlibh-1)
+    - [`malloc()`](#malloc)
+    - [`free()`](#free)
   - [Your own header files](#your-own-header-files)
     - [Frsutrating problems](#frsutrating-problems)
   - [The make tool](#the-make-tool)
@@ -76,6 +79,8 @@
   - [Linked list](#linked-list)
     - [Creating a linked list](#creating-a-linked-list)
     - [Inserting values into the linked list](#inserting-values-into-the-linked-list)
+  - [Dynamic storage](#dynamic-storage)
+    - [Using dynamic memory](#using-dynamic-memory)
 
 # C programming setup
 
@@ -914,6 +919,18 @@ int main() {
 
 > The values may differ on different machines.
 
+## `<stdlib.h>`
+
+This library includes functions to manage [dynamic memory](#dynamic-storage).
+
+### `malloc()`
+
+This function is used to allocate space dynamically from the heap for a specific data. This function is, most of the times, used with `sizeof` operator to detemine the byte size of space that is needed to store some data. The function returns a pointer to the allocated space.
+
+### `free()`
+
+This function is used to free up a space that was previously allocated to some data using the `malloc` function. The function receives the pointer that was received previously by the `malloc` function.
+
 ## Your own header files
 
 To create your own header files, you need to do 2 things:
@@ -1405,3 +1422,64 @@ island skull = {"Skull", "09:00", "17:00", NULL};
 isla_nublar.next = &skull;
 skull.next = &shutter;
 ```
+
+## Dynamic storage
+
+When you need to create a linked list according to a list of data which is going to grow continously, you need some way to create dynamic storage because you don't from beforehand how much memory you need to allocate to your program.
+
+Up until this point, you have uses static storage, meaning that every time you wanted to store something, you have added a **variable** to the code. Those variables have generally been stored in the **stack**.
+
+> Remember that stack is the area of memory set aside for storing local variables.
+
+Using variables and static storage is what you did in the examples mentioned above when you did this:
+
+```c
+island amity = {"Amity", "09:00", "17:00", NULL};
+island craggy = {"Craggy", "09:00", "17:00", NULL};
+island isla_nublar = {"Isla_nublar", "09:00", "17:00", NULL};
+island shutter = {"Shutter", "09:00", "17:00", NULL};
+```
+
+This piece of code will alawys create exactly 4 islands. If you wanted the code to store more than 4 islands, you would need another local variable. That is fine if you know how much data you need to store at compile time, but quite often, programs don't know how much storage they need until runtime. For instance, if you are writing a web browser, you won't know how much data you will need to store a web page until you read the web page. So C programs need some way to tell the operating system that they need a little extra storage at the moment they need it. This, in other words, means that programs need **dynamic storage**. You can use the **heap** for dynamic storage.
+
+Most of the memory you have been using so far has been in the stack. Stack is for local variables. Each piece of data is stored in a variable, and each variable disappears as soon as you leave its function.
+
+The trouble is that it is harder to get more storage on the stack at runtime, and that is where the **heap** comes in. The heap is the place where a program stores data that will need to be available longer term. It won't automatically get cleared away, so that means that it is the perfect place to store data structures like our linked list.
+
+### Using dynamic memory
+
+Imagine your program suddenly finds it has a large amount of data that it needs to store at runtime. So you need access dynamic memory. Follow these steps:
+
+1. Get your memory with `maclloc`: In C you ask for storage dynamically using the `malloc()` function. You should tell this function exactly how much memory you need. The function will, in turn, ask the operating system to set that much memory aside in the heap. The function would finally return a **pointer** to the new heap space. This allows you access to the memory and it can also be used to keep track of the storage that has been allocated.
+
+The `malloc` function receives a single parameter, which is the number of bytes that you need. Since most of the time you probably don't know how much memory you need in bytes, the function is almost always used with an operator called `sizeof` like this:
+
+```c
+#include <stdlib.h>
+
+// some other code
+
+malloc(sizeof(island));
+// This means give me enough space to store an island struct
+```
+
+Notice that `sizeof` can tell you how many bytes a particular **data type** occupies on your system. It might be a `struct` or it could be some base data type, like `int` or `double`.
+
+The `malloc` function returns a pointer containing the start address of the allocated chunk of memory. This pointer is a **general-purpose** pointer with type `void*`. You can store this pointer in a pointer variable:
+
+```c
+island *p = malloc(sizeof(island));
+// This means create enough space for an island, and store the address in variable "p"
+```
+
+2. Free memory by calling the `free` function: The important thing to keep in mind is that you should give the memory back when you are done with it. When you were just using the stack, you didn't need to worry about returning memory; it all happened automatically. The heap is different. Once you have asked for space on the heap, it will never be available for anything else until you explicitly tell C that you are finished with it.
+
+> There is only so much heap memory available, so if your code keeps asking for more and more heap space, your program will quickly start to develop **memory leaks**. A memory leak happens when a program asks for more and more memory without releasing the memory it no longer needs. Memory leaks are among the most common bugs in C programs, and they can be really hard to track down.
+
+You can use the pointer that you are given by the `malloc` function to access the data and then, when you are finished with the storage, to release the memory using the `free` function. This way the previously allocated and now freed space can be reused for another data. If you have stored the pointer in a variable called `p`, you can use it to free the allocated space.
+
+```c
+free(p);
+```
+
+> Every time some part of your code requests heap storage with the `malloc` function, there should be some other part of your code that hands the storage back with the `free` function. When your program stops running, all of its heap storage will be released automatically, but it is always good practice to explicitly call `free()` on every piece of dynamic memory you have created.
