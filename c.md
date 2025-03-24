@@ -362,6 +362,89 @@ void happy_birthday(turtue *a) {
 happy_birthday(&mytrtle)
 ```
 
+## `union`s
+
+Imagine you need to create a `struct` in which you need a `quantity` field that can hold numeric values of amount (`short`), weight (`float`), volume (`float`), etc. In C, you can do this by using a `union`. So it basically allows you to reuse memory space.
+
+Every time you create an instance of a `struct`, the computer will lay out the fields in memory, one after another. A `union`, however, is different. A `union` will use the space for just one of the fields in its definition. So, if you have a `union` called `quantity`, with fields called `count`, `weight`, and `volume`, the computer will give the `union` enough space for its largest field, and then leave it up to you which value you will store in there. Whether you set the `count`, `weight`, or `volume` field, the data will go into the same space in memory
+
+To define a `union` you can use this syntax:
+
+```c
+typedef union {
+    short count;
+    float weight;
+    float volume;
+} quantity;
+```
+
+To set the value for the union you can choose between 2 options:
+
+1. Setting value for the first field: In the example above, the first field is `count`. If you want to set a value for the `count` field of the union, you can use this syntax:
+
+```c
+quantity q = {4};
+```
+
+> This is the C89 style.
+
+2. Setting value for other fields: There are 2 options here. You can use either the **designated initializers** or the **dot notation**.
+
+```c
+// designated initializers (C99) - also works for structs
+quantity q = {.weight=1.5};
+
+// dot notation - does NOT work for structs
+quantity q;
+q.volume = 3.7;
+```
+
+So the `union` just gives you a way of creating a variable that supports several different data types.
+
+> Designated initializers can be used to set the initial values of fields in structs as well.
+
+```c
+typedef struct {
+    const char *color;
+    int gears;
+    int height;
+} bike;
+
+bike b = {.height = 17, .gears = 21};
+```
+
+### `union`s and `struct`s
+
+You can use your `union` value anywhere you would use another data type like an `int` or `struct`. For instance:
+
+```c
+typedef struct {
+    const char *name;
+    const char *country;
+    quantity amount;
+} fruit_order;
+```
+
+You can then access the values in the `struc`/`union` combination using the **dot notation** or the `->` notation:
+
+```c
+fruit_order apples = {"apples", "England", .amount.weight = 4.2};
+printf("This order containes %2.2f lbs of %s\n", apples.amount.weight, apples.name)
+```
+
+In the dot notation used above, you can see that `.amount` is for the `struct` and `.weight` is for the `union`.
+
+> There is a big problem when using unions. When you set a value for one field of a union, you may try to read some other field of the union by mistake, and C will not stop you from doing this mistake. For instance you have a `cupcake` union like this:
+>
+> ```c
+> typedef union {
+>   float weight;
+>   int count;
+> }
+> ```
+>
+> But later in your code you might try to read `order.count` by mistake. Some programmers create an `enum` to avoid making such mistakes with unions.
+
 # Standard input and output
 
 There is a fundamental concept you need to understand about each and every program running on an operating system. There are three communicating channels or **data streams** established by the operating system for the program: Standard Input, Standard Output, and Standard Error. This way, the operating system controls how data gets into and out of the standard input and output. If you run a program from the command prompt or terminal, the operating system will send all of the keystrokes from the keyboard into the standard input. If the operating system reads any data from the standard output, by default, it will send that data to the display. There is a very good reason why operating systems commiunucate with programs using the standard input and standard output: You can **redirect** the standard input and standard output so that they read and write data somehwere else, such as to and from **files**.
