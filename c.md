@@ -1315,7 +1315,7 @@ int value_stored = *address_of_x;
 
 C behaves a little complicated when it comes to array variables and pointers. Let's review some facts from before.
 
-Array variables are like pointers. They are NOT pointers, but they can be used a pointers. When you define an array like this:
+Array variables are like pointers. They are NOT pointers, but they can be used as pointers. When you define an array like this:
 
 ```c
 char quote[] = "Cookies make you fat";
@@ -1442,6 +1442,8 @@ island shutter = {"Shutter", "09:00", "17:00", NULL};
 
 This piece of code will alawys create exactly 4 islands. If you wanted the code to store more than 4 islands, you would need another local variable. That is fine if you know how much data you need to store at compile time, but quite often, programs don't know how much storage they need until runtime. For instance, if you are writing a web browser, you won't know how much data you will need to store a web page until you read the web page. So C programs need some way to tell the operating system that they need a little extra storage at the moment they need it. This, in other words, means that programs need **dynamic storage**. You can use the **heap** for dynamic storage.
 
+> Heap is called heap because it is just a big heap of data! The computer does not automatically organize it. C does not contain garbage collection (unlike languages like JavaScript). C is an old language and when it was invented, most languages didn't do automatic garbage collection.
+
 Most of the memory you have been using so far has been in the stack. Stack is for local variables. Each piece of data is stored in a variable, and each variable disappears as soon as you leave its function.
 
 The trouble is that it is harder to get more storage on the stack at runtime, and that is where the **heap** comes in. The heap is the place where a program stores data that will need to be available longer term. It won't automatically get cleared away, so that means that it is the perfect place to store data structures like our linked list.
@@ -1483,3 +1485,5 @@ free(p);
 ```
 
 > Every time some part of your code requests heap storage with the `malloc` function, there should be some other part of your code that hands the storage back with the `free` function. When your program stops running, all of its heap storage will be released automatically, but it is always good practice to explicitly call `free()` on every piece of dynamic memory you have created.
+
+> IMPORTANT: Data structures are useful, but you should be careful about them. You need to be careful when you create these data structures using C. If you don't keep proper track of the data you are storing, there is a rist that you will leave old dead data on the heap. Over time, this will start to eat away at the memory on your machine, and it might cause your program to crash with memory errors. That means it is really important that you learn to track down and fix memory leaks in your code.
