@@ -81,6 +81,8 @@
     - [Inserting values into the linked list](#inserting-values-into-the-linked-list)
   - [Dynamic storage](#dynamic-storage)
     - [Using dynamic memory](#using-dynamic-memory)
+    - [`valgrind` to detect leaks](#valgrind-to-detect-leaks)
+      - [Using `valgrind`](#using-valgrind)
 
 # C programming setup
 
@@ -1487,3 +1489,29 @@ free(p);
 > Every time some part of your code requests heap storage with the `malloc` function, there should be some other part of your code that hands the storage back with the `free` function. When your program stops running, all of its heap storage will be released automatically, but it is always good practice to explicitly call `free()` on every piece of dynamic memory you have created.
 
 > IMPORTANT: Data structures are useful, but you should be careful about them. You need to be careful when you create these data structures using C. If you don't keep proper track of the data you are storing, there is a rist that you will leave old dead data on the heap. Over time, this will start to eat away at the memory on your machine, and it might cause your program to crash with memory errors. That means it is really important that you learn to track down and fix memory leaks in your code.
+
+### `valgrind` to detect leaks
+
+Memory leaks are among the hardest bugs to find in C programs. The truth is that many of the C programs available probably have some memory bugs buried deep inside them. One of the tools that can be used on Linux operating system to find memory leaks in C programs is `valgrind`. This tool can monitor the pieces of data that are allocated space on the heap. It works by creating its own **fake version** of `malloc`. When your program wants to allocate some heap memory, `valgrind` will intercept your calls to `malloc` and `free` and run its own versions of those functions. The `valgrind` version of `malloc` will take note of which piece of code is calling it and which piece of memory it allocated. When your program ends, `valgrind` will report back on any data that was left on the heap and tell you where in your code the data was created.
+
+#### Using `valgrind`
+
+To get the most out of `valgrind`, you need to make sure your executable contains **debug information**. Debug information is extra data that gets packed into your executable when it is compiled - things like the line number in the source file that a particular piece of code was compiled from. If the debug info is present, `valgrind` will be able to give you a lot more details about the source of your memory leak. To add debug info into your executable, you need to recompile the source with the `-g` switch:
+
+```
+gcc -g spies.c -o spies
+```
+
+> Debug information make your final executable larger and it may also make your program slightly slower. This is why your program is not compiled with this option by default.
+
+You can read more about `valgrind` at: http://valgrind.org
+
+To start `valgrind` use the `--leak-check=full` option along with the compiled program name in the command line:
+
+```
+valgrind --leak-check=full ./spies
+```
+
+You would most probably need to run your program through `valgrind` multiple times checking different scenarios. This way you can make sure you receive enough details from `valgrind` to help you find and fix the memory leak.
+
+> It is important to understand that memory leaks don't happen when data is created; they happen when the program loses all references to the data.
