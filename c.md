@@ -59,12 +59,14 @@
   - [`<stdlib.h>`](#stdlibh-1)
     - [`malloc()`](#malloc)
     - [`free()`](#free)
+    - [`qsort()`](#qsort)
+      - [Deeper into the comparator](#deeper-into-the-comparator)
   - [Your own header files](#your-own-header-files)
     - [Frsutrating problems](#frsutrating-problems)
   - [The make tool](#the-make-tool)
     - [How make works](#how-make-works)
     - [The `makefile`](#the-makefile)
-- [Working with strings](#working-with-strings)
+- [Strings](#strings)
   - [Defining strings](#defining-strings)
     - [Define a pointer variable for a literal string](#define-a-pointer-variable-for-a-literal-string)
     - [Define an array variable for a literal string](#define-an-array-variable-for-a-literal-string)
@@ -83,6 +85,10 @@
     - [Using dynamic memory](#using-dynamic-memory)
     - [`valgrind` to detect leaks](#valgrind-to-detect-leaks)
       - [Using `valgrind`](#using-valgrind)
+- [Functions](#functions)
+  - [Function names as pointers](#function-names-as-pointers)
+    - [Declaring function pointers](#declaring-function-pointers)
+    - [Passing function to function](#passing-function-to-function)
 
 # C programming setup
 
@@ -933,6 +939,65 @@ This function is used to allocate space dynamically from the heap for a specific
 
 This function is used to free up a space that was previously allocated to some data using the `malloc` function. The function receives the pointer that was received previously by the `malloc` function.
 
+### `qsort()`
+
+This is a sorting function that accepts a pointer to a **comparator function**, which will be used to decide if one piece of data is the same as, less than, or greater than another piece of data. This is what the function looks like:
+
+```c
+qsort(void *array, size_t length, size_t item_size, int (*compare)(const void *, const void *));
+```
+
+> Notice that `void *` pointer can point to anything. `size_t` is the size of a varible.
+
+The `qsort` function compares pairs of values over and over again, and if they are in the wrong order, the computer will switch them. Here comes the comparator function. This function will tell `qsort` which order a pair of elements should be in. It does this by returning 3 different values:
+
+1. If the first value is greater than the second value, it should return a **positive** number.
+2. If the second value is less than the second value, it should return a **negative** number.
+3. If the two values are equal, it should return **zero**.
+
+#### Deeper into the comparator
+
+The signature of the comparator function that `qsort` needs shows that it needs to take two `void` pointers given by `void *`.
+
+> Remember `void *` when we used `malloc`? A void pointer can store the address of any kind of data, but you always need to **cast** it to something more specific before you can use it.
+
+The `qsort` function works by comparing pairs of elements in the array and then placing them in the correct order. It compares the values by calling the comparator function that you give it.
+
+```c
+int compare_scores(const void *score_a, const void *score_b) {
+  // some code
+}
+```
+
+Values are always passed to the function as pointers, so the first thing you need to do it **get the integer values from the pointers**:
+
+```c
+int compare_scores(const void *score_a, const void *score_b) {
+  // This is casting the `void` pointer to an integer pointer
+  int a = *(int*)score_a;
+  int b = *(int*)score_b;
+}
+```
+
+Then you need to return a positive, negative, or zero value, depending on whether `a` is greater than, less than, or equal to `b`. For integers, it is very easy:
+
+```c
+int compare_scores(const void *score_a, const void *score_b) {
+  // This is casting the `void` pointer to an integer pointer
+  int a = *(int*)score_a;
+  int b = *(int*)score_b;
+
+  // Returning a value
+  return a - b;
+}
+```
+
+You then need to ask `qsort` to sort the array:
+
+```c
+qsort(scores, 7, sizeof(int), compare_scores);
+```
+
 ## Your own header files
 
 To create your own header files, you need to do 2 things:
@@ -1129,7 +1194,7 @@ Notice that `make` no longer needs to compile `launch.c` since it did not change
 
 > `make` is most commonly used to compile code. But it can also be used as a command-line installer, or a source control tool. In fact, you can use `make` for almost any task that you can perform on the command line.
 
-# Working with strings
+# Strings
 
 C is a more low-level than most other languages. Because of that, instead of strings, C uses something similar to strings: **an array of single characters**. With this in mind, in order to define a variable that can hold a string, we would actually have to define an **array** that its **elements** are single **characters** in addition to the arrays's **length**. This would look like:
 
@@ -1515,3 +1580,110 @@ valgrind --leak-check=full ./spies
 You would most probably need to run your program through `valgrind` multiple times checking different scenarios. This way you can make sure you receive enough details from `valgrind` to help you find and fix the memory leak.
 
 > It is important to understand that memory leaks don't happen when data is created; they happen when the program loses all references to the data.
+
+# Functions
+
+We are not going to review functions from the beginning here, but we are going to introduce advanced uses of functions. You will learn how to up you code's IQ by passing functions as parameters. There are actually still some ways to make your C functions a lot more powerful. This will eventually enable your code do more things without you having to write a lot more code.
+
+This basically means that you need more than just passing values to a function, so that function would act based on those values. This will not enable you to fully customize the functions behavior. You actually need to pass other code to a function to adjust the function's behavior based on your need.
+
+Take this `find` function as an example:
+
+```c
+void find() {
+    int i;
+    puts("Search results:");
+    puts("-----------------------");
+    for(i=0; i < ) {
+        if(strstr(ADS[i], "sports") && !strstr(ADS[i], "bieber")) {
+            printf("%s\n", ADS[i]);
+        }
+    }
+    puts("-----------------------");
+}
+```
+
+Imagine you wanted to check for 3 strings instead of 2, and also you would like to perform a more complicated check. If you had wrapping up a piece of code and handing that code to the function, it would be like passing the `find` function a testing machine that it could apply to each piece of data. This means the bulk of the `find` function would stay exactly the same. It would still contain the code to check each element in an array and display the same kind of ouput. But the test it applies against each element in the array would be done by the code that you pass to it.
+
+So you definately need to pass the name of a function to the `find` function. How is that possible? How do you say that a parameter stores the name of a function? And if you have a function name, how do you use it to call the function?
+
+## Function names as pointers
+
+Function names are actually a way of referring to a piece of code. This is essentially a pointer: a way of referring to something in memory. In C, function names are also pointer variables. When you create a function called `accelarate(int speed)` you are also creating a pointer variable called `accelarate`. Therefore, if you pass a function a parameter of type _function pointer_ you should be able to use the parameter to call the function it points to.
+
+### Declaring function pointers
+
+Usually it is easy to declare pointers in C. If you have a data type like `int`, you just need to add an asterisk `*` to the end of the data type name.
+
+```c
+int *a;
+```
+
+Unfortunately, C does not have a `function` data type, so you cannot declare a functin pointer with:
+
+```c
+// This does not work
+function *f;
+```
+
+C does not have a `function` data type because there is not just one type of function. When defining a function, you can vary a lot of things, such as:
+
+1. The return type
+2. The list of parameters
+
+The combination of these things is what defines the type of a function. That is why for function pointers, you need to use a slightly more complex notation.
+
+To create a pointer variable that can store the addess of these functions:
+
+```c
+int go_to_warp_speed(int speed)
+{
+// some code
+}
+
+char** album_names(char *artist, int year) {
+  // some code
+}
+```
+
+You can do this:
+
+```c
+int (*warp_fn)(int);
+warp_fn = go_to_warp_speed;
+warp_fn(4);
+
+char** (*names_fn)(char*, int);
+names_fn = album_names;
+char** results = names_fn("sacha Distel", 1972);
+```
+
+Notice that `warp_fn(4)` is actually calling the `go_to_warp_speed` function with `4` as `int` argument.
+
+> Notice that `*` comes before the function pointer, but after normal data type declarations.
+
+> Notice that `char**` is a pointer normally used to point to an array of strings.
+
+Once you have declared a function pointer variable, you can use it like any other variable. You can assign values to it, you can add it to arrays, and you can also pass it to functions.
+
+### Passing function to function
+
+To define a function in a way that it is capable of receving another function as argument, you can do:
+
+```c
+int some_finding_function(char *s) {
+  // some finding algorithm
+}
+
+void find(int(*match)(char*)) {
+  match("some char");
+}
+
+// To call the `find` function with the function passed into it:
+
+int main() {
+  find(some_finding_function);
+}
+```
+
+> Notice that any function you pass into the `find` function will be named `match` within the `find` function.
