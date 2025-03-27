@@ -64,9 +64,15 @@
   - [`<stdarg.h>`](#stdargh)
   - [Your own header files](#your-own-header-files)
     - [Frsutrating problems](#frsutrating-problems)
-  - [The make tool](#the-make-tool)
-    - [How make works](#how-make-works)
-    - [The `makefile`](#the-makefile)
+    - [The make tool](#the-make-tool)
+      - [How make works](#how-make-works)
+      - [The `makefile`](#the-makefile)
+    - [Your own libraries available all over your machine](#your-own-libraries-available-all-over-your-machine)
+      - [Sharing header files](#sharing-header-files)
+      - [Sharing object files](#sharing-object-files)
+    - [Creating an archive](#creating-an-archive)
+      - [Using your archive](#using-your-archive)
+      - [Some notes around your archives](#some-notes-around-your-archives)
 - [Strings](#strings)
   - [Defining strings](#defining-strings)
     - [Define a pointer variable for a literal string](#define-a-pointer-variable-for-a-literal-string)
@@ -1030,9 +1036,9 @@ When the compiler reads the `#include` statement, it will read the contents of t
 
 Separating the declarations into a separate header file keeps your main code a little shorter. This technique is especially useful when you want to get yourself out of trouble with thinking about the order of function declarations in your program. This also has another big advantage.
 
-There are other situations when you need to reuse a specific functionality that you have written previously in multiple other programs. This basically means that you would have a special functionality written in a `.c` file, and you would like to share it in some other `.c` files. If the compiler can somehow include the shared code when it is compiling your program, you will be able to reuse the same code in multiple applications. But there is a problem. Up until this point you have only ever created programs from one single `.c` file. What we are talking about right now is a program that consists of multiple `.c` programs. In other words, you now want to give the compiler a set of source code files, and not just one source code file. It means that the compiler would have to create a single executable program from several files. How is it going to work?
+There are other situations when you need to re-use a specific functionality that you have written previously in multiple other programs. This basically means that you have a special functionality written in a `.c` file, and you would like to share it in some other `.c` files. If the compiler can somehow include the shared code when it is compiling your program, you will be able to re-use the same code in multiple applications. But there is a problem. Up until this point you have only ever created programs from one single `.c` file. What we are talking about right now is a program that consists of multiple `.c` programs. In other words, you now want to give the compiler a set of source code files, and not just one source code file. It means that the compiler would have to create a single executable program from several files. How is it going to work?
 
-1. To do this, you first need to create a header file for the shared code. If you are going to share the `encrypt.c` code between programs, you need some way to tell those programs about te encrypt code. You do this with a header file.
+1. To do this, you first need to create a header file for the shared code. If you are going to share the `encrypt.c` code between programs, you need some way to tell those programs about the encrypt code. You do this with a header file.
 
 ```c
 // encrypt.h
@@ -1043,6 +1049,8 @@ void encrypt(char *message);
 
 ```c
 // encrypt.c
+#include "encrypt.h";
+
 void encrypt(char *message) {
     char c;
     while (*message) {
@@ -1077,6 +1085,7 @@ gcc message_hider.c encrypt.c -o message_hider
 > You now know how to share functions between different files. But what if you want to share variables? Source code files normally contain their own separate variables to prevent a variable in one file affecting a variable in another file with the same name. But if you are really going to share variables, you should declare them in your header file and prefix them with `extern` keyword:
 >
 > ```c
+> // encrypt.h
 > extern int passcode;
 > ```
 
@@ -1120,11 +1129,11 @@ Then you perform the linking process to recreate the final executable file:
 gcc *.o -o launch
 ```
 
-> Notice that the linking process should be executed on all the object files, even of just one of the object files are updated.
+> Notice that the linking process should be executed on all the object files, even ff just one of the object files are updated.
 
 Ok, everything seems to work fine, but we have another problem. It is really hard to keep track of the files that have changed and remembering to use this solution only for the changed files. So it is true that partial compiles are a lot faster, but you really have to think more carefully to make sure you recompile everything you need. There should be a way to automate this process, and this is where the **Make** tool comes to play.
 
-## The make tool
+### The make tool
 
 Thinking about the source files and their object files this way enables us to automate this process: If `thruster.c` is newer than `thruster.o` regarding its timestamp, you need to recompile it, so as to update the object file with the new version of source code. If `thruster.o` is newer than `thruster.c`, then everything is fine and you don't need to recompile. This is exactly how the make tool works. Before being able to use the make tool, you need to tell `make` about your source code and how you want to build the code.
 
@@ -1137,7 +1146,7 @@ Together, the dependencies and the recipe form a **rule**.
 
 > The make tool is not limited to compiling files. A **target** is any file that is generated from some other file. So a target migh be a zip archive that is generated from the set of files that need to be compressed.
 
-### How make works
+#### How make works
 
 Let's go over an example. If you want to compile `thruster.c` into some object code in `thruster.o`, the **target** is the object file, and the **dependency** is the source `.c` file, because the compiler needs it to generate the object file. The recipe or the **rule** would be the compile command that you enter in terminal:
 
@@ -1155,7 +1164,7 @@ gcc *.o -o launch
 
 When `make` knows about all dependencies and rules, all you have to do is tell it to create the `launch` (final executable) file. Then `make` will take care of all the details.
 
-### The `makefile`
+#### The `makefile`
 
 All details about the targets, dependencies, and recipes need to be stored in a file called either `makefile` or `Makefile`. Imagine you have a set of source files that together create the `launch` executable program.
 
@@ -1200,6 +1209,143 @@ gcc launch.o thruster.o -o launch
 Notice that `make` no longer needs to compile `launch.c` since it did not change. The only file that was recompiled was `thruster.c`. Then it would also need to do the linking again and regenerate the executable `launch` file.
 
 > `make` is most commonly used to compile code. But it can also be used as a command-line installer, or a source control tool. In fact, you can use `make` for almost any task that you can perform on the command line.
+
+### Your own libraries available all over your machine
+
+Imagine you have written some pieces of code to produce a set of functions that are really useful when used together. For instance, an `encrypt()` function and a `checksum()` function can be used together for security purposes. This is a good case to build a security library and share it among many programs that live in different directories of your machine. So the security library must be available all over your machine. How could you do that?
+
+To do this, you need to share `.h` header files and `.o` object files between programs.
+
+#### Sharing header files
+
+To share header files you have 3 options:
+
+1. Store them in a standard directory: If you copy your header files into one of the standard directories, you can include them in your source code using angle brackets `<>`.
+
+```c
+#include <encrypt.h>
+```
+
+2. Put the full pathname in your include statement: If you want to store your header files somewhere else, such as `/my_header_files`, you can add the directory name to your `include` statement.
+
+```c
+#include "/my_header_files/encrypt.h"
+```
+
+3. You can tell the compiler where to find them: The final option is to tell the compiler where it can find your header files. You can do this with the `-I` option on GCC:
+
+```
+gcc -I/my_header_files test-code.c -o test_code
+```
+
+This will tell the GCC compiler that there is another place where it can find header files. It will still search in al lthe standard places, but first, it will check the directory names in the `-I` option.
+
+> On Unix-style systems like Mac or Linux, if you include headers using angle brackets, the compiler will look for the files under these directories:
+>
+> ```
+> /usr/local/include
+> often used for header files for third-party libraries.
+> this path will be checked first.
+>
+> /usr/include
+> used for operating system header files.
+> ```
+
+#### Sharing object files
+
+You can always put your `.o` object files into some sort of shared directory. Once you have done that, you can then just add the full path to the object files when you are compiling the program that uses them.
+
+```
+gcc -I/my_header_files test_code.c
+      /my_object_files/encrypt.o
+      /my_object_files/checksum.o -o test_code
+```
+
+Using the full pathname to the object files means you don't need a separate copy for each C project. In other words, if you compile your code with the full pathname to the object files you want to use, then all your C programs can share the same `encrypt.o` and `checksum.o` files.
+
+This works fine if you just have one or two object files to share, but what if you have a lot of them? Is there a way of telling the compiler about a bunch of object files? Yes! If you create an **archive** of object files, you can tell the compiler about a whole set of object files all at once. An archive is just **a bunch of object files wrapped up into a single file**. By creating a single archive file of all your security code, you can make it a lot easier to share the code between projects.
+
+> Object codes included in archives are completely different in different operating systems.
+
+### Creating an archive
+
+A file containing other files is called an archive file with a `.a` extension. You can look into an archive using the `nm` command in the terminal:
+
+```
+nm libl.a
+```
+
+This might be the returning report:
+
+```
+libl.a(libmain.o):
+00000000000003a8 s EH_frame0
+U _exit
+0000000000000000 T _main
+00000000000003c0 S _main.eh
+U _yylex
+libl.a(libyywrap.o):
+0000000000000350 s EH_frame0
+0000000000000000 T _yywrap
+0000000000000368 S _yywrap.eh
+```
+
+> `T` means 'text' which means it is a function. `T _main` means that `libmain.o` ocntains a `main()` function.
+
+This command lists the **names** that are stored inside the archive. The `libl.a` archive shown here contains two object files: `libmain.o` and `libyywrap.o`. Let's now see how we can store our `encrypt.o` and `checksum.o` files in an archive.
+
+You can use the `ar` (archive command) to store a set of object files in an archive file:
+
+```
+ar -rcs libhfsecurity.a encrypt.o checksum.o
+```
+
+Let's now examine the command in detail:
+
+- `r` in the options means the `.a` file will be updated if it already exists.
+- `c` in the options means the archive will be created without any feedback.
+- `s` in the options tells the command to create an index at the start of the `.a` file.
+- `libhfsecurity.a` is the name of the `.a` file to create.
+- The rest of the names are the files that will be stored in the archive.
+
+> The standard way of naming archives is `lib<something>.a`. The names start with `lib` because they are **static libraries**. We will learn about this later. Make sure you always follow this naming rule, otherwise your compiler will have problems tracking them down.
+
+You will then have to store the archive file in a library directory. You have a couple of choices:
+
+1. Standard directory: You can put your `.a` file in a standard directory like `usr/local/lib`. On Linux, Mac, and Cygwin, this directory is a good choice because that is the directory set aside for your own local custom libraries.
+2. Other directory: You can put the `.a` file in you own `/my_lib` directory if you are still developing your code, or if you don't feel comfortable installing your code in a system directory.
+
+#### Using your archive
+
+The whole point of creating a library archive was so you could use it with other programs. If you have installed your archive in a standard directory, you can compile your code using the `-l` switch:
+
+```
+gcc test_code.c -lhfsecurity -o test_code
+```
+
+Remember to list your source files before the `-l` switch. If you are using several archives, you can set several `-l` options.
+
+In case you put your archive somewhere else, like `/my_lib` you would have to use the `-L` option to say which directories to search:
+
+```
+gcc test_code.c -L/my_lib -lhfsecurity -o test_code
+```
+
+#### Some notes around your archives
+
+1. You can see what is inside your aarchive using this command:
+
+```
+ar -t <filename>
+```
+
+2. Object files in an archive are not linked together. They are stored in the archive as distinct files.
+3. You cannot put any kind of file in a library archive. The `ar` command will check the file type before including it.
+4. You can extract a single objcet file from an archive using this command:
+
+```
+ar -x libhfsecurity.a encrypt.o
+```
 
 # Strings
 
@@ -1760,3 +1906,5 @@ void print_ints(int args, ...) {
 > Macros might look just like functions, but they are different. A macro is used to rewrite your code before it is compiled. The macros we used in the example above hide secret instructions that tell the preprocessor how to generate lots of extra smart code inside your program, just before compiling it.
 
 > A variadic function needs to have at least one fixed argument in order to pass its name to `va_start`. You cannot have a variadic function with just variable arguments and no fixed arguments.
+
+> You can control the `va_list` using `va_start()`, `va_arg()`, and `va_end()`.
