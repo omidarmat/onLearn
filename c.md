@@ -61,6 +61,7 @@
     - [`free()`](#free)
     - [`qsort()`](#qsort)
       - [Deeper into the comparator](#deeper-into-the-comparator)
+  - [`<stdarg.h>`](#stdargh)
   - [Your own header files](#your-own-header-files)
     - [Frsutrating problems](#frsutrating-problems)
   - [The make tool](#the-make-tool)
@@ -89,6 +90,8 @@
   - [Function names as pointers](#function-names-as-pointers)
     - [Declaring function pointers](#declaring-function-pointers)
     - [Passing function to function](#passing-function-to-function)
+    - [Special case of automation](#special-case-of-automation)
+  - [Variadic functions](#variadic-functions)
 
 # C programming setup
 
@@ -998,6 +1001,10 @@ You then need to ask `qsort` to sort the array:
 qsort(scores, 7, sizeof(int), compare_scores);
 ```
 
+## `<stdarg.h>`
+
+This header file includes macros that help us define variadic functions. To learn more, refer to [variadic functions](#variadic-functions).
+
 ## Your own header files
 
 To create your own header files, you need to do 2 things:
@@ -1687,3 +1694,69 @@ int main() {
 ```
 
 > Notice that any function you pass into the `find` function will be named `match` within the `find` function.
+
+### Special case of automation
+
+There is a special technique that is now available for us to use since we can declare function pointers. This technique involves function pointers and the `enum` data structure. Together, these two enable you to make automatic function calls without you having to decide which function to call in your code.
+
+Imagine you have a program in which you have defined 3 different functions called `DUMP`, `SECOND_CHANCE`, and `MARRIAGE`. You want to call these functions when you read some data, that in its structure, there is a `type` field holding either `DUMP`, `SECOND_CHANCE` or `MARRIAGE` values as an `enum` structure. So you want each of your functions to be called automatically according to the `type` field in the data. You can do this by defining an array of function pointers in the exact same order as the `enum` data.
+
+Let's see this example in more detail:
+
+```c
+// This is the enum structure of the field 'type' in your data
+enum response_type {DUMP, SECOND_CHANCE, MARRIAGE};
+
+// This is the array of function pointers to enable you call each function automatically based on the data present in the enum structure
+void (*replies[])(response)
+```
+
+You have defined an array called `replies`. This array contains pointers that point to functions. These functions have `void` return type and receive the `response` data structure as argument.
+
+Notice that an `enum` assigns numbers to the values you pass to it. Therefore, when you refer to a value of the `enum`, your program will actually refer to the number that relates to the value you are trying to access. This can be used to select a function pointer in the array of function pointers, and then call the function.
+
+```
+replies[SECOND_SHCNAGE] == second_chance
+```
+
+The big advantage of this techinque is that, if at some point in the future, you decide to add a new function to this list, you would only have to add the function name to the `enum` and the array of function pointers. You no longer need to implement the logic for calling that new function manually.
+
+## Variadic functions
+
+Remember working with the `printf` function? Remember how it could receive any number of arguments? You are now going to learn how to create such functions. This type of functions, which can receive a variable number of parameters, are called **variadic** functions. The C Standard Library contains a set of _macros_ that can help you create your own variadic functions.
+
+> You can think of macros as a special type of function that can modify your source code.
+
+For example, you can create a function that can print out series of `int`s:
+
+```c
+print_ints(3, 79, 101, 32);
+// The first argument (3) tells the number of ints to print
+// The rest of the arguments are the ints that should be printed
+```
+
+Here is the code to define this variadic function:
+
+```c
+#include <stdarg.h>
+// All the code to handle variadic functions is in this library
+
+void print_ints(int args, ...) {
+  // Notice that ellipsis (...) syntax is telling the function that besides the 'args' argument, there are more arguments to come
+  va_list ap;
+  // Creating a va_list type and name it 'ap'. The va_list will be used to store the extra arguments that are passed to your function.
+  va_start(ap, args);
+  // You need to tell C the name of the last fixed argument. In this case, it will be 'args'. Using the 'va_start' macro is the way to tell C where the variable arguments (as opposed to fixed arguments) start.
+  int i;
+  for(i = 0; i < args; i++) {
+    printf("argument: %i\n", va_arg(ap, int));
+  }
+  // Reading off the variable arguments in a loop, on at a time. Your arguments are all stored in the 'va_list'. You can read them with 'va_arg' macro which takes two values: the 'va_list' (which is 'ap' in our case) and the type of the next argument (which are all ints in our case).
+  va_end(ap);
+  // After finishing reading all of the arguments, you need to tell C that you are finished using the 'va_end' macro.
+}
+```
+
+> Macros might look just like functions, but they are different. A macro is used to rewrite your code before it is compiled. The macros we used in the example above hide secret instructions that tell the preprocessor how to generate lots of extra smart code inside your program, just before compiling it.
+
+> A variadic function needs to have at least one fixed argument in order to pass its name to `va_start`. You cannot have a variadic function with just variable arguments and no fixed arguments.
