@@ -67,12 +67,15 @@
     - [The make tool](#the-make-tool)
       - [How make works](#how-make-works)
       - [The `makefile`](#the-makefile)
-    - [Your own libraries available all over your machine](#your-own-libraries-available-all-over-your-machine)
-      - [Sharing header files](#sharing-header-files)
-      - [Sharing object files](#sharing-object-files)
-    - [Creating an archive](#creating-an-archive)
-      - [Using your archive](#using-your-archive)
-      - [Some notes around your archives](#some-notes-around-your-archives)
+  - [Your own libraries available all over your machine](#your-own-libraries-available-all-over-your-machine)
+    - [Sharing header files](#sharing-header-files)
+    - [Sharing object files](#sharing-object-files)
+  - [Creating an archive](#creating-an-archive)
+    - [Using your archive](#using-your-archive)
+    - [Some notes around your archives](#some-notes-around-your-archives)
+  - [Static vs. dynamic linking](#static-vs-dynamic-linking)
+    - [Dynamic libraries](#dynamic-libraries)
+      - [Creating dynamic libraries](#creating-dynamic-libraries)
 - [Strings](#strings)
   - [Defining strings](#defining-strings)
     - [Define a pointer variable for a literal string](#define-a-pointer-variable-for-a-literal-string)
@@ -1099,7 +1102,9 @@ when you use this command for example:
 gcc reaction_control.c pitch_motor.c engine.c after_burner.c -o launch
 ```
 
-The compiler will run the preprocessor, compiler and assembler for each source code file, even the ones that have not changed. This will then generate an **object code** for each file. If a file has not changed, its object code will not change also, so the same object code would be generated again, which is not necessary. Anyways, after generating all the object codes, they will all be passed to the compiler for the **linking** process, where object codes are linked to produce a final executable file. Now during development, when you change some small code in just one file, you don't want to regenerate object codes for all the files. The solution to this problem is to save copies of object codes during the compiling process and use them in the next compiling process if their source files have not changed. So generating object files will be done only for files that have changed. Then the liking process will be done again to recreate the final executable file. So, as a general solution, how do you tell GCC to save the object codes somewhere? And then how do you tell it to link the object files as a separate command?
+The compiler will run the preprocessor, compiler and assembler for each source code file, even the ones that have not changed. This will then generate an **object code** for each file. If a file has not changed, its object code will not change also, so the same object code would be generated again, which is not necessary. Anyways, after generating all the object codes, they will all be passed to the compiler for the **linking** process, where object codes are **linked** to produce a final executable file. Now during development, when you change some small code in just one file, you don't want to regenerate object codes for all the files. The solution to this problem is to save copies of object codes during the compiling process and use them in the next compiling process if their source files have not changed. So generating object files will be done only for files that have changed. Then the liking process will be done again to recreate the final executable file. So, as a general solution, how do you tell GCC to save the object codes somewhere? And then how do you tell it to link the object files as a separate command?
+
+> How does the linker work? Once you initiate the command to compile you code, the compiler works out what needs to be done to join some files together and then calls the linker. The linker stitches pieces of compiled code together, a bit like a telephone operator. The old telephone operators would patch calls from one location to another so the two parties could talk. An object file is like that. An object file might need to call a function that is stored in some other file. The linker link together the point in one file where the function call is made to the point in another file where the function lives.
 
 1. Compile source codes into object files: To do this you can use this command to compile all source codes (`.c`) into object codes:
 
@@ -1210,13 +1215,13 @@ Notice that `make` no longer needs to compile `launch.c` since it did not change
 
 > `make` is most commonly used to compile code. But it can also be used as a command-line installer, or a source control tool. In fact, you can use `make` for almost any task that you can perform on the command line.
 
-### Your own libraries available all over your machine
+## Your own libraries available all over your machine
 
 Imagine you have written some pieces of code to produce a set of functions that are really useful when used together. For instance, an `encrypt()` function and a `checksum()` function can be used together for security purposes. This is a good case to build a security library and share it among many programs that live in different directories of your machine. So the security library must be available all over your machine. How could you do that?
 
 To do this, you need to share `.h` header files and `.o` object files between programs.
 
-#### Sharing header files
+### Sharing header files
 
 To share header files you have 3 options:
 
@@ -1251,7 +1256,7 @@ This will tell the GCC compiler that there is another place where it can find he
 > used for operating system header files.
 > ```
 
-#### Sharing object files
+### Sharing object files
 
 You can always put your `.o` object files into some sort of shared directory. Once you have done that, you can then just add the full path to the object files when you are compiling the program that uses them.
 
@@ -1267,7 +1272,7 @@ This works fine if you just have one or two object files to share, but what if y
 
 > Object codes included in archives are completely different in different operating systems.
 
-### Creating an archive
+## Creating an archive
 
 A file containing other files is called an archive file with a `.a` extension. You can look into an archive using the `nm` command in the terminal:
 
@@ -1315,7 +1320,7 @@ You will then have to store the archive file in a library directory. You have a 
 1. Standard directory: You can put your `.a` file in a standard directory like `usr/local/lib`. On Linux, Mac, and Cygwin, this directory is a good choice because that is the directory set aside for your own local custom libraries.
 2. Other directory: You can put the `.a` file in you own `/my_lib` directory if you are still developing your code, or if you don't feel comfortable installing your code in a system directory.
 
-#### Using your archive
+### Using your archive
 
 The whole point of creating a library archive was so you could use it with other programs. If you have installed your archive in a standard directory, you can compile your code using the `-l` switch:
 
@@ -1331,7 +1336,7 @@ In case you put your archive somewhere else, like `/my_lib` you would have to us
 gcc test_code.c -L/my_lib -lhfsecurity -o test_code
 ```
 
-#### Some notes around your archives
+### Some notes around your archives
 
 1. You can see what is inside your aarchive using this command:
 
@@ -1346,6 +1351,68 @@ ar -t <filename>
 ```
 ar -x libhfsecurity.a encrypt.o
 ```
+
+## Static vs. dynamic linking
+
+You have already seen that you can build programs using different pieces of object code. You have created `.o` files and `.a` archives, and you have linked them together into a single executable. But once they are linked, you cannot change them. If you build programs like this, they are **static**. Once you have created a single executable file from the separate pieces of object code, you really have no way of changing any of the ingredients without rebuilding the whole program. Is there a way around this?
+
+The reason you cannot change the different pieces of object code in an executabl file is that they are all contained in a single file. They were statically linked together when the program was compiled. But if your program was not just a single file - if your program was made up of lots of separate files that only joined together when the program was run - you would avoid the problem.
+
+So the trick is to find a way of storing pieces of object code in separate files and then **dynamically linking** them together only when the program runs. But you have already got separate files containing object code: the `.o` files and the `.a` files. Does that mean you just need to tell the computer not to link the object files until you run the program? It is not that easy!
+
+Simple object files and archives don't have quite enough information in them to be linked together at runtime. There are other things our dynamic library files will need, like the **names of the other files** they need to link to.
+
+### Dynamic libraries
+
+Dynamic libraries are similar to those `.o` files you have been creating, but they are not quite the same. Like an archive file, a dynamic library can be built from several object files, but unlike an archive, the object files are properly linked together in a dynamic library to form a single piece of object code.
+
+![dynamic-library-character](/images/c/dynamic-library-character.png)
+
+How do you create your own dynamic libararies?
+
+#### Creating dynamic libraries
+
+1. Create an object file: Imagine you have a `hfcal.c` code which is going to act as your dynamic libarary. You first need to compile it into an object file like this:
+
+```
+gcc -I/includes -fPIC -c hfcal.c -o hfcal.o
+```
+
+> Remember `-c` means just compile and don't link. The `hfcal.h` header is in `/includes` directory.
+
+Compare this to the previous command you used. The only difference is the `-fPIC` flag. This flag tells GCC that you want to create **position-independent code**. Some operating systems and processors need to build libraries from position-independent code so that they can decide at runtime where they want to load it into memory.
+
+position-independent code is code that does not mind where the computer loads it into memory. Imagine you had a dynamic library that expected to find the value of some piece of global data 500 bytes away from where the library is loaded. Bad things would happen if the operating system decided to load the library somewhere else in memory. If the compiler is told to create position-independent code, it will avoid problems like this.
+
+> Some operating systems, like Windows, use a technique called **memory mapping** when loading dynamic libraries, which means all code is effectively position-independent. If you compile your code on Windows, you might find that GCC will give you a warning that the `-fPIC` option is not needed. You can either remove the `-fPIC` flag, or ignore the warning. Either way you code will be fine.
+
+> Dynamic libraries are available on most operating systems, and they all work in pretty much the same way. But what they are called can vary a lot. On Windows, dynamic libraries are usually called **dynamic link libraries** and they have the extension `.dll`. On Linux and Unix, they are **shared object files** with `.so` extension, and on Mac they are just called **dynamic libraries** with `.dylib` extension.
+
+2. Convert the object file into dynamic libraries: Even though the files have different extensions on different systems, you can create them in very similar ways:
+
+```
+gcc -shared hfcal.o -o
+```
+
+The `-shared` option tells GCC that you want to convert an `.o` object file into a dynamic library. When the compiler creates the dynamic library, it will store the name of the library inside the file. So if you create a library called `libhfcal.so` on Linux, the `libhfcal.so` file will remember that its library name is `hfcal`. This means that if you compile a library with one name, you cannot just rename the file afterward. If you need to rename a library, recompile it with the new name.
+
+3. Compile your program: Once you have created the dynamic library, you can use it just like a static lirary. So you can build your program (for instance called `elliptical`) like this:
+
+```
+gcc -I\include -c elliptical.c -o elliptical.o
+gcc elliptical.o -L\libs -lhfcal -o elliptical
+```
+
+Even though these are the same commands you would use if `hfcal` where a static archive, the compile will work differently. Because the library is dynamic, the compiler will not include the library code into the executable file. Instead, it will insert some placeholder code that will track down the library and link to it at runtime.
+
+4. Run your program:
+   - On a Mac: you can just run the program. When the program is compiled on the Mac, the full path to the `/libs/libhfcal.dylib` file is stored inside the executable, so when the program starts, it knows exactly where to find the library.
+   - On Linux: The compiler just records the filename of the `libhfcal.so` library, without including the path name. That means if the library is stored outside the standard libarary directories (like `/usr/lib`), the program will not have any way of finding the `hfcal` library. To get around this, Linux checks additional directories that are stored in the `LD_LIBRARY_PATH` variable. If you make sure your library directory is added to the `LD_LIBRARY_PATH` and if you make sure you **export** it - then your program will find `libhfcal.so`. To do this you can first use this command: `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/libs` and then run your program `./elliptical`. Notice that if the library is somehwere standard (like `/usr/lib`) there is no need to set the `LD_LIBRARY_PATH`.
+   - On Windows: Both Cygwin and MinGW versions of the GCC compiler create Windows DLL libraries and Windows executables. And just like Linux, Windows executables store the name of the `hfcal` library without the name of the directory where it is stored. But Windoes does not use a `LD_LIBRARY_PATH` variable to hunt the library down. Instead, Windows programs look for the library in the current directory, and if they don't find it there, the programs search for it using the directories stored in the `PATH` variable.
+     - Cygwin: If you have compiled the program using Cygwin, you can run the program from the _bash shell_ like this: `PATH="PATH:/libs"` and then run the program `./elliptical`.
+     - MinGW: If you have compiled the program using MinGW, you can run it from the command prompt using this command: `PATH="%PATH%:C:/libs"` and then run your program `./elliptical`.
+
+If all this seem a bit complex, you should know that this is why most programs that use dynamic libraries store them in one of the standard directories. On Linux or Mac, they are normally in directories like `/usr/lib` or `/usr/local/lib`, and on Windows developers normally keep `.dll`s stored in the same directory as the executable.
 
 # Strings
 
