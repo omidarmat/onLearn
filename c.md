@@ -101,6 +101,12 @@
     - [Passing function to function](#passing-function-to-function)
     - [Special case of automation](#special-case-of-automation)
   - [Variadic functions](#variadic-functions)
+- [Processes and system calls](#processes-and-system-calls)
+  - [System calls](#system-calls)
+  - [System calls with more control](#system-calls-with-more-control)
+    - [`exec()` functions replace the current process](#exec-functions-replace-the-current-process)
+    - [Different types of `exec()` functions](#different-types-of-exec-functions)
+      - [The list functions](#the-list-functions)
 
 # C programming setup
 
@@ -1975,3 +1981,84 @@ void print_ints(int args, ...) {
 > A variadic function needs to have at least one fixed argument in order to pass its name to `va_start`. You cannot have a variadic function with just variable arguments and no fixed arguments.
 
 > You can control the `va_list` using `va_start()`, `va_arg()`, and `va_end()`.
+
+# Processes and system calls
+
+You have already seen that you can build complex applications by connecting small tools together on the command line. But what if you want to use other programs from inside your own code? In this chapter, you will learn how to use **system services** to create and control **processes**. That will give your programs access to email, the web, and any other tool you have got installed. This will eventually give you power to go beyond C.
+
+## System calls
+
+C programs rely on the operating system for pretty much everything. They make **system calls** if they want to talk to the hardware. System calls are just **functions** that live inside the operating system's **kernel**. Most if the code in the C Standard Library depends on them. When you cal `printf()` to display something on the command line, somewhere at the back of things, a system call will be made to the operating system to send the string of text to the screen.
+
+Take `system()` as an example. This function takes a single string paramter and executes it as if you had typed it on the command line:
+
+```c
+system("dir D:");
+system("gedit");
+system("say 'End of line'");
+```
+
+The `system` function is an easy way of running other programs from your code. Take this code as an example:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+char* now()
+{
+time_t t;
+time (&t);
+return asctime(localtime (&t));
+}
+/* Master Control Program utility.
+Records guard patrol check-ins. */
+int main() {
+  char comment[80];
+  char cmd[120];
+
+  fgets(comment, 80, stdin);
+
+  sprintf(cmd, "echo %s %s >> reports.log", comment, now());
+
+  system(cmd);
+  return 0;
+}
+```
+
+The program reads a comment from the command line and calls the `echo` command to add the comment to the end of a file. Even though you could have written the whole program in C, by using `system()` you simplified the program and got it working with very little work.
+
+> The `system()` function does not get compiled into your program. This function - like all system calls - does not live in your program. It lives in the main operating system. When you make a system call, you are kind of making a call to some external piece of code, like a library. But the details depend on the operating system. On some operating systems, the code for a system call lives inside the kernel of the operating system. On other operating systems, it might simply be stored in some dynamic library.
+
+The code example above, has a major security problem. By injecting some command-line code into the text, you can make the program run whatever code you like. What is your code has been called from a web server? Or if it is processing data from a file? But security is not the only problem. You should also worry about:
+
+- What if the comments contain apostrophes? That might break the quotes in the command.
+- What if the `PATH` variable causes the `system()` function to call the wrong program?
+- What if the program we are calling needs to have a specific set of environment variables set up first?
+
+The `system()` function is easy to use, but most of the time, you are going to need something more structured - some way of calling a specific program, with a set of command-line arguments and maybe even some environment variables.
+
+> We said that on most machines, system calls are functions that live inside the **kernel** of the operating system. But what is the kernel? The kernel is the most important program on your computer, and it is in charge of 3 things:
+>
+> 1. Processes: No program can run on the system without the kernel loading it into memory. The kernel creates processes and makes sure they get the resources they need. The kernel also watches for processes that become too greedy or crash.
+> 2. Memory: your machine has a limited supply of memory, so the kernel has to carefully ration the amount of memory each process can take. The kernel can increase the virtual memory size by quietly loading and unloading sections of memory to disk.
+> 3. Hardware: The kernel uses device drivers to talk to the equipment that is plygged into the computer. Your program can use the keyboard and the screen and the graphics processor without knowing too much about them, because the kernel talks to them on your behalf.
+>
+> System calls are the functions your program uses to talk to the kernel.
+
+## System calls with more control
+
+When you call the `system()` function, the operating system has to interpret the command string and decide which programs to run and how to run them. And that is where the problem is: The operating system needs to interpret the string, and it is easy to get that wrong. So the solution is to remove the ambiguity and tell the operating system precisely which program you want to run. That is what the `exec()` functions are for.
+
+### `exec()` functions replace the current process
+
+A **process** is just a program running in memory. If you type `taskmgr` on Windows or `ps -ef` on most other machines you will see the processes running on your system. The operating system tracks each process with a number called the **Process Identifier (PID)**.
+
+The `exec()` functions replace the current process by running some other program. You can say which command-line arguments or environment variables to use, and when the program starts it will have exactly the same PID as the old one.
+
+### Different types of `exec()` functions
+
+Over time, programmers have created several different versions of `exec()`. Each version has a slightly different name and its own set of parameters. Even though there are lots of versions, there are really just two groups of `exec()` functions: The **list** functions and the **array** functions.
+
+#### The list functions
+
+The list functions accept command-line arguments as a list of parameters.
