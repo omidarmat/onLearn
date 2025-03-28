@@ -38,6 +38,7 @@
   - [Connecting output to input](#connecting-output-to-input)
 - [Header files](#header-files)
   - [`<stdio.h>`](#stdioh)
+    - [`puts()`](#puts)
     - [`printf()`](#printf)
     - [`scanf()`](#scanf)
     - [`fopen()`](#fopen)
@@ -57,6 +58,7 @@
   - [`<limits.h>`](#limitsh)
   - [`<float.h>`](#floath)
   - [`<stdlib.h>`](#stdlibh-1)
+    - [`atoi()`](#atoi)
     - [`malloc()`](#malloc)
     - [`free()`](#free)
     - [`qsort()`](#qsort)
@@ -705,6 +707,14 @@ This is probably the library that you will need to include in all your C code fi
 
 Here is a list of functions available in this library.
 
+### `puts()`
+
+This function receives a string literal and prints it to the screen.
+
+```c
+puts("C rocks!");
+```
+
 ### `printf()`
 
 This function is used to produce formatted output text. It can receive multiple arguments. The first argument is always the _format string_. The rest of the arguments will be values that are referenced in the format string. Here is an example:
@@ -948,6 +958,18 @@ int main() {
 ## `<stdlib.h>`
 
 This library includes functions to manage [dynamic memory](#dynamic-storage).
+
+### `atoi()`
+
+The function name stands for **ASCII To Integer**. It converts the numbers in string form to their integer value. It accepts a string (which represents an integer) as a parameter and yields an integer value in return.
+
+```c
+atoi("C");
+// returns 0 (as int)
+
+atoi("4");
+// returns 4 (as int)
+```
 
 ### `malloc()`
 
