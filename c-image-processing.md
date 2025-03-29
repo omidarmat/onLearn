@@ -16,7 +16,7 @@ Image file I/O routines need to read and write image files in a manner that free
 
 Here is code sample that shows what a programmer would like to write when creating a routine. The first three lines declare the basic variables needed. Line 3 creates the output image to be just like the input image (same type and size). The output image is needed because the routines cannot write to an image file that does not exist. Line 4 reads the size of the input image. The height and width are necessary to allocate the image array. The allocation takes place in line 5. The size (height and width) does not matter to the programmer. Line 6 reads the image array from the input file. The type of input file (Tiff or BMP) does not matter. Line 7 is where the programmer calls the desired processing routine. Line 8 write the resulting image array to the output file, and line 9 frees the memory array allocated in line 5.
 
-```c++
+```c
 char *in_name, *out_name;
 short **the_image;
 long height, width;
@@ -42,16 +42,11 @@ This was a high-level I/O routine. These routines are the top-level of a family 
 
 ## TIFF
 
-The goals of the TIFF specification are extensibility, portability, and
-revisability. TIFF must be extensible in the future. TIFF must be able to
-adapt to new types of images and data and must be portable between different
-computers, processors, and operating systems. TIFF must be revisable — it
-is not a read-only format. Software systems should be able to edit, process,
-and change TIFF files.
+The goals of the TIFF specification are extensibility, portability, and revisability. TIFF must be extensible in the future. TIFF must be able to adapt to new types of images and data and must be portable between different computers, processors, and operating systems. TIFF must be revisable — it is not a read-only format. Software systems should be able to edit, process, and change TIFF files.
 
 ### Tags
 
-TIFF stands for Tag Image File Format. Tag refers to the file's basic structure. A TIFF tag provides information about the image, such as its **width**, **length**, and **number of pixels**. Tags are organized in **tag directories**. Tag directories have no set length or number, since **pointers** lead from one directory to another. Here is a list of standard tags:
+TIFF stands for Tag Image File Format. Tag refers to the file's **basic structure**. A TIFF tag provides information about the image, such as its **width**, **length**, and **number of pixels**. Tags are organized in **tag directories**. Tag directories have no set length or number, since **pointers** lead from one directory to another. Here is a list of standard tags:
 
 ```
 SubfileType
@@ -89,24 +84,30 @@ BitsPerSample
     The number of bits per pixel. 2**BitsPerSample = # of gray levels
 ```
 
-The right-hand column in the figure above shows the structure of each directory entry. Each entry contains a tag indicating what type of information the file holds, the data type of the information, the length of the information, and a pointer to the information or the information itself.
+The right-hand column in the figure above shows the structure of each directory entry. Each entry contains a tag indicating **what type of information** the file holds, the **data type** of the information, the **length of the information,** and a pointer to the information or the information itself.
 
 This is the strucutre of a TIFF file:
-[image from page 13]
+
+![tiff-structure](/images/cips/tiff-structure.png)
 
 This is the beginning of a TIFF file:
-[image from page 14]
 
-The first 8 bytes of the file are the header. These 8 bytes have the same format on all TIFF files. The remainder of the file differs from image to image.
+![tiff-beginning](/images/cips/tiff-beginning.png)
 
-Bytes 0 and 1 tell whether the file stores numbers with the most significant byte(MSB) first, or least significant byte (LSB) first. If bytes 0 and 1 are II (0x4949), then the LSB is first (predominant in the PC world). If the value is MM (0x4D4D) the MSB is first (predominant in the Macintosh world). Your software needs to read both formats.
+The first 8 bytes of the file are the **header**. These 8 bytes have the same format on all TIFF files. The remainder of the file differs from image to image.
 
-Bytes 2 and 3 give the TIFF version number, which should be 42 (0x2A) in all TIFF images.
+Bytes 0 and 1 tell whether the file stores numbers with the most significant byte (MSB) first, or least significant byte (LSB) first. This is alse called **byte order** as it is visible in the structure of the TIFF file. If bytes 0 and 1 are II (0x4949), then the LSB is first (predominant in the PC world). If the value is MM (0x4D4D) the MSB is first (predominant in the Macintosh world). These values are converted from hexadecimal to ASCII text (`49` translates to `I` and `4D` translates to `M`). Your software needs to read both formats.
 
-Bytes 4 to 7 tive the offset to the first Image File Directory (IFD). The first byte in the file has the offset 0. The offset in the example above is 8, so the IFD begins in byte 9 of the file.
+Bytes 2 and 3 give the TIFF **version number**, which should be `42` (`0x2A`) in all TIFF images.
+
+Bytes 4 to 7 give the **offset to the first Image File Directory (IFD)**. The first byte in the file has the offset 0. The offset in the example above is 8 (`08 00 00 00` hex translates to `8` decimal), so the IFD begins in byte 9 of the file.
 
 > All offsets in TIFF indicate locations with respect to the beginning of the file.
 
 ### IFD
 
-The **IFD** (Image File Directory) contains the number of directory entries and the directory entry themselves. The content of address 8 is 27, meaining the this file has 27 12-byte directory entries. The first 2 bytes of the entry contain the tag, which tells the type of information the entry contains. The directory entry at location 0 contains `tag = 255`. This tag tells the file type. The next 2 bytes of the entry give the data type of the information. Directory entry 0 is `type = 3`, a short (2-byte unsigned integer). The next four bytes of the entry give the length of the information. This length is not in bytes, but rather in multiples of data type.
+The **IFD** (Image File Directory) contains the number of directory entries and the directory entry themselves. The content of address 8 is 27 (`1B` translates to `27`), meaining the this file has 27 12-byte (count the bytes on each directory entry) directory entries. The **first 2 bytes** of the entry contain the **tag**, which tells **the type of information the entry contains**. These first two bytes in the figure above are `FF 00` which means `tag = 255`. This tag tells the **file type**. The next 2 bytes of the entry give the **data type of the information**. These two bytes in the example above are `03 00` which is `type = 3`, a short (2-byte unsigned integer). The next four bytes of the entry give the length of the information. This length is not in bytes, but rather in multiples of the data type. If the data type is a short and the length is one, the length is one short, or two bytes. An entry's final four bytes give either the value of the information or a pointer to the value. If the size of the information is four bytes or less, the information is stored here. If it is longer than four bytes, a pointer to it is stored. The information in direcoty entry zero is two bytes long and is stored here with a value of 1 (this value has no meaning for this tag).
+
+As for the next two entries, the first entry has `tag = 256`. This is the image width of the image in number of columns. The type is short and the length of the value is one short, or two bytes. The value 600 means that there are 600 columns in the image. The second entry has `tag = 257`. This is the image length or height in number of rows. The type is short, the length is one, and the value is 602, meaning that the image has 602 rows.
+
+You continue throught the directory entries until you reach the offset to the next IFD. If this offset is 0, as in the figure representing the beginning of a TIFF file, no more IFDs follow in the file.
