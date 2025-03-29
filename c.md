@@ -1561,8 +1561,8 @@ This way, there will be one pointer for each string literal, and these pointers 
 
 A pointer is just an address of a piece of data in memory. Pointers are used in C for a couple of reasons:
 
-1. Instead of passing around a whole copy of the data, you can just pass a pointer.
-2. You might want two pieces of code to work on the same piece of data rather than a separate copy.
+1. Instead of passing around a **whole copy of the data**, you can just pass a pointer.
+2. You might want two pieces of code to **work on the same piece of data rather than a separate copy**.
 
 > Pointers are a form of indirection. If you are not careful, you can quickly get lost chasing pointers through memory.
 
