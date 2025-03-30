@@ -1,3 +1,28 @@
+- [Overview of image processing](#overview-of-image-processing)
+  - [Definition of an image and a digital image](#definition-of-an-image-and-a-digital-image)
+    - [Spatial data of an image](#spatial-data-of-an-image)
+    - [Color data of an image](#color-data-of-an-image)
+    - [Image color and resolution](#image-color-and-resolution)
+    - [Image formats](#image-formats)
+      - [JPEG](#jpeg)
+      - [GIF](#gif)
+      - [BMP](#bmp)
+      - [PNG](#png)
+      - [TIFF](#tiff)
+    - [Image data types](#image-data-types)
+      - [Binary image](#binary-image)
+      - [Greyscale image](#greyscale-image)
+      - [RGB (true-color) image](#rgb-true-color-image)
+      - [Floating-point image](#floating-point-image)
+- [Image processing in C](#image-processing-in-c)
+  - [Opening and copying an image](#opening-and-copying-an-image)
+- [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
+  - [Image data basics](#image-data-basics)
+  - [Image file I/O requirements](#image-file-io-requirements)
+  - [TIFF](#tiff-1)
+    - [Tags](#tags)
+    - [IFD](#ifd)
+
 # Overview of image processing
 
 ## Definition of an image and a digital image
@@ -82,7 +107,11 @@ RGB images are 3D arrays that assign 3 numeric values to each pixel, each value 
 
 These images do not store integer color values. Instead, they store a floating-point number which, within a given range defined by floating-point precision of the image bit resolution, represent the intensity. They maybe commonly measured values in fields like medicine, science and other specialized fields. These images are commonly stored in the TIFF image format.
 
-# Image file input and output
+# Image processing in C
+
+## Opening and copying an image
+
+# Detailed theory (from cips book)
 
 ## Image data basics
 
