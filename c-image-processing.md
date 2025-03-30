@@ -1,3 +1,71 @@
+# Overview of image processing
+
+## Definition of an image and a digital image
+
+An **image** is a descrete representation of data possessing both **spatial** (layout) and **intensity** (color) information. Based on this definition, A **digital image** is a representation of a two-dimensional image using a finite number of points usually called **picture elements** or **pixels**.
+
+### Spatial data of an image
+
+In a shematic representation, a digital image is placed on a Cartesian 2D coordinates. Each pixel is represented by `I(m,n)` where `m` and `n` represent designate the rows and columns of the image respectively. The image starts at `I(0,0)` (top left corner) of the Cartesian 2D coordinates, and ends at `I(m,n)` (on the bottom right).
+
+### Color data of an image
+
+The simplest type of image data is for black and white images, which are also known as binary images, since each pixel is either 0 or 1. The next more complex type of image data is Greyscale, where each pixel can take a value between 0 and 255. Human eye can distinguish only 40 shades of grey. The most complex type of image data is for color images. Color images are similar to greyscale images, except that there are 3 bands in them related to colors red, green, and blue which is why they are also referred to as RGB images. Therefore each pixel in an RGB image has 3 values associated with it.
+
+Image color can also be represented in HSV format, dividing image data into hue, saturation and value (or intensity) data.
+
+### Image color and resolution
+
+The size of 2D grid and data size stored for each individual pixel determines the **spatial resolution** and **color quantization** of an image. The **representational power** or **size** of an image is defined by its resolution. The resolution of an image source like a camera can be specified in terms of 3 quantities:
+
+1. Spatial resolution: This is usually quoted as `C x R`, where `C` stands for column and `R` stands for row, define the number of pixels used to cover the visual space captured by the image. This relates to the sampling of the image signal and it is sometimes referred to as pixel or **digital resolution** of the image.
+2. Temporal resolution: This is considered for continuous capturing systems such as video. This represents the number of images captured during a given time period. It is commonly quoted in `fps` or frames per second. In this system, each individual image is referred to as a **video frame**. For instance, commonly broadcast TV has 25fps, and higher fps is used for engineering purposes usually.
+3. Bit resolution: This defines the number of possible intensity or color values that a pixel may have. It relates to the quantization of the image information. For instance, a binary image has just 2 colors (black or white). A greyscale image has 256 levels of grey, ranging from black to white. The bit resolution is commonly quoted as **the number of binary bits required for storage** at a given quantization level. For instance, binary is 2bit, greyscale is 8bit, and color is commonly 24bit. The range of values a pixel may take is often referred to as the **dynamic range** of the image.
+
+### Image formats
+
+There are many different image formats. Here we list some of them.
+
+#### JPEG
+
+JPEG stands for Joint Photographic Experts Group. This image format has lossy compression.
+
+#### GIF
+
+GIF stands for Graphics Interchange Format. It is limited to 256 colors, meaning that it is **8bit** in size. This image format has lossless compression.
+
+#### BMP
+
+BMP stands for Bit Map Picture. It is one of the basic formats in use. This image format has lossless compression. This is one of the main formats we are going to exeperiment with. So we will go deep into it.
+
+#### PNG
+
+PNG stands for Portable Network Graphics. It was designed to replace GIF. This image format has lossless compression.
+
+#### TIFF
+
+TIFF stands for Tagged Image File Format. These are generally highly flexible and adabtible. This image format can be either compressed or uncompressed.
+
+### Image data types
+
+The choice of image format can be largely determined not just by the image content, but also the actual image data type that is required for storage. We can classify images into 4 data types.
+
+#### Binary image
+
+Binary images are 2D arrays that assign one numeric value (0 or 1) to each pixel in the image. These are sometimes referred to as **logical images**. Black corresponds to `0` or _off_ or _backgorund_ pixel. White corresponds to `1` or _on_ or _foreground_ pixel.
+
+#### Greyscale image
+
+Greyscale images are 2D arrays that assign one numeric value to each pixel which is representative of the intensity. The pixel value range is bound by the bit resolution of the image, and such images are stored as **n-bit** integer with a given format.
+
+#### RGB (true-color) image
+
+RGB images are 3D arrays that assign 3 numeric values to each pixel, each value corresponding to red, green and blue.
+
+#### Floating-point image
+
+These images do not store integer color values. Instead, they store a floating-point number which, within a given range defined by floating-point precision of the image bit resolution, represent the intensity. They maybe commonly measured values in fields like medicine, science and other specialized fields. These images are commonly stored in the TIFF image format.
+
 # Image file input and output
 
 ## Image data basics
