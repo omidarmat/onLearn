@@ -16,6 +16,7 @@
       - [Floating-point image](#floating-point-image)
 - [Image processing in C](#image-processing-in-c)
   - [Opening and copying an image](#opening-and-copying-an-image)
+    - [Refactoring the code into a modular code](#refactoring-the-code-into-a-modular-code)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -110,6 +111,321 @@ These images do not store integer color values. Instead, they store a floating-p
 # Image processing in C
 
 ## Opening and copying an image
+
+In order to open an image file you should define an input stream. Also, in order to create an output file, which would simply be a copy of the input image, you need to create an output stream. This is how you do it in C:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    return 0;
+}
+```
+
+> Notice that `rb` and `wb` in `fopen` functions refer to "reading" and "writing".
+
+You can then implement a check in the middle, so that if your program was, for any reason, unable to read the input file, it would send out an error message.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    return 0;
+}
+```
+
+If the input image is read successfully, your program may continue by defining variables to store header data and the color table. You can read your image header from the `streamIn` variable now. You are going to do that using a loop and the `getc` function from the `stdlib.h` library.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    return 0;
+}
+```
+
+By reading the first 54 bytes of the input stream, we actually find out the values inside header.
+
+> The `getc` function, according to IBM, reads a single character from the current stream position and advances the stream position to the next character.
+
+Once you have the image header, you can extract the image width, height, and bit depth. You remember the offsets related to these?
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    return 0;
+}
+```
+
+> Notice that we are using the casting technique in C programming to determine the type of the value stored in the address `&header[18]` as `int *`, meaning that `&header[18]` is an integer pointer, or a pointer that points to an integer value. We are then puttin another `*` behine the casting to say that we want the value stored at the address of the integer pointer, meaning that we want the integer value itself. It is somewhat complicated to wrap your head around this at fist sight.
+
+Remember we said in the theories section that if the bit depth of an image is `<= 8` the image would have a color table. So we are going to read the color table based on this condition:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    if(bitDepth <= 8) {
+        fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    return 0;
+}
+```
+
+> According to IMB, The `fread` function, coming from the `stdio.h` library, reads up to `count` items of `size` length from the input `stream` and stores them in the given `buffer` (variable). The position in the file increases by the number of bytes read.
+>
+> ```c
+> size_t fread(void *buffer, size_t size, size_t count, FILE *stream);
+> ```
+
+Once this is done, you can write the image header to your output file. This is done using the `fwrite` function, which is very similar to the `fread` function.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    if(bitDepth <= 8) {
+        fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    fwrite(header, sizeof(unsigned char), 54, streamOut);
+
+    return 0;
+}
+```
+
+Then, you can go on and create a buffer to store the image data, which is the actual pixels. The size of this buffer will be determined by `height * width` value. Then you write the header into it, again, using the `fwrite` function. Then you need to write the color table, if it actually exists based on a check you just did previously:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    if(bitDepth <= 8) {
+        fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    fwrite(header, sizeof(unsigned char), 54, streamOut);
+
+    unsigned char buffer[height * width];
+
+    fread(buffer, sizeof(unsigned char), (height * width), streamIn);
+
+    if(bitDepth <= 8) {
+        fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+    }
+
+    return 0;
+}
+```
+
+> Notice that the first parameter in `fread` determines the variable into which the read value will be stored. The first parameter in `fwrite` function determines the variable from which a value will be written to an output stream, which is inserted as the last parameter of the `fwrite`. The last parameter of the `fread` function determines the stream from which a data is going to be read and then stored in a variable which is defined as its first parameter.
+
+After this, you can write the image data, so the pixel data, to the output file. You would finally, as the best practice, close both streams using the `fclose` function.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    if(bitDepth <= 8) {
+        fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    fwrite(header, sizeof(unsigned char), 54, streamOut);
+
+    unsigned char buffer[height * width];
+
+    fread(buffer, sizeof(unsigned char), (height * width), streamIn);
+
+    if(bitDepth <= 8) {
+        fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+    }
+
+    fwrite(buffer, sizeof(unsigned char), (height * width), streamOut);
+
+    fclose(streamIn);
+    fclose(streamOut);
+
+    return 0;
+}
+```
+
+You may also put a notification message at the end:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *streamIn = fopen("images/cameraman.bmp", "rb");
+    FILE *streamOut = fopen("images/cameraman_copy.bmp", "wb");
+
+    if(streamIn == (FILE*)0) {
+        printf("Unable to open file!\n");
+    }
+
+    unsigned char header[54];
+    unsigned char colorTable[1024];
+
+    for(int i = 0; i < 54; i++) {
+        header[i] = getc(streamIn);
+    }
+
+    int width = *(int *)&header[18];
+    int height = *(int *)&header[22];
+    int bitDepth = *(int *)&header[28];
+
+    if(bitDepth <= 8) {
+        fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    fwrite(header, sizeof(unsigned char), 54, streamOut);
+
+    unsigned char buffer[height * width];
+
+    fread(buffer, sizeof(unsigned char), (height * width), streamIn);
+
+    if(bitDepth <= 8) {
+        fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+    }
+
+    fwrite(buffer, sizeof(unsigned char), (height * width), streamOut);
+
+    fclose(streamIn);
+    fclose(streamOut);
+
+    printf("Success!\n");
+    printf("Width: %d\n", width);
+    printf("Height: %d\n", height);
+
+    return 0;
+}
+```
+
+### Refactoring the code into a modular code
 
 # Detailed theory (from cips book)
 
