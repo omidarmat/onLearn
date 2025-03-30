@@ -38,6 +38,12 @@ GIF stands for Graphics Interchange Format. It is limited to 256 colors, meaning
 
 BMP stands for Bit Map Picture. It is one of the basic formats in use. This image format has lossless compression. This is one of the main formats we are going to exeperiment with. So we will go deep into it.
 
+This is the structure of an image data:
+
+![image-file-data-structure](/images/cips/image-data-structure.png);
+
+This is the BMP image format data structure respective to the general image structure as you see in the figure above:
+
 #### PNG
 
 PNG stands for Portable Network Graphics. It was designed to replace GIF. This image format has lossless compression.
