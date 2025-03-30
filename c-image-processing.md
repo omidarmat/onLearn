@@ -44,6 +44,16 @@ This is the structure of an image data:
 
 This is the BMP image format data structure respective to the general image structure as you see in the figure above:
 
+![bmp-file-data-structure](/images/cips/bmp-data-structure.png)
+
+And here is a table showing the offsets stored in the BMP header data:
+
+![bmp-header-data](/images/cips/header-data-bmp.png)
+
+This image shows that in order to access image **width**, **height**, and **number of bits per pixel** (also known as **bit depth**), you need to access offsets `18`, `22`, and `28` respectively. If bit depth is `<= 8` this means that the image contains a color table. The color table is a block of bytes listing the colors used in the image.
+
+In conclusion, to get access to the complete image information you need to read 54 bytes image header, 1024 bytes color table, and then finally the pixel information.
+
 #### PNG
 
 PNG stands for Portable Network Graphics. It was designed to replace GIF. This image format has lossless compression.
