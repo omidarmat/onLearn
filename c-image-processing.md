@@ -43,6 +43,8 @@
   - [Arithmetic and logical operations](#arithmetic-and-logical-operations)
     - [Arithmetic operations](#arithmetic-operations)
       - [Example: increasing image brightness](#example-increasing-image-brightness)
+  - [Histogram and equalization](#histogram-and-equalization)
+    - [Histogram equalization](#histogram-equalization)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -900,6 +902,50 @@ int main() {
 
   return 0;
 }
+```
+
+## Histogram and equalization
+
+An image histogram is a plot of the relative **frequency of occurence** of each of the permitted pixel values in the image against the values themselves. If we normalize such frequency plot so that the total sum of all frequency entries over the permissible range is 1, we may treat the image historgam as a discrete probability density function which defines the likelihood of a given pixel value occuring within the image.
+
+Visual inspection of an image histogram can reveal the basic contrast that is present in the image and any potential differences in the color distribution of the image foreground and the background scene component. For a simple greyscale image, the histogram can be constructed by simply counting the number of times each greyscale value (0 to 255) occures within the image.
+
+Each spike within the historgam is incremented each time its value is encountered. In the histogram plot, the Y axix shows the number of times each value actually occures within the particular image, and the X axis shows the range of values within the image (0 to 255 for 8-bit greyscale images).
+
+An image histogram can easily be constructed with a pseudo-code like this:
+
+```
+initialize all histogram array entries to 0
+
+for each pixel I(i, j) within the image I
+    histogram(I(i, j)) = histogram(I(i, j)) + 1
+end
+```
+
+### Histogram equalization
+
+Equalization causes a histogram with bins (vertical lines) groped closely together to spread out into a flat or equalized histogram. Notice that bins grouped together closely in histograms means that the image has poor contrast. Flatening the histogram makes the dark pixels apear darker and light pixels appear lighter.
+
+> It is obvious that the histogram equalization process does not operate on the histogram itself. Rather, it uses the resort of one histogram to transform the original image that will have an equalized histogram.
+
+Let's now take a look at histogram equalization equation:
+
+```
+b(x, y) = f[c(x, y)]
+
+c: image with poor histogram
+b: new image with improved histogram
+f: transformation function
+```
+
+And this is the equation that shows the probability density function of a pixel value `a`:
+
+```
+p1(a) = (1 / Area1) * H1(a)
+
+p1(a): probability of finding a pixel with the value "a" in the image
+Area1: area or number of pixels in the image
+H1(a): histogram of the image
 ```
 
 # Detailed theory (from cips book)
