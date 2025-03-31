@@ -14,6 +14,19 @@
       - [Greyscale image](#greyscale-image)
       - [RGB (true-color) image](#rgb-true-color-image)
       - [Floating-point image](#floating-point-image)
+  - [Image processing operations and techniques](#image-processing-operations-and-techniques)
+    - [Image processing operations](#image-processing-operations)
+      - [Low level operations](#low-level-operations)
+      - [Mid level operations](#mid-level-operations)
+      - [High level operations](#high-level-operations)
+    - [Image processing techniques](#image-processing-techniques)
+      - [Sharpening](#sharpening)
+      - [Noise removal](#noise-removal)
+      - [De-blurring](#de-blurring)
+      - [Edge detection or edge extraction](#edge-detection-or-edge-extraction)
+      - [Binarization](#binarization)
+      - [Contrast enhancement](#contrast-enhancement)
+      - [Object segmentation and labeling](#object-segmentation-and-labeling)
 - [Image processing in C](#image-processing-in-c)
   - [Opening and copying an image](#opening-and-copying-an-image)
     - [Refactoring the code into a modular code](#refactoring-the-code-into-a-modular-code)
@@ -108,6 +121,58 @@ RGB images are 3D arrays that assign 3 numeric values to each pixel, each value 
 #### Floating-point image
 
 These images do not store integer color values. Instead, they store a floating-point number which, within a given range defined by floating-point precision of the image bit resolution, represent the intensity. They maybe commonly measured values in fields like medicine, science and other specialized fields. These images are commonly stored in the TIFF image format.
+
+## Image processing operations and techniques
+
+There are several image processing techniques in order to perform image processing operations. First, let's learn about different operations.
+
+### Image processing operations
+
+There are 3 levels of image processing operations: low lever, mid level, heigh level.
+
+#### Low level operations
+
+These are primitive operations with both input and output of images. These include noise reduction, contrast enhancements, etc.
+
+#### Mid level operations
+
+These deal with extraction of attributes from images. These operations include edge extractions, contonur extractions, regions extractions, etc.
+
+#### High level operations
+
+These are mainly about analysis and interpretation of content of an image.
+
+### Image processing techniques
+
+Image processing has a wide range of techniques and algorithms which we are going to apply some of them here. Here is a list of some of the image processing techniques.
+
+#### Sharpening
+
+Sharpening is a technique by which the edges and fine details of an image are enhanced for human viewing.
+
+#### Noise removal
+
+Image processing filters can be used to reduce the amount of noise in an image before processing it any further. Depending on the type of noise, different noise removal techniques are used.
+
+#### De-blurring
+
+An image may appear blury due to different reasons, ranging from improper focusing of the lense to an insufficient shutter speed for fast moving objects.
+
+#### Edge detection or edge extraction
+
+Extracting edges from an image is a fundamental processing step used to separate object from one another before identifying their content.
+
+#### Binarization
+
+In many image processing analysis applications, it is often necessary to reduce the number of grey levels in a monochrome image to simplify and speed up its interpretation process. Reducing a greyscale image to only 2 levels of grey (black and white) is usually referred to as binarization.
+
+#### Contrast enhancement
+
+In order to improve an image for human viewing as well as make other image processing tasks (such as edge detection) easier, it is often necessary to enhance the contrast of an image.
+
+#### Object segmentation and labeling
+
+The task of segmentation and labeling within a scene is a prerequisite for things like object recognition and classification systems. Once the relevant objects have been segmented and labeled, their relevant features can be extracted and used to classify, compare, cluster or recognize the object in question.
 
 # Image processing in C
 
