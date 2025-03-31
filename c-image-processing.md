@@ -27,10 +27,19 @@
       - [Binarization](#binarization)
       - [Contrast enhancement](#contrast-enhancement)
       - [Object segmentation and labeling](#object-segmentation-and-labeling)
+  - [Some terminology](#some-terminology)
+    - [Image topology](#image-topology)
+    - [Neighborhood](#neighborhood)
+    - [Adjacency](#adjacency)
+    - [Paths](#paths)
+    - [Components](#components)
+    - [Connectivity](#connectivity)
+  - [Overview of machine vision systems](#overview-of-machine-vision-systems)
 - [Image processing in C](#image-processing-in-c)
   - [Opening and copying an image](#opening-and-copying-an-image)
     - [Refactoring the code into a modular code](#refactoring-the-code-into-a-modular-code)
   - [Converting RGB to greyscale](#converting-rgb-to-greyscale)
+  - [Image binarization](#image-binarization)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -173,6 +182,36 @@ In order to improve an image for human viewing as well as make other image proce
 #### Object segmentation and labeling
 
 The task of segmentation and labeling within a scene is a prerequisite for things like object recognition and classification systems. Once the relevant objects have been segmented and labeled, their relevant features can be extracted and used to classify, compare, cluster or recognize the object in question.
+
+## Some terminology
+
+### Image topology
+
+Image topology involves investigation of fundamental image properties using morphological operators.
+
+### Neighborhood
+
+Neighborhood refers to the pixels surrounding a given pixel. This is an important terminology since other terms will be defined based on this term.
+
+### Adjacency
+
+Two pixels `p` and `q` are 4-adjacent if they are 4-neighbors of each other and they are 8-adjacent if they are 8-neighbors of each other.
+
+### Paths
+
+A 4-path between two pixels `p` and `q` is a sequence of pixels starting with `p` and ending with `q` such that each pixel in the sequence is 4-adjacent to its predecessor in the sequence.
+
+### Components
+
+A component is a set of pixels connected to each otherx
+
+### Connectivity
+
+Connectivity is the existence of a path between two pixels.
+
+## Overview of machine vision systems
+
+This is an overview of a knowledge-based machine vision system:
 
 # Image processing in C
 
@@ -652,6 +691,110 @@ int main() {
 > ```
 
 > Notice how we read the image data related to each of the 3 channels at each byte. This is related to how image data is stored in color images. So in each pixel of the image there are 3 values associated with red, green, and blue. This means that when reading image data, at each byte, calling the `getc` function 3 times will give you data for each of the 3 channels for the same pixel.
+
+## Image binarization
+
+We are now going to see how we can implement code that converts a greyscale image into a binary image, where each pixel can have 2 values: either 1 or 0. We are first going to read the input image file and create the output image file:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  FILE* streamIn = fopen("images/lighthouse.bmp", "rb");
+  FILE* streamOut = fopen("images/lighthouse_binary.bmp", "wb");
+
+  if (streamIn == NULL) {
+    printf("Unable to read image!\n");
+    return 1;
+  }
+
+  unsigned char imgHeader[54];
+  unsigned char colorTable[1024];
+
+  for (int i = 0; i < 54; i++) {
+    imgHeader[i] = getc(streamIn);
+  }
+
+  fwrite(imgHeader, sizeof(unsigned char), 54, streamOut);
+
+  int width = *(int*)&imgHeader[18];
+  int height = *(int*)&imgHeader[22];
+  int bitDepth = *(int*)&imgHeader[28];
+  int imgSize = width * height;
+
+  if (bitDepth <= 8) {
+    fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+  }
+
+  unsigned char buffer[imgSize];
+
+  fread(buffer, sizeof(unsigned char), imgSize, streamIn);
+
+  return 0;
+}
+```
+
+Up until this point, we have stored the pixel data of the image into the `buffer` variable and we can now perform the binarization process on the pixel data. We basically need to set a threshold such that if a pixel value is above it, the pixel value is converted to 1, otherwise to 0. To do this, we are going to insert some `#define` directives at the beginning of the file. We need 3: white (255), black (0), and in the final image white will be 1 and black will be 0.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WHITE 255
+#define BLACK 0
+#define THRESHOLD 150
+
+int main() {
+  FILE* streamIn = fopen("images/lighthouse.bmp", "rb");
+  FILE* streamOut = fopen("images/lighthouse_binary.bmp", "wb");
+
+  if (streamIn == NULL) {
+    printf("Unable to read image!\n");
+    return 1;
+  }
+
+  unsigned char imgHeader[54];
+  unsigned char colorTable[1024];
+
+  for (int i = 0; i < 54; i++) {
+    imgHeader[i] = getc(streamIn);
+  }
+
+  fwrite(imgHeader, sizeof(unsigned char), 54, streamOut);
+
+  int width = *(int*)&imgHeader[18];
+  int height = *(int*)&imgHeader[22];
+  int bitDepth = *(int*)&imgHeader[28];
+  int imgSize = width * height;
+
+  if (bitDepth <= 8) {
+    fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+  }
+
+  unsigned char buffer[imgSize];
+
+  fread(buffer, sizeof(unsigned char), imgSize, streamIn);
+
+  //   black and white converter
+  for (int i = 0; i < imgSize; i++) {
+    buffer[i] = (buffer[i] > THRESHOLD) ? WHITE : BLACK;
+  }
+
+  fwrite(buffer, sizeof(unsigned char), imgSize, streamOut);
+
+  fclose(streamIn);
+  fclose(streamOut);
+
+  printf("Success!\n");
+
+  return 0;
+}
+```
+
+As you can see, the binarization algorithm is a simple process running through a loop, which goes over each pixel of the image and converts it to `1` if it is heigher than the defined threshold, or to `0` if it is less.
 
 # Detailed theory (from cips book)
 
