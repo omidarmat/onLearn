@@ -40,6 +40,8 @@
     - [Refactoring the code into a modular code](#refactoring-the-code-into-a-modular-code)
   - [Converting RGB to greyscale](#converting-rgb-to-greyscale)
   - [Image binarization](#image-binarization)
+  - [Arithmetic and logical operations](#arithmetic-and-logical-operations)
+    - [Arithmetic operations](#arithmetic-operations)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -805,6 +807,24 @@ int main() {
 ```
 
 As you can see, the binarization algorithm is a simple process running through a loop, which goes over each pixel of the image and converts it to `1` if it is heigher than the defined threshold, or to `0` if it is less.
+
+## Arithmetic and logical operations
+
+We are going to discover how to perform arithmetic and logical operations on images. Let's beging by looking at arithmetic operations.
+
+### Arithmetic operations
+
+Arithmetic operations involving images are typically performed on a pixel-by-pixel basis, meaning the operation is independently applied to each pixel in the image. Given a 2D array `X`, and another 2D array `Y` of the same size, the resulting array `Z` is optained by calculating `X [operation] Y = Z` where `operation` can either be addition, subtraction, multiplication or division.
+
+1. Addition: addition is used to blend the pixel content from two images or add a constant value to pixel values of an image. Adding the content of two monochrome images causes their content to blend. Adding a constant value to an image causes an increase or decrease in the image's overall brightness. This process is sometimes referred to as **additive image offset**. When adding two images you must be careful so that the addition result does not exceed the maximum pixel value for the data type being used. There are two ways of dealing with this overflow issue. We often use **normalization** or **truncation**. Normalization: consists of storing the intermediate result in a temporary variable `W`, and calculate an edge-resulting pixel value in `Z` using this normalization equation:
+
+```
+g = (Lmax / (fmax - fmin))(f - fmin)
+```
+
+Where `f` is the current pixel in the intermediate result array `W`. `Lmax` is the maximum poissible intensity, `g` is the curresponding in the output array, and `fmax` is the maximum pixel in `W`.
+
+Take this image addition example:
 
 # Detailed theory (from cips book)
 
