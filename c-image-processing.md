@@ -42,6 +42,7 @@
   - [Image binarization](#image-binarization)
   - [Arithmetic and logical operations](#arithmetic-and-logical-operations)
     - [Arithmetic operations](#arithmetic-operations)
+      - [Example: increasing image brightness](#example-increasing-image-brightness)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -839,6 +840,67 @@ Another method to force `W` to fall within the 8-bit range would be to truncate 
 2. Subtraction: this is often used to detect differences between two images. Such differences would be due to different factors such as artifical addition or removal of relevant content from the image, relative object motion between two frames of a video sequence, and many others. Subtracting a constant value from an image causes a decrease in its overall brightness, which is also referred to as _subtractive image offset_. When subtracting one image from another, or a constant from an image, you must be careful about the possibility of obtaining negative pixel values. There are 2 ways to deal with this issue. One is treating subtraction as an **absolute difference** which will always result in positive values proportional to the difference between the two original images without indicating which pixel was brighter or darker. The other way is truncating the result so that negative values become 0. Here is an example:
 
 ![subtraction](/images/cips/subtraction.png)
+
+#### Example: increasing image brightness
+
+In order to increase image brightness, we would have to add a constant value to all the pixels of the image. We should also keep an eye for pixel values that go beyond 255 and fix them at 255 if they do so.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BRIGHTNESS_FACTOR 50
+#define MAX_COLOR 255
+
+int main() {
+  FILE* inStream = fopen("images/lena512.bmp", "rb");
+  FILE* outStream = fopen("images/lena512_bright.bmp", "wb");
+
+  if (inStream == NULL) {
+    printf("Unable to read input image!");
+  }
+
+  unsigned char imgHeader[54];
+  unsigned char colorTable[1024];
+
+  for (int i = 0; i < 54; i++) {
+    imgHeader[i] = getc(inStream);
+  }
+
+  fwrite(imgHeader, sizeof(unsigned char), 54, outStream);
+
+  int width = *(int*)&imgHeader[18];
+  int height = *(int*)&imgHeader[22];
+  int bitDepth = *(int*)&imgHeader[28];
+  int imgSize = height * width;
+
+  if (bitDepth <= 8) {
+    fread(colorTable, sizeof(unsigned char), 1024, inStream);
+    fwrite(colorTable, sizeof(unsigned char), 1024, outStream);
+  }
+
+  unsigned char buffer[imgSize];
+
+  fread(buffer, sizeof(unsigned char), imgSize, inStream);
+
+//   This is the brightness increasing algorithm:
+  int temp;
+
+  for (int i = 0; i < imgSize; i++) {
+    temp = buffer[i] + BRIGHTNESS_FACTOR;
+    buffer[i] = (temp > MAX_COLOR) ? MAX_COLOR : temp;
+  }
+
+  fwrite(buffer, sizeof(unsigned char), imgSize, outStream);
+
+  fclose(inStream);
+  fclose(outStream);
+
+  printf("Success!\n");
+
+  return 0;
+}
+```
 
 # Detailed theory (from cips book)
 
