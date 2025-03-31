@@ -834,6 +834,11 @@ This clearly shows that the `W` array has out of range values like 300, 320, 330
 
 Another method to force `W` to fall within the 8-bit range would be to truncate all values above 255 to 255. This means that any pixel with a value above 255 is simple represented by 255. This would result in another array like this:
 
+![addition-truncation](/images/cips/addition-truncation.png)
+
+2. Subtraction: this is often used to detect differences between two images. Such differences would be due to different factors such as artifical addition or removal of relevant content from the image, relative object motion between two frames of a video sequence, and many others. Subtracting a constant value from an image causes a decrease in its overall brightness, which is also referred to as _subtractive image offset_. When subtracting one image from another, or a constant from an image, you must be careful about the possibility of obtaining negative pixel values. There are 2 ways to deal with this issue. One is treating subtraction as an **absolute difference** which will always result in positive values proportional to the difference between the two original images without indicating which pixel was brighter or darker. The other way is truncating the result so that negative values become 0.
+3.
+
 # Detailed theory (from cips book)
 
 ## Image data basics
