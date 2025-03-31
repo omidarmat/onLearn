@@ -826,6 +826,10 @@ Where `f` is the current pixel in the intermediate result array `W`. `Lmax` is t
 
 Take this image addition example:
 
+![image-addition](/images/cips/image-addition.png)
+
+This clearly shows that the `W` array has out of range values like 300, 320, 330. So we should normalize this array which contains values in the range [45, 350] to range [0, 255]. The result of normalization is stored in an array called `Z` like this:
+
 # Detailed theory (from cips book)
 
 ## Image data basics
