@@ -830,6 +830,10 @@ Take this image addition example:
 
 This clearly shows that the `W` array has out of range values like 300, 320, 330. So we should normalize this array which contains values in the range [45, 350] to range [0, 255]. The result of normalization is stored in an array called `Z` like this:
 
+![addition-normalization](/images/cips/addition-normalization.png)
+
+Another method to force `W` to fall within the 8-bit range would be to truncate all values above 255 to 255. This means that any pixel with a value above 255 is simple represented by 255. This would result in another array like this:
+
 # Detailed theory (from cips book)
 
 ## Image data basics
