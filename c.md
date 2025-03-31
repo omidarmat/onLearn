@@ -231,11 +231,18 @@ In languages like Java, if you assign an object to a variable, it does not copy 
 
 # Data types
 
+As a surprising point, you need to know that all values in C are divided in 2 categories:
+
+1. Floating-point integers: including `double` and `float`
+2. Integers: including `short`, `long`, `int`, and `char`!
+
+That is right! in C, `char`s are stored using their **character codes**, meaning that they are numbers too.
+
 ## List of data types in C
 
 ### `char`
 
-Each character is stored in the computer's memory as a character code. That is just a number. So when the computer sees 'A', it is the same as seeing the literal number `65`, which is the ASCIII code for 'A'.
+Each character is stored in the computer's memory as a character code. That is just a number. So when the computer sees 'A', it actually sees the literal number `65`, which is the ASCII code for 'A'.
 
 ### `int`
 

@@ -17,6 +17,7 @@
 - [Image processing in C](#image-processing-in-c)
   - [Opening and copying an image](#opening-and-copying-an-image)
     - [Refactoring the code into a modular code](#refactoring-the-code-into-a-modular-code)
+  - [Converting RGB to greyscale](#converting-rgb-to-greyscale)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -426,6 +427,166 @@ int main() {
 ```
 
 ### Refactoring the code into a modular code
+
+We are now going to refactor the code above into twi separate functions which will be called inside the `main` function. These separate functions will be responsible for reading and writing image files. First, let's write the `imageReader` function.
+
+```c
+void imageReader(const char *imgName, int *_height, int *_width, int *_bitDepth, unsigned char *_header, unsigned char *_colorTable, unsigned char *_buffer) {
+    int i;
+    FILE *streamIn;
+
+    streamIn = fopen(imgName, "rb");
+
+    if(streamIn == (FILE *)0) {
+        printf("Unable to read image!\n");
+    }
+
+    for(i = 0; i < 54; i++) {
+        _header[i] = getc(streamIn);
+    }
+
+    *_width = *(int *)&_header[18];
+    *_height = *(int *)&_header[22];
+    *_bitDepth = *(int *)&_header[28];
+
+    if(*_bitDepth <= 8) {
+        fread(_colorTable, sizeof(unsigned char), 1024, streamIn);
+    }
+
+    fread(_buffer, sizeof(unsigned char), CUSTOM_IMG_SIZE, streamIn);
+    fclose(streamIn);
+}
+```
+
+Then the `imageWriter` function would be:
+
+```c
+void imageWriter(const char *imgName, unsigned char *header, unsigned char *colorTable, unsigned char *buffer, int bitDepth) {
+    FILE *streamOut = fopen(imgName, "wb");
+    fwrite(header, sizeof(unsigned char), 54, streamOut);
+
+    if(bitDepth <= 8) {
+        fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+    }
+
+    fwrite(buffer, sizeof(unsigned char), CUSTOM_IMG_SIZE, streamOut);
+    fclose(streamOut);
+}
+```
+
+We are also going to define some constant variables using the `#define` directive. We are also going to add our function declarations to the beginning of the file. Finally, the `main` function would be written as:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BMP_HEADER_SIZE 53
+#define BMP_COLOR_TABLE_SIZE 1024
+#define CUSTOM_IMG_SIZE 1024*1024
+
+void imageReader(const char *imgName, int *_height, int *_width, int *_bitDepth, unsigned char *_header, unsigned char *_colorTable, unsigned char *_buffer);
+
+void imageWriter(const char *imgName, unsigned char *header, unsigned char *colorTable, unsigned char *buffer, int bitDepth);
+
+int main() {
+    int imgWidth, imgHeight, imgBitDepth;
+    unsigned char imgHeader[BMP_HEADER_SIZE];
+    unsigned char imgColorTable[BMP_COLOR_TABLE_SIZE];
+    unsigned char imgBuffer[CUSTOM_IMG_SIZE];
+
+    const char imgName[] = "images/man.bmp";
+    const char newImgName[] = "images/man-copy.bmp";
+
+    imageReader(imgName, &imgHeight, &imgWidth, &imgBitDepth, &imgHeader, &imgColorTable, &imgBuffer[0]);
+    imageWriter(newImgName, imgHeader, imgColorTable, imgBuffer, imgBitDepth);
+
+    printf("Success!\n");
+
+    return 0;
+}
+```
+
+Looking at the `imageReader()` function call in the `main` function, you can understand that we are **passing pointers** into it. These pointers point to the specific memory location where the actual values should be stored. So for example, we define a variable like `imgWidth` and then pass its pointer to the `imageReader()` function so it can find its location in memory and update its value. Also notice that the `imageReader()` function declaration includes all **arguments** as pointer variables. You might notice that the `imgName` variable is passed to the `imageReader` function without the asterisk `*` behind it. This is simply because `imgName` is an array variable which is treated by C as a pointer variable by default.
+
+Also notice that none of the **variables passed** into the `imageWriter()` function are pointers with `&` behind them. They are kind of the values themselves. This is simply because, in this function, we no longer need to update a value at some specific location in memory. We are done updating values in memory. We now just want to write all the final values to another image file, so we don't need pointers any more, we just need the values. However, in the `imageWriter()` function declaration you can see the **arguments** defined as poinetrs, except the last one. This is because `imgName`, `imgHeader`, `imgColorTable`, and `imgBuffer` are array variables which are, again, treated as pointer variables by C, but `imgBitDepth` is not defined as a pointer. It is defined as the value of the `imgBitDept` itself, which is a single integer, and not an array.
+
+## Converting RGB to greyscale
+
+In order to implement the conversion of an RGB image to greyscale, you need to utilize the image reading and writing functionalities we created before. We are currently not going to use the refactored modular version of the reading and writing functionality for practice purposes.
+
+There are 2 things worth mentioning here:
+
+1. This time, the `buffer` that we define for the image data in our code is different than the buffer we defined for including image data of a greyscale image. For a color image, the buffer should include 3 layers of image data, making it a 2D array containig image data for each data band: red, green, blue.
+2. To convert a color image (3 channels) to greyscale (1 channel) there is a conversion formula, where you multiply each channel by a particular constant and then put the same calculated value into the 3 channels:
+   - Each pixel data in the _red_ channel: multiply by `0.3`
+   - Each pixel data in the _green_ channel: multiply by `0.59`
+   - Each pixel data in the _blue_ channel: multiply by `0.11`
+
+Let's see what the code would look like:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  FILE* streamIn = fopen("images/lena-color.bmp", "rb");
+  FILE* streamOut = fopen("images/lena-greyscale.bmp", "wb");
+
+  unsigned char imgHeader[54];
+  unsigned char colorTable[1024];
+
+  if (streamIn == NULL) {
+    printf("Unable to open image\n");
+    return 1;
+  }
+
+  for (int i = 0; i < 54; i++) {
+    imgHeader[i] = getc(streamIn);
+  }
+
+  fwrite(imgHeader, sizeof(unsigned char), 54, streamOut);
+
+  int width = *(int*)imgHeader[18];
+  int height = *(int*)imgHeader[22];
+  int bitDepth = *(int*)imgHeader[28];
+
+  if (bitDepth <= 8) {
+    fread(colorTable, sizeof(unsigned char), 1024, streamIn);
+    fwrite(colorTable, sizeof(unsigned char), 1024, streamOut);
+  }
+
+  int imgSize = height * width;
+  unsigned char buffer[imgSize][3];
+
+  for (int i = 0; i < imgSize; i++) {
+    buffer[i][0] = getc(streamIn);
+    buffer[i][1] = getc(streamIn);
+    buffer[i][2] = getc(streamIn);
+
+    int temp = 0;
+
+    temp = (buffer[i][0] * 0.3) + (buffer[i][1] * 0.59) + (buffer[i][2] * 0.11);
+    putc(temp, streamOut);
+    putc(temp, streamOut);
+    putc(temp, streamOut);
+  }
+
+  printf("Success!\n");
+
+  fclose(streamIn);
+  fclose(streamOut);
+
+  return 0;
+}
+```
+
+> Accoding to IBM, the `putc()` function converts `c` to `unsigned char` and then writes `c` to the output `stream` at the current position. The `putc` function comes from `stdio.h` library.
+>
+> ```c
+> int putc(int c, FILE *stream);
+> ```
+
+> Notice how we read the image data related to each of the 3 channels at each byte. This is related to how image data is stored in color images. So in each pixel of the image there are 3 values associated with red, green, and blue. This means that when reading image data, at each byte, calling the `getc` function 3 times will give you data for each of the 3 channels for the same pixel.
 
 # Detailed theory (from cips book)
 
