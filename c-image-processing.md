@@ -211,7 +211,17 @@ Connectivity is the existence of a path between two pixels.
 
 ## Overview of machine vision systems
 
-This is an overview of a knowledge-based machine vision system:
+This is an overview of a knowledge-based machine vision system. It contains various processes as we will explain each process briefly here.
+
+![machine-vision-system](/images/cips/machine-vision-system.png)
+
+For instance, imagine a system which should be used to recognize faces in images. so the **problem domain** is facial recognition. The **goal** is to be able to extract various features of the face, such as eyes, mouth, nose, etc. Now from the problem domain to the final result, there are multiple steps involved:
+
+1. Acquisition: This process is in charge of acquiring one or more images containing a human face. This can be implemented using a camera and controlling the lighting conditions so as to ensure that the image will be suitable for further processing. The output of this process is a digital image that contains a view of the face.
+2. Preprocessing: This process is designed to improve the quality of the image. Possible algorithms to be employed during this stage include **contrast improvement**, **brightness correction** and **noise removal**.
+3. Segmentation: This process is responsible for **partitioning an image** into its main components, into relevant **foreground** and **background** objects. It produces at its output a number of **labeled regions** or sub-images. It is possible that in this particular case, segmentation will be performed at 2 levels: first stage would involve extracting the face from the original image, and second stage would deal with segmenting facial features within the face area.
+4. Feature extraction: also known as **representation and description** block, consists of algorithms responsible for **encoding the image content** in a descriptive way. Typical features include measures of **color distribution**, **texture**, and **shape** of the most relevant objects within the image. These features are usually grouped into a **feature vector** that can then be used as a numerical indicator of the image content for the subsequent stages where such content would be recorgnized or classified.
+5. Classification: Once the features of an image have been extracted and encoded into a feature vector, the next step is to use this k-dimensional numeric representation as an input to the classification stage or the **recognition and interpretation** as it is also known. At this point, image processing needs classical pattern recognition and benefits from many of its techniques such as minimum distance classifies, neural networks, etc. The ultimate goal of this block is to classify each individual facial feature.
 
 # Image processing in C
 
