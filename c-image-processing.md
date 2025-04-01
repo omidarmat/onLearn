@@ -48,7 +48,8 @@
     - [Create charts from `.dat` signal files](#create-charts-from-dat-signal-files)
       - [Setting up `gnuplot`](#setting-up-gnuplot)
       - [Plotting multiple signals](#plotting-multiple-signals)
-    - [Create image histogram](#create-image-histogram)
+    - [Compute image histogram](#compute-image-histogram)
+    - [Equalize image histogram](#equalize-image-histogram)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -1077,7 +1078,7 @@ set origin 0.5,0
 
 > Remember that in order for all of your charts appear in the output file, you need to plot them in the same session of `multiplot`. So if you `unset multiplot` and then come back, you will lose your previous charts in the output file, it would just be empty, and you would have to plot them all again. Plot all your charts in one single session of `multiplot`.
 
-### Create image histogram
+### Compute image histogram
 
 We are now going to write a C code to read an image and calculate its histogram. To do this, we will basically create a program which would produce a text file consisting of historgam data. Then the `gnuplot` library will create the chart for us. So we are again going to read an input image file, and produce a histogram text file at the end; there is no output file. Notice that we are going to use our previous modular code for reading the image. We are also going to write the function responsible for generating the histogram text file separate from the `main` function and name it `imgHistogram()`.
 
@@ -1154,6 +1155,95 @@ plot 'image_histogram.txt' with impluse
 ```
 
 > Notice that `with impulse` is another option you can use in `gnuplot` in order to draw line charts.
+
+### Equalize image histogram
+
+We are now going to create another function that will perform the equalization process. The function will accept image input data as its input, and it will output new image data where the image is going to be equalized. We are then going to take this new image data and use our `imageWriter` function to create a new image from this data.
+
+So let's first define the `imgHistogramEqualizer` function:
+
+```c
+void imgHistogramEqualizer(unsigned char* _inputImgData,
+                           unsigned char* _outputImgData,
+                           int imgRows,
+                           int imgCols) {
+  int x, y, i, j;
+  int histogramEqualized[256];
+  float histogram[256];
+  float sum;
+
+  imageHistogram(_inputImgData, imgRows, imgCols, histogram);
+
+  for (i = 0; i < 255; i++) {
+    sum = 0.0;
+    for (j = 0; j <= i; j++) {
+      sum = sum + histogram[j];
+    }
+    histogramEqualized[i] = (int)(255 * sum + 0.5);
+  }
+
+  for (y = 0; y < imgRows; y++) {
+    for (x = 0; x < imgCols; x++) {
+      *(_outputImgData + x + y * imgCols) =
+          histogramEqualized[*(_inputImgData + x + y * imgCols)];
+    }
+  }
+}
+```
+
+We are now going to use this function in the `main` function:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BMP_HEADER_SIZE 54
+#define BMP_COLOR_TABLE_SIZE 1024
+#define CUSTOM_IMG_SIZE 512 * 512
+
+float IMG_HISTOGRAM[255];
+
+void imageReader(const char* imgName,
+                 int* _height,
+                 int* _width,
+                 int* _bitDepth,
+                 unsigned char* _header,
+                 unsigned char* _colorTable,
+                 unsigned char* _buffer);
+
+void imageWriter(const char* imgName,
+                 unsigned char* header,
+                 unsigned char* colorTable,
+                 unsigned char* buffer,
+                 int bitDepth);
+
+void imageHistogram(unsigned char* _imgData,
+                    int imgRows,
+                    int imgCols,
+                    float histogram[]);
+
+void imgHistogramEqualizer(unsigned char* _inputImgData,
+                           unsigned char* _outputImgData,
+                           int imgRows,
+                           int imgCols);
+
+int main() {
+  int imgWidth, imgHeight, imgBithDepth;
+  unsigned char imgHeader[BMP_HEADER_SIZE];
+  unsigned char colorTable[BMP_COLOR_TABLE_SIZE];
+  unsigned char buffer[CUSTOM_IMG_SIZE];
+  unsigned char newBuffer[CUSTOM_IMG_SIZE];
+  const char imgName[] = "images/lena512.bmp";
+  const char newImgName[] = "images/lena512-equalized.bmp";
+
+  imageReader(imgName, &imgHeight, &imgWidth, &imgBithDepth, &imgHeader[0],
+              &colorTable[0], &buffer[0]);
+  imgHistogramEqualizer(buffer, newBuffer, imgHeight, imgWidth);
+  imageWriter(newImgName, imgHeader, colorTable, newBuffer, imgBithDepth);
+
+  return 0;
+}
+```
 
 # Detailed theory (from cips book)
 
