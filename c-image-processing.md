@@ -45,6 +45,10 @@
       - [Example: increasing image brightness](#example-increasing-image-brightness)
   - [Histogram and equalization](#histogram-and-equalization)
     - [Histogram equalization](#histogram-equalization)
+    - [Create charts from `.dat` signal files](#create-charts-from-dat-signal-files)
+      - [Setting up `gnuplot`](#setting-up-gnuplot)
+      - [Plotting multiple signals](#plotting-multiple-signals)
+    - [Create image histogram](#create-image-histogram)
 - [Detailed theory (from cips book)](#detailed-theory-from-cips-book)
   - [Image data basics](#image-data-basics)
   - [Image file I/O requirements](#image-file-io-requirements)
@@ -947,6 +951,195 @@ p1(a): probability of finding a pixel with the value "a" in the image
 Area1: area or number of pixels in the image
 H1(a): histogram of the image
 ```
+
+### Create charts from `.dat` signal files
+
+You first need to install the `gnuplot` package on Ubuntu or download and install it on your Windows machine. Then on Ubuntu, you will have to start the GNU Plot using the `gnuplot` command in the terminal.
+
+```
+gnuplot
+```
+
+#### Setting up `gnuplot`
+
+After that, you need to move to the directory where your `.dat` file exists. You can do this using the `cd` command:
+
+```
+cd '/home/usr/c-image-processing/signals
+```
+
+If you are using the `gnuplot` for the first time, you first need to set the terminal for this package. You can use the `set terminal` command for this purpose. A list of available terminals will be printed out if you use the command with no options.
+
+```
+set terminal
+<!-- lists all available terminals -->
+```
+
+To set a specific terminal, you just add its name in front of the command:
+
+```
+set terminal svg
+```
+
+You also need to redirect the output of the gnuplot, which is, by default, the STDOUT console display. You can redirect the output using this command:
+
+```
+set output 'chart.svg'
+```
+
+This will create an empty `chart.svg` file in the current working directory. Once you enter the `plot` command, the result will be inserted into this file. Notice that the `.svg` extension is written here since the selected terminal is `svg`.
+
+You can now plot your signals using the `plot` signal followed by the name of your file inside `' '`:
+
+```
+plot 'input_signal.dat'
+```
+
+This will result in a chart in which data instances are reflected with points. If you want to create a linear representation of your data on the chart you can use `with lines` option at the end of the command:
+
+```
+plot 'input_signal.dat' with lines
+```
+
+> This does not seem to work well with the `svg` terminal in a `.svg` file. You would probably have to switch to the `canvas` terminal with a `.html` output file to be able to create this chart.
+
+In order to change the color of the chart you can use `lc rgb` with the value you want inside `' '`.
+
+```
+plot 'input_signal.dat' with lines lc rgb 'red'
+```
+
+#### Plotting multiple signals
+
+In order to create a chart with signal data coming from multiple files, you first would have to use the `reset` command:
+
+```
+reset
+```
+
+Then you need to set the default pallet size using the `set size` command:
+
+```
+set size 1,1
+```
+
+Then insert the `set multiplot` command:
+
+```
+set multiplot
+```
+
+You can now see that the `gnuplot` CLI has entered the `multiplot` state:
+
+```
+multiplot>
+```
+
+Then you need to set the size of each quadrant. Each quadrant is going to be `0.5` by `0.5`. To do this you can use this command:
+
+```
+set size 0.5,0.5
+```
+
+And you can now begin plotting. To do this, you first need to set the origin and then plot the signal you want. If you want to plot a signal at origin (0,0) you can use:
+
+```
+set origin 0,0
+```
+
+Now to plot a signal file you can use this command:
+
+```
+plot 'input_signal.dat' with lines lc rgb 'blue'
+```
+
+> At this stage you may not be able to see your results in the output file. This is probably something related to `gnuplot` running on Ubuntu. You need to exit the `multiplot` mode using the `unset multiplot`. Now you can open your output file and see the result.
+
+As you can understand according to the steps above, your current chart is placed in the bottom left corner of the chart screen. The whole plot size is 1 by 1, but the current plot size is 0.5 by 0.5 at origin (0,0). You can now go on and create another chart next to this chart. For this, you need to set the origin for the new chart:
+
+```
+set origin 0.5,0
+```
+
+> Remember that in order for all of your charts appear in the output file, you need to plot them in the same session of `multiplot`. So if you `unset multiplot` and then come back, you will lose your previous charts in the output file, it would just be empty, and you would have to plot them all again. Plot all your charts in one single session of `multiplot`.
+
+### Create image histogram
+
+We are now going to write a C code to read an image and calculate its histogram. To do this, we will basically create a program which would produce a text file consisting of historgam data. Then the `gnuplot` library will create the chart for us. So we are again going to read an input image file, and produce a histogram text file at the end; there is no output file. Notice that we are going to use our previous modular code for reading the image. We are also going to write the function responsible for generating the histogram text file separate from the `main` function and name it `imgHistogram()`.
+
+Let's see how would the `imgHistogram` function would look like:
+
+```c
+void imageHistogram(unsigned char* _imgData,
+                    int imgRows,
+                    int imgCols,
+                    float histogram[]) {
+  FILE* fptr = fopen("image_histogram.txt", "w");
+  int x, y, i, j;
+  long int ihist[255];
+  long int sum;
+
+  for (i = 0; i < 255; i++) {
+    ihist[i] = 0;
+  }
+
+  sum = 0;
+
+  for (y = 0; y < imgRows; y++) {
+    for (x = 0; x < imgCols; x++) {
+      j = *(_imgData + x + y * imgCols);
+      ihist[j] = ihist[j] + 1;
+      sum = sum + 1;
+    }
+  }
+
+  for (i = 0; i < 255; i++) {
+    histogram[i] = (float)ihist[i] / (float)sum;
+  }
+
+  for (i = 0; i < 255; i++) {
+    fprintf(fptr, "\n%f", histogram[i]);
+  }
+
+  fclose(fptr);
+}
+```
+
+We can now call this function in a `main` function like this:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BMP_HEADER_SIZE 54
+#define BMP_COLOR_TABLE_SIZE 1024
+#define CUSTOM_IMG_SIZE 512 * 512
+
+float IMG_HISTOGRAM[255];
+
+int main() {
+  int imgWidth, imgHeight, imgBithDepth;
+  unsigned char imgHeader[BMP_HEADER_SIZE];
+  unsigned char colorTable[BMP_COLOR_TABLE_SIZE];
+  unsigned char buffer[CUSTOM_IMG_SIZE];
+  const char imgName[] = "images/lena512.bmp";
+
+  imageReader(imgName, &imgHeight, &imgWidth, &imgBithDepth, &imgHeader[0],
+              &colorTable[0], &buffer[0]);
+
+  imageHistogram(&buffer[0], imgHeight, imgWidth, &IMG_HISTOGRAM[0]);
+
+  return 0;
+}
+```
+
+You should now see a file called `image_histogram.txt` produced by your program, containing the histogram data of the input image. You can now go to `gnuplot` console, move into the directory where your histogram file is located, and then use this command:
+
+```
+plot 'image_histogram.txt' with impluse
+```
+
+> Notice that `with impulse` is another option you can use in `gnuplot` in order to draw line charts.
 
 # Detailed theory (from cips book)
 
