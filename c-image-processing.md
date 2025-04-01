@@ -1009,6 +1009,20 @@ In order to change the color of the chart you can use `lc rgb` with the value yo
 plot 'input_signal.dat' with lines lc rgb 'red'
 ```
 
+> You can also use the `postscript` terminal and set `color solid colortext` options on it:
+>
+> ```
+> set terminal postscript color solid colortext
+> ```
+>
+> You will then have to set the output format to `.eps` using this command:
+>
+> ```
+> set output 'chart.eps'
+> ```
+>
+> You can now use the `lc rgb '<color>'` option on the `plot` command.
+
 #### Plotting multiple signals
 
 In order to create a chart with signal data coming from multiple files, you first would have to use the `reset` command:
