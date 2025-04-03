@@ -384,7 +384,7 @@ printf("Snappy likes to eat %s", snappy.care.food);
 
 ### `struct` alias
 
-Notice that you have to write the word `struct` both when you are defining the struct and then agein, when you are defining an instance of the struct. You can go around this by creating an **alias** for your struct. Here is the syntax:
+Notice that you have to write the word `struct` both when you are defining the struct and then again, when you are defining an instance of the struct. You can go around this by creating an **alias** for your struct. Here is the syntax:
 
 ```c
 typedef struct cell_phone {
@@ -451,7 +451,7 @@ In this example, `gnasher`, the new instance of the `struct`, will point to the 
 
 ### `structs` passed as function arguments
 
-Remember that whenever you pass a data using its variable to a function, what the function receives is not the data itself, but it is a copy of the data. So if you modify the data in the function, the original data will still remain untouched. In other words, in C, paramteres are passed to functions **by value**. It is as if the function now has a clone of the original data.
+Remember that whenever you pass a data using its variable to a function, what the function receives is **not the data itself, but it is a copy of the data**. So if you modify the data in the function, the original data will still remain untouched. In other words, in C, paramteres are passed to functions **by value**. It is as if the function now has a clone of the original data.
 
 In order to be able to modify the original struct instance in a function, you need a pointer to the struct.
 
@@ -460,7 +460,7 @@ In order to be able to modify the original struct instance in a function, you ne
 If you want a function to update a struct instance, you can't just pass the struct as a parameter because that will simply send a copy of the data to the function. Instead, you need to pass the address of the struct instance using the `&` operator, and you also need to define your function in a way that it would receive a pointer:
 
 ```c
-void happy_birthday(turtue *t) {
+void happy_birthday(turtule *t) {
     (*t).age = (*t).age + 1;
     printf("Happy birthday %s! You are now %i years old!\n", (*t).name, (*t).age);
 }
@@ -1137,7 +1137,7 @@ when you use this command for example:
 gcc reaction_control.c pitch_motor.c engine.c after_burner.c -o launch
 ```
 
-The compiler will run the preprocessor, compiler and assembler for each source code file, even the ones that have not changed. This will then generate an **object code** for each file. If a file has not changed, its object code will not change also, so the same object code would be generated again, which is not necessary. Anyways, after generating all the object codes, they will all be passed to the compiler for the **linking** process, where object codes are **linked** to produce a final executable file. Now during development, when you change some small code in just one file, you don't want to regenerate object codes for all the files. The solution to this problem is to save copies of object codes during the compiling process and use them in the next compiling process if their source files have not changed. So generating object files will be done only for files that have changed. Then the liking process will be done again to recreate the final executable file. So, as a general solution, how do you tell GCC to save the object codes somewhere? And then how do you tell it to link the object files as a separate command?
+The compiler will run the preprocessor, compiler and assembler for each source code file, even the ones that have not changed. This will then generate an **object code** for each file. If a file has not changed, its object code will not change also, so the same object code would be generated again, which is not necessary. Anyways, after generating all the object codes, they will all be passed to the compiler for the **linking** process, where object codes are **linked** to produce a final executable file. Now during development, when you change some small code in just one file, you don't want to regenerate object codes for all the files. The solution to this problem is to **save copies of object codes during the compiling process** and use them in the next compiling process if their source files have not changed. So generating object files will be done only for files that have changed. Then the liking process will be done again to recreate the final executable file. So, as a general solution, how do you tell GCC to save the object codes somewhere? And then how do you tell it to link the object files as a separate command?
 
 > How does the linker work? Once you initiate the command to compile you code, the compiler works out what needs to be done to join some files together and then calls the linker. The linker stitches pieces of compiled code together, a bit like a telephone operator. The old telephone operators would patch calls from one location to another so the two parties could talk. An object file is like that. An object file might need to call a function that is stored in some other file. The linker link together the point in one file where the function call is made to the point in another file where the function lives.
 
@@ -1196,13 +1196,13 @@ gcc -c thruster.c
 
 Now that `make` knows the dependency and the recipe, you can leave it to `make` to decide when it needs to recompile.
 
-As for the next step, once your object files are created, you are going to use them to create the `launch` program, which is the final executable file. This means that the `launch` file can also be set up as a **target**. The **dependencies** for this file are all the `.o` files. So the rule for this step would be:
+As for the next step, once your object files are created, you are going to use them to create the `launch` program, which is the final executable file. This means that the `launch` file can also be set up as a **target**. The **dependencies** for this file are all the `.o` files. So the recipe for this step would be:
 
 ```
 gcc *.o -o launch
 ```
 
-When `make` knows about all dependencies and rules, all you have to do is tell it to create the `launch` (final executable) file. Then `make` will take care of all the details.
+When `make` knows about all dependencies and recipes, all you have to do is tell it to create the `launch` (final executable) file. Then `make` will take care of all the details.
 
 #### The `makefile`
 
@@ -1221,6 +1221,13 @@ thruster.o: thruster.h thruster.c
 
 launch: launch.o thruster.o
     gcc launch.o thruster.o -o launch
+```
+
+So this is the pattern:
+
+```
+target-file: dependencies
+  recipe
 ```
 
 > Notice that all recipes must begin with a **tab** character.
