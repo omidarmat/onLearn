@@ -45,6 +45,7 @@
       - [Example: increasing image brightness](#example-increasing-image-brightness)
   - [Histogram and equalization](#histogram-and-equalization)
     - [Histogram equalization](#histogram-equalization)
+      - [Histogram equalization approaches](#histogram-equalization-approaches)
     - [Create charts from `.dat` signal files](#create-charts-from-dat-signal-files)
       - [Setting up `gnuplot`](#setting-up-gnuplot)
       - [Plotting multiple signals](#plotting-multiple-signals)
@@ -952,6 +953,49 @@ p1(a): probability of finding a pixel with the value "a" in the image
 Area1: area or number of pixels in the image
 H1(a): histogram of the image
 ```
+
+The histogram equalization function would be as:
+
+```
+f(a) = Dm * (1/Area1) * sum(Hc(a))
+
+Dm: number of grey levels in the new image "b".
+```
+
+> A disadvantage of this method is that it is indiscriminate. It may increase contrast of background noise, while decreasing the usable signal. Also, remember that the appearance of some images improves after histogram equalization while it degrades with other images. Histogram equalization can produce undesirable effects (like visible image gradient) when applied to images with low color depth. For example, if applied to 8-bit image displayed with 8-bit grey-scale palette, it will further reduce color depth (number of unique shades of grey) of the image. Histogram equalization will work best when applied to images with much higher color depth than palette size like continous data or 16-bit grayscale images.
+
+#### Histogram equalization approaches
+
+There are 2 ways to think about and implement histogram equalization, either as image change or as palette change. The operation can be expressed as:
+
+```
+P(M(I))
+```
+
+where `I` is the original image, `M` is histogram equalization mapping operation and `P` is a palette. If we define a new palette as:
+
+```
+P' = P(M)
+```
+
+and leave image `I` unchanged, then histogram equalization is implemented as palette change or mapping change. On the other hand if palette `P` remains unchanged and image is modified to:
+
+```
+I' = M(I)
+```
+
+then the implementation is accomplished by image change. In most cases, palette change is better as it preserves the original data.
+
+Modifications of this method use multiple histograms, called sub-histograms, to emphasize local contrast, rather than overall global contrast. Examples of such methods include:
+
+1. Adaptive histogram equalization
+2. Contrast limiting adaptive histogram equalization (CLAHE)
+3. Multipeak histogram equalization (MPHE)
+4. Multipurpose beta optimized bihistogram equalization (MBOBHE)
+
+The goal of these methods (especially MBOBHE) is to improve the contrast without producing brihtness mean-shift and detail loss artifcats by modifying the histogram equalization algorithm.
+
+Histogram equalization is a specific case of the more general class of **histogram remapping** methods. These methods seek to adjust the image to make it easier to analyze or improve visual quality.
 
 ### Create charts from `.dat` signal files
 
