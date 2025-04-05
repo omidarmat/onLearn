@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -179,6 +179,12 @@
       - [The `useLogin` custom hook](#the-uselogin-custom-hook)
       - [The login form component](#the-login-form-component)
     - [Authorization](#authorization)
+- [React Server Components (RSC)](#react-server-components-rsc)
+  - [Server components vs. client components](#server-components-vs-client-components)
+  - [Traditional React vs. RSC](#traditional-react-vs-rsc)
+  - [Pros and cons of RSC](#pros-and-cons-of-rsc)
+    - [Pros](#pros)
+    - [Cons](#cons)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7931,6 +7937,75 @@ export function useLogin() {
 ```
 
 This way, the `useUser` custom hook will simply get the user data from cache and therefore, no unnecessary attempts on interacting with the database.
+
+# React Server Components (RSC)
+
+In a typical React application, we can think of UI as a function of state, changing over time. This is a 100% client-side rendered React app. In this approach, apps are super interactive, and we developers can write all the interactivity inside components.
+
+But there are downsides to 100% client-side rendered apps:
+
+1. React apps require a lot of JavaScript to be downloaded to the user's computer. This impacts the performance and this is a serious concernt when we developers want to build our apps.
+2. Client-server waterfall: This happens when multiple components on a page, need to fetch different data one after another; so when data in one component depends on the data fetched in another component. This is a very common problem in large applications, cause by the fact that we have to fetch data on the client.
+
+The alternative, until a few years ago was a 100% server-side rendered app, like what we had in the days of PHP. There were no interactivity and no components at all. However, it was easy and fast to fetch all data. We didn't need to ship any JS to the client. In this approach, the UI was not a function of state, but a function of data.
+
+Now we are going to learn about another approach where the UI is a function of both state and data. This is where React server components (RSC) come to play. We can now have React components both on client and on the server.
+
+React Server Components is a new full-stack architecture for React apps. It introduces server as a first-class citizen in React apps, meaning that the server is now an integral part of React component trees. In other words, the React tree now extends all the way to the server, acting as a bridge, closing the gap between the client and the server.
+
+So to clarify things, **RSC** or React Server Components is the name of this new architecture, and the new component type used in this architecture is called **server component**. Server components are only rendered on the server, and never on the client. They are usually responsible for retching data right on the server. So these functions would be responsible for creating those parts of the UI that are a function of the data. Since server components only run on the server, they have no interactivity; so no state, meaning that they need no JavaScript in the downloadable bundle to do their job. So we can essentially build the back-end with React.
+
+Besides server components, we still have our old regular components that run entirely on the client. These are called **client components**. They are responsible for the interactivity; so for those parts of the UI that are a function of state.
+
+But where does NextJS sit in all this? RSC is not active by default in new React apps (e.g. Vite apps). It needs to be implemented by a framework, and this is where NextJS is sitting. NextJS with its app router provides this architecture, resulting in server components being the default component in NextJS apps using the app router. You would have to specifically tell a component that it should be a client component using the `"use client"` directive at the top of a client component file.
+
+As a practical example, take this UI and see how the components are divided into server components (orange) and client components (blue). Notice that client components usually appear as the last children in the React component tree.
+
+![src-component-tree](/images/react/server-vs-client-components.png)
+
+> Notice that if a client component has some children components, they will all be client components by default. So you only need to use the `"use client"` directive on the parent client component, and not on its childen. So the `"use client"` directive sets a boundry between server components and client components, creating a sub-tree that will only be executed on the client side.
+
+## Server components vs. client components
+
+Let's compare the two types of component in a collective table.
+
+![server-vs-client-components](/images/react/server-vs-client-components-table.png)
+
+> Notice that passing state is possible from server components to server components, or from server components to client components.
+
+> Notice that data fetching is possible in both server components and client components. It is, however, preferred to do it in server components using `async/await` syntax. In client components it is recommended to use 3rd-party libraries (e.g. React Query) to do this.
+
+> Importing is when a component module imports another component module using the `import` syntax. With this in mind, notice that server components can import both server and client components. Client components can only import other client components, but not server components. Once the client-server boundry is passed, there is no way to go back to the server.
+
+> Rendering is when a component calls another component, meaning that it uses another component inside its JSX. With this in mind, client components can render server components that are passed to it as props. Server components can render everything, both client and server components.
+
+> It is important to know when each type of these components re-render. We know from before that client components only re-render if their state or their parent state changes. Server component re-render each time that the URL changes; so when the user navigates to the URL that has a server component. That is because server components are tied to specific routes in the framework.
+
+## Traditional React vs. RSC
+
+Let's try to understand a bit more about the difference of the newly introduced model from the traditional model.
+
+![react-new-model](/images/react/react-new-model.png)
+
+> This is not how RSC works behind the scences. It is just a mental model.
+
+## Pros and cons of RSC
+
+### Pros
+
+1. We can compose entire full-stack apps with React components alone (+ server actions for mutations)
+2. One single codebase for front and back-end
+3. Server components have more direct and secure access to the data source (no API, no exposing API keys, etc.)
+4. Eliminate client-server waterfalls by fetching all the data needed for a page at once before sending it to the client
+5. Disappearing code: server components ship no JS, so they can import huge libraries with no performance cost on the client.
+
+### Cons
+
+1. This architecture makes React a lot more complex. So there are more things to learn and understand.
+2. Things like the Context API don't work in server components, like all other hooks.
+3. More decisions: Should this be a client or a server component? Should I fetch this data on the server or the client?
+4. Sometimes you still need to build an API (for example if you also have a mobile app)
+5. This architecture can only be implemented and used within a framework. you cannot set up a Vite app and use RSC. It would be so much work that makes it virtually impossible.
 
 # Project deployment
 

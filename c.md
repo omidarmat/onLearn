@@ -483,9 +483,9 @@ happy_birthday(&mytrtle)
 
 ## `union`s
 
-Imagine you need to create a `struct` in which you need a `quantity` field that can hold numeric values of amount (`short`), weight (`float`), volume (`float`), etc. In C, you can do this by using a `union`. So it basically allows you to reuse memory space.
+Imagine you need to create a `struct` in which you need a `quantity` field that can hold numeric values of amount (`short`), weight (`float`), volume (`float`), etc. In C, you can do this by using a `union`. So it basically allows you to **reuse memory space**.
 
-Every time you create an instance of a `struct`, the computer will lay out the fields in memory, one after another. A `union`, however, is different. A `union` will use the space for just one of the fields in its definition. So, if you have a `union` called `quantity`, with fields called `count`, `weight`, and `volume`, the computer will give the `union` enough space for its largest field, and then leave it up to you which value you will store in there. Whether you set the `count`, `weight`, or `volume` field, the data will go into the same space in memory
+Every time you create an instance of a `struct`, the computer will lay out the fields in memory, one after another. A `union`, however, is different. A `union` will use the space for just one of the fields in its definition. So, if you have a `union` called `quantity`, with fields called `count`, `weight`, and `volume`, the computer will give the `union` enough space for its **largest field**, and then leave it up to you which value you will store in there. Whether you set the `count`, `weight`, or `volume` field, the data will go into the same space in memory
 
 To define a `union` you can use this syntax:
 
@@ -559,14 +559,14 @@ In the dot notation used above, you can see that `.amount` is for the `struct` a
 > typedef union {
 >   float weight;
 >   int count;
-> }
+> } cupcake;
 > ```
 >
 > But later in your code you might try to read `order.count` by mistake. Some programmers create an `enum` to avoid making such mistakes with unions.
 
 ## `enum`s
 
-Sometimes you don't want to store a number or a piece of test. Instead, you want to store something from a **limited list of symbols**. If you want to record a day of the week, you only want to store "MONDAY", "TUESDAY", "WEDNESDAY", etc. You don't need to store the text, because there are only ever going to be seven different values to choose from. To create an `enum` you do this:
+Sometimes you don't want to store a number or a piece of text. Instead, you want to store something from a **limited list of symbols**. If you want to record a day of the week, you only want to store "MONDAY", "TUESDAY", "WEDNESDAY", etc. You don't need to store the text, because there are only ever going to be seven different values to choose from. To create an `enum` you do this:
 
 ```c
 enum colors {RED, GREEN, PUCE};
