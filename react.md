@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -184,6 +184,14 @@
   - [Traditional React vs. RSC](#traditional-react-vs-rsc)
     - [Rendering behind the scenes](#rendering-behind-the-scenes)
       - [In summary](#in-summary)
+  - [Clients-side renderng (CSR) vs. server-side rendering (SSR)](#clients-side-renderng-csr-vs-server-side-rendering-ssr)
+    - [Two types of SSR](#two-types-of-ssr)
+    - [Pros and cons](#pros-and-cons)
+      - [Cons of CSR](#cons-of-csr)
+      - [Pros of CSR](#pros-of-csr)
+      - [Cons of SSR](#cons-of-ssr)
+      - [Pros of SSR](#pros-of-ssr)
+      - [Conclusion](#conclusion)
   - [Pros and cons of RSC](#pros-and-cons-of-rsc)
     - [Pros](#pros)
     - [Cons](#cons)
@@ -8019,6 +8027,51 @@ So looking at the whole picture, rendering in RSC is pretty similar to rendering
 #### In summary
 
 Let's summarize all we said in a chart like this:
+
+![traditional-vs-rsc-react](/images/react/rsc-vs-traditional.png);
+
+## Clients-side renderng (CSR) vs. server-side rendering (SSR)
+
+In CSR, the page that the user requests, which is basically the HTML markup, is rendered on the client using JavaScript. It is generated on the client, which is the user's computer. This is what we do normally using the React library.
+
+On the other hand, in SSR, the HTML is generated upfront on a web server. The server then sends the generated website to the client whenever is requested. So this shifts the work of rendering from the user's to the developer's computer or the server.
+
+### Two types of SSR
+
+There are two types of SSR:
+
+1. Static: HTML generated at build time (often called Static Site Generation or SSG). In other words, once the developer is finished developing the site, they export it to static HTML, CSS, and JavaScript files which can then be deployed to a web server. This web server will not re-generate the markup all the time, it will simply send what was generated once by the developer in the build step. 
+2. Dynamic: HTML is generated each time server receives new request. This is great when the underlying data of the page changes often. 
+
+### Pros and cons
+
+#### Cons of CSR
+
+1. Slow initial page loads: The JavaScript bundle that is required to render the app might be quite large and must be fully downloaded before anything else can happen on the page.
+2. Most apps require some kind of data, which can only start to be fetched after the components have already mounted; so after they have been rendered on the client. This leads to the so-called waterfall causing a slow down in the entire experience.
+3. SEO problems: Content is not rendered until after JavaScript is executed and data is fetched. Search engines might find a blank page when they try to index the site. This is getting better actually, but in projects where SEO is important, SSR should be chosen.
+
+#### Pros of CSR
+
+1. Highly interactive UX: After the initial page load, the entire app has been downloaded. This leads to the single-page application feel.
+
+#### Cons of SSR
+
+1. Less interactive: Navigating from page to page may require the server to render a new page each time, which is going to lead to full-page reloads in the browser. However, modern frameworks like NextJS are blurring these lines. They allow us developers to build server-side rendered pages that can also hydrate on the client in order to become interactive.
+
+#### Pros of SSR
+
+1. Much faster initial page loads: A lot less JavaScript should be downloaded for the app to work. The client does not need any JavaScript in order to render the HTML. It has all been rendered on the server.
+2. Data for each page will be downloaded on the server right before the HTML is generated. This data is then incorporated into the page that gets sent to the browser.
+3. SEO benefits: This is where SSR really shines. Pre-generated content is much easier for search engines like Google to index.
+
+#### Conclusion
+
+So where should we use each of these technologies?
+
+SSR: Content-driven websites or apps where SEO is essential like e-commerce, blogs, news, marketing websites, etc.
+
+CSR: When you need to build highly-interactive sing-page applications. These should be apps where SEO does not matter at all, like admin panels.
 
 ## Pros and cons of RSC
 
