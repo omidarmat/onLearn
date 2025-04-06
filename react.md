@@ -182,6 +182,8 @@
 - [React Server Components (RSC)](#react-server-components-rsc)
   - [Server components vs. client components](#server-components-vs-client-components)
   - [Traditional React vs. RSC](#traditional-react-vs-rsc)
+    - [Rendering behind the scenes](#rendering-behind-the-scenes)
+      - [In summary](#in-summary)
   - [Pros and cons of RSC](#pros-and-cons-of-rsc)
     - [Pros](#pros)
     - [Cons](#cons)
@@ -7988,6 +7990,35 @@ Let's try to understand a bit more about the difference of the newly introduced 
 ![react-new-model](/images/react/react-new-model.png)
 
 > This is not how RSC works behind the scences. It is just a mental model.
+
+### Rendering behind the scenes
+
+In tradition React, we wrote some components, and finally, as we composed all our components into a UI, we ended up with a tree of component instances (component tree). The next step would be to render the component tree. Rendering in React means to call each component function. The result of calling a component function is a React element which is simply a JavaScript object containing all the information necessary for creating DOM elements for the corresponding component instance. As a result of rendering, we ended up with the React element tree or the virtual DOM. This virtual DOM would then be commited to the actual DOM, which means DOM elements in HTML. We are ignoring rerendering, diffing and reconciliation since we don't need them here. We just need to understand how rendering worked in traditional React.
+
+Regarding the two steps of: creating the component tree and rendering it to the virtual DOM, how is it going to work in the RSC architecture where client components and server components are involved? The idea here is to learn how and where server and client components are rendered step by step.
+
+When React encounters a tree involving server and client components, the first thing that happens is that all server components are rendered on the server. Again, rendering a component results in a React element. The React elements created from server components really only contain the output of the server component; so containing only the information determining how the element will look like in the DOM, but not including the code that was necessary to render the component. This means that the component's code has disappeared on the server. This is the exact technical reason why we cannot use state in server components. Functions like `useState` and `useEffect` would just disappear as the component is rendered. It needs to be this way because these elements have to be sent to the client later, so the whole thing needs to be serializable, which functions are not. There would also be no way of keeping track of state since there is no fiber tree on the server. Even if we had one, we could not send it to the client.
+
+What happens to client components in this architecture? Since at this point, we are still on the server, client components are not yet going to be renderd. Instead, we can imagine that this component tree contains a placeholder where each client component can finally be rendered. Each of these placeholders contain the serialized props that might have been passed from a server component to the current client component, plus the URL to the script that contains the actual component code. This reference to the code is necessary so that the client component can be executed on the client; so being rendered on the client.
+
+Creating this script with the component code and the URL pointing to it is so complex that must be powered by the bundler that the framework is using, and not by React itself. So client components won't be rendered on the server, and therefore we would need a way to pass them to the client. This is the information necessary for that:
+
+1. Props that they received
+2. The code to actually run the components on the client
+
+At this step we have a somewhat strange tree including executed and unexecuted component instances. This is called RSC payload. This payload is the virtual DOM of all server components, since they are all rendered, plus some sub-trees of un-rendered client components. This is called the RSC payload because it is this data structure that would be sent to the client in the next step.
+
+In the next step, client components are finally rendered as well, also resulting in new React elements. We now have the complete final virtual DOM on the client, ready to be committed to the DOM in the usual way that we already know.
+
+So looking at the whole picture, rendering in RSC is pretty similar to rendering in traditional React, but it is done in 2 steps, in 2 different environments. Let's now ask: why do we need such a complex process with the RSC payload? Why not just render server components as HTML and send that HTML to the browser? The fundamental reason is that React really wants to always describe UI as data, and not as finished HTML. This is why the virtual DOM and fiber trees exist in React. In the case of RSC, representing the UI as data even on the server gives React the ability to correctly react to re-renders of server components. This means that when a server component re-renders and produces a new React component, this element can be merged seamlessly into the already existing virtual DOM on the client. So when a server component is re-rendered, a new RSC payload is generated and sent to the client where React can then reconcile the current tree on the client with the new tree coming from the server. Being able to reconcile a new tree with an existing tree on re-render is really what React is all about at its core. So this core idea should work with server components. It is important that this works correctly, because this would allow React to preserve UI state as a new tree comes in from the server. If, instead, just HTML would be sent, the entire UI would have to be replaced with the new HTML, losing all the current UI state.
+
+> Notice that these steps are not sequential and blocking. One step does not wait for the other step to finish. Instead, completed render work on a server is streamed to the client right away and integrated seamlessly into the tree on the client over time.
+
+> The UI is not really a function of data and state at the same time. UI is first a function of data, and then a function of state.
+
+#### In summary
+
+Let's summarize all we said in a chart like this:
 
 ## Pros and cons of RSC
 
