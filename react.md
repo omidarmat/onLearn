@@ -186,6 +186,7 @@
       - [In summary](#in-summary)
   - [Clients-side renderng (CSR) vs. server-side rendering (SSR)](#clients-side-renderng-csr-vs-server-side-rendering-ssr)
     - [Two types of SSR](#two-types-of-ssr)
+      - [Hydration](#hydration)
     - [Pros and cons](#pros-and-cons)
       - [Cons of CSR](#cons-of-csr)
       - [Pros of CSR](#pros-of-csr)
@@ -8040,8 +8041,22 @@ On the other hand, in SSR, the HTML is generated upfront on a web server. The se
 
 There are two types of SSR:
 
-1. Static: HTML generated at build time (often called Static Site Generation or SSG). In other words, once the developer is finished developing the site, they export it to static HTML, CSS, and JavaScript files which can then be deployed to a web server. This web server will not re-generate the markup all the time, it will simply send what was generated once by the developer in the build step. 
-2. Dynamic: HTML is generated each time server receives new request. This is great when the underlying data of the page changes often. 
+1. Static: HTML generated at build time (often called Static Site Generation or SSG). In other words, once the developer is finished developing the site, they export it to static HTML, CSS, and JavaScript files which can then be deployed to a web server. This web server will not re-generate the markup all the time, it will simply send what was generated once by the developer in the build step.
+2. Dynamic: HTML is generated each time server receives new request. This is great when the underlying data of the page changes often.
+
+> But if we are going to use SSR in our apps, what happens to interactivity? The website that is sent to the client in SSR, typically will still include a JavaScript bundle, which will be downloaded and executed just like before, and then a process called **hydration** happens. Hydration is the process in which a static HTML becomes interactive by adding JavaScript to it.
+
+#### Hydration
+
+So we have a React app with its component tree that we want to render on the server. This is typically written by using something like NextJS. So we are goin to render our app as server-side rendered HTML markup. This HTML is then sent to the client, and rendered in the browser as a web page. The web page at this stage is not interactive, because it is just HTML. This is where the process of hydration comes to play.
+
+In the context of server-side rendering a React app, hydration is the process that adds back the interactivity and event handlers that the initial React app had, but that were lost in the process of server-side rendering. So the HTML page that we got on the client, will also download the React bundle of out initial React app. This bundle will then hydrate the static DOM of our web page. React will build back the component tree on the client and will compare it to the actual server-side rendered DOM that is currently on the page. If they match, React will simply adopt the existing DOM, and attach all event handlers and fire off existing effects.
+
+So instead of creating brand new DOM elements which can take a long time, in hydration, React attempts to adopt the already existing DOM. Hydration simply continues and also finishes the process of SSR. In the end we have the exact same React app that we started with, but now on the client. After this whole process, the page becomes interactive, which is another important metric for page performance.
+
+> Remember we said that this process only works if the existing server-rendered DOM fits exactly to the DOM that React would output on the client. That is because hydration can take a few seconds, and if there were differences between the two DOMs, then the page content would change after hydration finishes, which would be a bad UX. Therefore, if there is a mismatch between the page that we have and the page that client-side React thinks that we should have, we get something called a **hydration error**.
+>
+> Most common cases of hydraor includes incorrect HTML element nesting (like using `div` in a `p` element), different data used for rendering, using browser-only APIs (like local storage or the `window` variable), incorrect use of side effects, etc.
 
 ### Pros and cons
 
