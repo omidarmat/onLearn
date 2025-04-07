@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -202,6 +202,11 @@
     - [Navigating between pages](#navigating-between-pages)
     - [Programmatic navigation](#programmatic-navigation)
   - [Layout](#layout)
+  - [Fetching data](#fetching-data-1)
+  - [Adding interactivity](#adding-interactivity)
+    - [Crossing the server-client boundry](#crossing-the-server-client-boundry)
+  - [Displaying a loading indicator](#displaying-a-loading-indicator)
+    - [Streaming for individual components](#streaming-for-individual-components)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8153,7 +8158,7 @@ To implement links leading to paths to other pages of your application, you shou
 
 ### Programmatic navigation
 
-Just like React router, NextJS also provide us with some React hooks for programmatic navigation, but these don't work in `Page` components, since they are server components, and React hooks don't work on server components.
+Just like React router, NextJS also provide us with some React hooks for programmatic navigation, but these don't work in `page` components, since they are server components, and React hooks don't work on server components.
 
 > Notice that in a typical project, you would always want the navbar on top of all your pages. This means that there should be a way of implementing a `<Navigation />` component once, and have it on all your pages. This is where the `layout.js` comes to play as a global layout of your application.
 
@@ -8185,7 +8190,111 @@ export default function RootLayout({children}) {
 
 > Notice that we did not implement a `<head>` tag at the beginning of the `<html>` tag. In NextJS we have another way of managing what appears as `<head>`, which is the `metadata` variable defined at the top of the page.
 
-> Notice that this layout, like all the pages, is a server component. This is rendered right on the server.
+> Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here. 
+
+## Fetching data
+
+We are going to fetch data right from a React component. So in the `page.js` of the `/cabins` route, we would have:
+
+```js
+export default async function Page() {
+  const res = await fetch("url");
+  const data = await res.json();
+
+  return (
+    <div>
+      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+    </div>
+  )
+}
+```
+ 
+## Adding interactivity
+
+Using client components, you can now add interactivity to your page. Let's now implement a `Counter` component and include it in a server-side rendered page.
+
+```js
+// Counter.js
+"use client";
+
+export default function Counter() {
+  const [count, setCount] = useState();
+
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+}
+```
+
+Now let's import this in a `Page.js` file:
+
+```js
+// page.js
+import Counter from "../components/Counter";
+export default async function Page() {
+  const res = await fetch("url");
+  const data = await res.json();
+
+  return (
+    <div>
+      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <Counter />
+    </div>
+  )
+}
+```
+
+Notice that the hydration process will happen during the loading of this page on the website. So first, the server-rendered HTML arrives at the browser, and it takes a short while until you can actually interact with the `Counter` component. While the hydration is happening, the user can see the data that was fetched on the server and is now apparent on the page, until the hydration completes.
+
+### Crossing the server-client boundry
+
+One thing that we can do when we want some data on the front-end, is that we can fetch the data on the server component, and pass it as props to a client component. 
+
+We can make the `Counter` client component accept a `users` prop, and then pass the fetched data in the `page.js` file into this client component.
+
+```js
+// Counter.js
+"use client";
+
+export default function Counter({users}) {
+  const [count, setCount] = useState();
+
+  return (
+    <div>
+      <p>There are {users.length} users</p>
+      <button onClick={() => setCount(c => c + 1)}>{count}</button>
+    </div>
+    );
+}
+```
+
+```js
+// page.js
+import Counter from "../components/Counter";
+export default async function Page() {
+  const res = await fetch("url");
+  const data = await res.json();
+
+  return (
+    <div>
+      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <Counter users={data} />
+    </div>
+  )
+}
+```
+
+Now as you navigate to this page on the browser, you will be able to see that, even when the hydration process is not complete, you can see the `<p>There are 10 users</p>` output coming from the `Counter` client component on the page. This is because all components are initially rendered on the server, no matter if it is a server or a client component. 
+
+## Displaying a loading indicator
+
+To implement a loader indicator that would be displayed as it takes a page to fetch and load its data, you can simply add a `loading.js` file to the project root. You can then call the function inside this file anything you want. 
+
+Notice that this will cause only the part of the page which is inside the root layout to be replaced by the loading indicator as it is being rendered on the server. So the surrounding layout will be instantly visible on the page. The children of the root layout is the only part for which the loading indicator will be used automatically by NextJS.
+
+Behind the scenes, this `loading.js` will activate streaming. So the data that is being fetched on the server, would be streamed from the server to the client. This feature needs JavaScript to be enabled in the browser, meaning that your application streaming will not work if the user disables it. So if you want your website to work without JavaScript on the browser, you cannot have a `loading.js` file. 
+
+### Streaming for individual components
+
+You can also activate streaming for individual components using the `Suspense` component. 
 
 # Project deployment
 
