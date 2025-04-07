@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -196,6 +196,12 @@
   - [Pros and cons of RSC](#pros-and-cons-of-rsc)
     - [Pros](#pros)
     - [Cons](#cons)
+- [NextJS](#nextjs)
+  - [Initializing a project](#initializing-a-project)
+  - [Implement routing](#implement-routing)
+    - [Navigating between pages](#navigating-between-pages)
+    - [Programmatic navigation](#programmatic-navigation)
+  - [Layout](#layout)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8105,6 +8111,81 @@ CSR: When you need to build highly-interactive sing-page applications. These sho
 3. More decisions: Should this be a client or a server component? Should I fetch this data on the server or the client?
 4. Sometimes you still need to build an API (for example if you also have a mobile app)
 5. This architecture can only be implemented and used within a framework. you cannot set up a Vite app and use RSC. It would be so much work that makes it virtually impossible.
+
+# NextJS
+
+There are 4 NextJS key ingredients:
+
+1. Server-side rendering (dynamic and static): we can select between the two types for each route.
+2. File-based routing conventions: Folders will be considered as routes. Special files for **pages**, **layouts**, **loaders**, etc.
+3. Data fetching and mutation on the server: Fetch data directly in server components, and perform mutations in server actions.
+4. Optimization: images, fonts, SEO, preloading
+
+NextJS app router implements React's full-stack architecture: Server components, server actions, streaming, etc.
+
+The bad thing about the app router is its super-aggressive caching which makes working with the app router confusing. It sometimes do things that we don't want.
+
+Also, beware of the steep learning curve of the app router.
+
+## Initializing a project
+
+you can start a project using this command:
+
+```
+npx create-next-app@latest 'project-name'
+```
+
+## Implement routing
+
+To create a route for your app, you need to create a folder with the route name you need (for example, `cabins`), but this is not enough. You also need to create a file inside, and call it `page.js`. Now this is considered by NextJS as a route of your application. So you will now be able to navigate to: `localhost:3000/cabins`.
+
+> It is a convension to name the function component inside `page.js` as `page`.
+
+If you want to implement a nested route, you would have to create a nested folder inside `cabins` folder. This new nested folder would also have to include a `page.js` file so as to be rendered as a route of your application.
+
+### Navigating between pages
+
+To implement links leading to paths to other pages of your application, you should use Next's `<Link>` component. Next has implemented optimization measures on this component:
+
+1. Next will pre-fetch all the routes that are linked on a certain page (this only happens in production, you cannot see it while developing).
+2. Each page is downloaded separately as a separate chunk.
+3. Each page that we visit in the browser will be cached in the browser as well. Then as we move around, these pages would not have to be re-fetched.
+
+### Programmatic navigation
+
+Just like React router, NextJS also provide us with some React hooks for programmatic navigation, but these don't work in `Page` components, since they are server components, and React hooks don't work on server components.
+
+> Notice that in a typical project, you would always want the navbar on top of all your pages. This means that there should be a way of implementing a `<Navigation />` component once, and have it on all your pages. This is where the `layout.js` comes to play as a global layout of your application.
+
+## Layout
+
+Each and every NextJS app would need one global layout, which we call **root layout**. This is actually the reason that NextJS will automatically create the `layout.js` file in the root of your project, even if you delete it.
+
+Inside this file, there should convensionally be a component function called `RootLayout` like this:
+
+```jsx
+export const metadata = {
+  title: "The Wild Oasis",
+}
+
+export default function RootLayout({children}) {
+  return (
+    <html>
+      <body>
+      <header>
+        <Logo/>
+        <Navigation />
+      </header>
+        <main>{children}</main>
+        <footer>Copyright notice</footer>
+      </body>
+    </html>
+    )
+```
+
+> Notice that we did not implement a `<head>` tag at the beginning of the `<html>` tag. In NextJS we have another way of managing what appears as `<head>`, which is the `metadata` variable defined at the top of the page.
+
+> Notice that this layout, like all the pages, is a server component. This is rendered right on the server.
 
 # Project deployment
 
