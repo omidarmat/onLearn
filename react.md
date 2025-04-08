@@ -196,6 +196,10 @@
   - [Pros and cons of RSC](#pros-and-cons-of-rsc)
     - [Pros](#pros)
     - [Cons](#cons)
+  - [RSC vs SSR](#rsc-vs-ssr)
+    - [Review of dynamic SSR](#review-of-dynamic-ssr)
+    - [What about RSC?](#what-about-rsc)
+    - [In summary](#in-summary-1)
 - [NextJS](#nextjs)
   - [Initializing a project](#initializing-a-project)
   - [Implement routing](#implement-routing)
@@ -8117,6 +8121,60 @@ CSR: When you need to build highly-interactive sing-page applications. These sho
 4. Sometimes you still need to build an API (for example if you also have a mobile app)
 5. This architecture can only be implemented and used within a framework. you cannot set up a Vite app and use RSC. It would be so much work that makes it virtually impossible.
 
+## RSC vs SSR
+
+SSR and RSC are not the same thing, but they do interact with each other. We are now going to find out how.
+
+### Review of dynamic SSR
+
+When we want to render HTML from a React app on the server, we start from a component tree. This tree will then be rendered to the virtual DOM and then to HTML, ready to be shipped to the client. In essence, we can say that SSR means: just take this React component tree, render it as HTML and send it to the browser. Now, besides the HTML, the React bundle (contining React itself + the component tree) will also need to be sent to the browser, so the HTML could then be hydrated with interactivity. So this would finally be an app like any other React application with the only difference that the DOM is generated on the server, not on the client. So in dynamic SSR we mainly have:
+
+1. Just take this component tree, render it as HTML, and send the HTML to the browser.
+2. Also send the React code to make the HTML interactive.
+
+### What about RSC?
+
+So how does SSR work when we use React server components? First of all, let's just keep in mind that RSC and SSR are completely different technologies. So RSC is not meant to replace SSR, but to complement it. These two technologies usually work together. So there should be a framework that combines the two.
+
+When a framework combines SSR with RSC, SSR still works in the exact same way we just described in the review above as if we were using traditional React without server components at all. This means that both server and client components are initially rendered on the server, when we are using SSR with RSC.
+
+But isn't that strange? Why would client components also be rendered on the server? Let's review the RSC architecture flow:
+
+![RSC-vs-SSR](/images/react/rsc-vs-ssr.png);
+
+It is now time to reveal that the `server` part and the `client` part of this RSC architecture both run inside the actual web server. React's server in RSC is not the same is server in SSR. React's server and Reac't client are simply 2 different environments of the RSC architecture. The React server does not even need to be an actual web server. In the RSC model, a server is just a computer different from the browser; so a computer that the developer has access to and can run code on it. This, in theory, means that RSC does not require a running web server. Instead, server and client components could just be rendered once at build time in a process that we call static site generation. The developer could even read files from their own filesystem during this process, because they are on their own computer, or in other words, on the React server. But this is just theory. In practice, RSC is indeed coupled with SSR.
+
+In a similar way, the React client does not need to be a web browser. The React client, is simply a part of the architecture that consumes the rendered React app. In the case of SSR, consuming means to render the app not as DOM elements, but as HTML.
+
+### In summary
+
+SSR works just like before, without RSC. SSR is still:
+
+1. Just take this component tree, render it as HTML, and send the HTML to the browser.
+2. Also send the React code to make the HTML interactive.
+
+The difference is that now, both client and server components are rendered on the web server that NextJS provides, in the two different environments on the RSC architecture: React server, and React client. Both of these environments run on the server on the initial render, and therefore, the output is not DOM nodes, but HTML which is sent to the browser.
+
+It now makes sense that client components are also rendered on the server on the first render, because before React Server Components even existed, all components were basically client components, and they would all render on the server during SSR. It makes sense that the same continues to happen now with RSC in place. SSR will still render all components on the server on the initial render.
+
+We can now abstract away the idea of React server and React client, and think of it like this:
+
+![summary-ssr-rsc](/images/react/summary-of-rsc-ssr.png)
+
+It is simply the entire component tree being rendered to HTML and then shipped off to the browser. After the HTML has been sent, the React bundle also needs to be sent just like before. This will contain the React library itself, plus the components code; so the components can later be rendered or hydrated on the client. Now, in practice, since there is streaming and code splitting involved, this bundle will be in many different chunks, which will be requested by the client as they become necessary over time.
+
+Finally, as we learned before, rendering the server components produces the RSC payload, which contains:
+
+1. Renderd server components
+2. Props that have been passed from server to client component
+3. For each client component, the URL that corresponds to one of the chunks mentioned above.
+
+The RSC payload is also sent to the client along with the React bundle, so that React has access to the entire component tree, including server components, and not just the HTML. This is important in order to preserve state in the browser, as server components get re-rendered later. The RSC payload is also important besides the React bundle for hydrating the HTML. Now since only client components are interactive, only client components get hydrated. From this point on, we have a normal React app in the browser, but one follows the RSC architecture and behaves as we learned. 
+
+So SSR is only relevant to the initial render. After that, RSC works just as we learned before. After the initial render, the React server is the same as the web server where NextJS is running, and React client is the same as the user's browser. So then, when a server component gets re-rendered a new RSC payload is generated and sent to the client (the actual user's browser) ready to be merged into the already existing React tree. This way, the existing UI state can always be preserved. 
+
+> Always keep in mind: Both client and server components are initially rendered on the server when SSR is used. From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client. 
+
 # NextJS
 
 There are 4 NextJS key ingredients:
@@ -8190,7 +8248,7 @@ export default function RootLayout({children}) {
 
 > Notice that we did not implement a `<head>` tag at the beginning of the `<html>` tag. In NextJS we have another way of managing what appears as `<head>`, which is the `metadata` variable defined at the top of the page.
 
-> Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here. 
+> Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here.
 
 ## Fetching data
 
@@ -8203,12 +8261,16 @@ export default async function Page() {
 
   return (
     <div>
-      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <ul>
+        {data.map((item) => (
+          <li key={item.id}>{item.name}</li>
+        ))}
+      </ul>
     </div>
-  )
+  );
 }
 ```
- 
+
 ## Adding interactivity
 
 Using client components, you can now add interactivity to your page. Let's now implement a `Counter` component and include it in a server-side rendered page.
@@ -8220,7 +8282,7 @@ Using client components, you can now add interactivity to your page. Let's now i
 export default function Counter() {
   const [count, setCount] = useState();
 
-  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 ```
 
@@ -8235,10 +8297,14 @@ export default async function Page() {
 
   return (
     <div>
-      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <ul>
+        {data.map((item) => (
+          <li key={item.id}>{item.name}</li>
+        ))}
+      </ul>
       <Counter />
     </div>
-  )
+  );
 }
 ```
 
@@ -8246,7 +8312,7 @@ Notice that the hydration process will happen during the loading of this page on
 
 ### Crossing the server-client boundry
 
-One thing that we can do when we want some data on the front-end, is that we can fetch the data on the server component, and pass it as props to a client component. 
+One thing that we can do when we want some data on the front-end, is that we can fetch the data on the server component, and pass it as props to a client component.
 
 We can make the `Counter` client component accept a `users` prop, and then pass the fetched data in the `page.js` file into this client component.
 
@@ -8254,15 +8320,15 @@ We can make the `Counter` client component accept a `users` prop, and then pass 
 // Counter.js
 "use client";
 
-export default function Counter({users}) {
+export default function Counter({ users }) {
   const [count, setCount] = useState();
 
   return (
     <div>
       <p>There are {users.length} users</p>
-      <button onClick={() => setCount(c => c + 1)}>{count}</button>
+      <button onClick={() => setCount((c) => c + 1)}>{count}</button>
     </div>
-    );
+  );
 }
 ```
 
@@ -8275,26 +8341,30 @@ export default async function Page() {
 
   return (
     <div>
-      <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <ul>
+        {data.map((item) => (
+          <li key={item.id}>{item.name}</li>
+        ))}
+      </ul>
       <Counter users={data} />
     </div>
-  )
+  );
 }
 ```
 
-Now as you navigate to this page on the browser, you will be able to see that, even when the hydration process is not complete, you can see the `<p>There are 10 users</p>` output coming from the `Counter` client component on the page. This is because all components are initially rendered on the server, no matter if it is a server or a client component. 
+Now as you navigate to this page on the browser, you will be able to see that, even when the hydration process is not complete, you can see the `<p>There are 10 users</p>` output coming from the `Counter` client component on the page. This is because all components are initially rendered on the server, no matter if it is a server or a client component.
 
 ## Displaying a loading indicator
 
-To implement a loader indicator that would be displayed as it takes a page to fetch and load its data, you can simply add a `loading.js` file to the project root. You can then call the function inside this file anything you want. 
+To implement a loader indicator that would be displayed as it takes a page to fetch and load its data, you can simply add a `loading.js` file to the project root. You can then call the function inside this file anything you want.
 
 Notice that this will cause only the part of the page which is inside the root layout to be replaced by the loading indicator as it is being rendered on the server. So the surrounding layout will be instantly visible on the page. The children of the root layout is the only part for which the loading indicator will be used automatically by NextJS.
 
-Behind the scenes, this `loading.js` will activate streaming. So the data that is being fetched on the server, would be streamed from the server to the client. This feature needs JavaScript to be enabled in the browser, meaning that your application streaming will not work if the user disables it. So if you want your website to work without JavaScript on the browser, you cannot have a `loading.js` file. 
+Behind the scenes, this `loading.js` will activate streaming. So the data that is being fetched on the server, would be streamed from the server to the client. This feature needs JavaScript to be enabled in the browser, meaning that your application streaming will not work if the user disables it. So if you want your website to work without JavaScript on the browser, you cannot have a `loading.js` file.
 
 ### Streaming for individual components
 
-You can also activate streaming for individual components using the `Suspense` component. 
+You can also activate streaming for individual components using the `Suspense` component.
 
 # Project deployment
 
