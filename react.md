@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -206,6 +206,9 @@
     - [Navigating between pages](#navigating-between-pages)
     - [Programmatic navigation](#programmatic-navigation)
   - [Layout](#layout)
+  - [Fonts](#fonts)
+  - [Images](#images)
+    - [Image with static import](#image-with-static-import)
   - [Fetching data](#fetching-data-1)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundry](#crossing-the-server-client-boundry)
@@ -8169,11 +8172,11 @@ Finally, as we learned before, rendering the server components produces the RSC 
 2. Props that have been passed from server to client component
 3. For each client component, the URL that corresponds to one of the chunks mentioned above.
 
-The RSC payload is also sent to the client along with the React bundle, so that React has access to the entire component tree, including server components, and not just the HTML. This is important in order to preserve state in the browser, as server components get re-rendered later. The RSC payload is also important besides the React bundle for hydrating the HTML. Now since only client components are interactive, only client components get hydrated. From this point on, we have a normal React app in the browser, but one follows the RSC architecture and behaves as we learned. 
+The RSC payload is also sent to the client along with the React bundle, so that React has access to the entire component tree, including server components, and not just the HTML. This is important in order to preserve state in the browser, as server components get re-rendered later. The RSC payload is also important besides the React bundle for hydrating the HTML. Now since only client components are interactive, only client components get hydrated. From this point on, we have a normal React app in the browser, but one follows the RSC architecture and behaves as we learned.
 
-So SSR is only relevant to the initial render. After that, RSC works just as we learned before. After the initial render, the React server is the same as the web server where NextJS is running, and React client is the same as the user's browser. So then, when a server component gets re-rendered a new RSC payload is generated and sent to the client (the actual user's browser) ready to be merged into the already existing React tree. This way, the existing UI state can always be preserved. 
+So SSR is only relevant to the initial render. After that, RSC works just as we learned before. After the initial render, the React server is the same as the web server where NextJS is running, and React client is the same as the user's browser. So then, when a server component gets re-rendered a new RSC payload is generated and sent to the client (the actual user's browser) ready to be merged into the already existing React tree. This way, the existing UI state can always be preserved.
 
-> Always keep in mind: Both client and server components are initially rendered on the server when SSR is used. From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client. 
+> Always keep in mind: Both client and server components are initially rendered on the server when SSR is used. From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client.
 
 # NextJS
 
@@ -8246,9 +8249,147 @@ export default function RootLayout({children}) {
     )
 ```
 
-> Notice that we did not implement a `<head>` tag at the beginning of the `<html>` tag. In NextJS we have another way of managing what appears as `<head>`, which is the `metadata` variable defined at the top of the page.
+> Notice that we did not implement a `<head>` tag at the beginning of the `<html>` tag. In NextJS we have another way of managing what appears as `<head>`, which is the `metadata` variable defined at the top of the page. Also remember that setting metadata can be done on the `layout.js` file which would be applied to all the pages of your application, or you could define metadata for each individual page. This would then overwrite the layout metadata. Now if you want a specific title to always appear in the metadata's title in addition to customized titles for individual pages, you can do this:
+
+```js
+// layout.js
+
+export const metadata = {
+  title: {
+    template: "%s / The Wild Oasis",
+    default: "Welcome / The Wild Oasis",
+  },
+  description:
+    "Luxurious cabin hotel, located in the heart of the Italian Dolomites, surrounded by beautiful mountains and dark forests",
+};
+// %s will get replaced by the `title` property defined in individual pages
+```
 
 > Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here.
+
+## Fonts
+
+NextJS allows us to easily self-host any google font, without it being downloaded. This prevents layout shifts, and improve performance, and even privacy. Be aware that if you use fonts from google fonts, it won't be good for privacy, and it might be a problem with the GDPR regulations. It is also not good for performance, because that font will need to be downladed from a google server. It is always best to have those files right on your own server.
+
+To self-host a google font you can do this in the `layout.js` file:
+
+```jsx
+// layout.js
+import { Josefin_Sans } from "next/font/google";
+```
+
+This import would actually provide you with a function that has the name of the font. You would have to use this function like this:
+
+```jsx
+// layout.js
+import { Josefin_Sans } from "next/font/google";
+
+const josefin = Josefin_Sans({
+  subsets: ["latin"],
+  display: "swap",
+});
+```
+
+You then need to use this `josefin` font variable as a class name and provide it to the `className` attribute of the `body` tag:
+
+```jsx
+// layout.js
+// imports and other setup stuff...
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body
+        className={`${josefin.className} bg-primary-950 text-primary-100 min-h-screen`}
+      >
+        <header>
+          <Logo />
+          img
+          <Navigation />
+        </header>
+        <main>{children}</main>
+        <footer>Copyright by the Wild Oasis</footer>
+      </body>
+    </html>
+  );
+}
+```
+
+## Images
+
+NextJS has a built-in way of optimizing images by forcing you to use its native `<Image />` element. This Image component performs 3 important tasks:
+
+1. Automatically serves correctly sized imags in modern formats, for example `.webp`. It will only do this on demand.
+2. Prevents layout shifts, because it forces us to specify the exact height and width.
+3. Automatically lazy-loads images only when they enter the viewport.
+
+This is the normal usage of the `<Image />` component:
+
+```jsx
+<Image src="/logo.png" height="60" width="60" alt="The Wild Oasis logo" />
+```
+
+### Image with static import
+
+You can use this element in another way. You can statically import the image file first in your script file, and then give the image's imported name to the `src` prop of the `<Image />` element. This way, NextJS will be able to analyze the image first, and then you don't need to specify the height and width of the image manually.
+
+```jsx
+import logo from "@/public/logo.png";
+
+function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-4 z-10">
+      <Image src={logo} alt="The Wild Oasis logo" />
+      <span className="text-xl font-semibold text-primary-100">
+        The Wild Oasis
+      </span>
+    </Link>
+  );
+}
+```
+
+> You won't receive an error for not specifying the height and width. This may sometimes cause your image appear out of proper size.
+
+When statically importing the image file, you can also use other props on the `Image` element, like `quality` which receives a number as percent.
+
+> Notice that if you want your image to act responsively, you should not specify its width and height. So to implement a responsive image, you would have to use the static import technique.
+
+Another prop that you can use on statically imported images, is the `fill` prop. Setting this alone, with no value for it, will make the image to fill the entire area of the element. However, this will lead to deformation of your image, so you would have to utilize tailwind's `object-cover` class to prevent that. You may also want to use `object-top` to pervent image position shifts.
+
+```jsx
+<Image
+  src={bgImg}
+  alt="Mountains and forests with two cabins"
+  fill
+  className="object-cover object-top"
+/>
+```
+
+You can also use `placeholder` prop and set it to `"blur"` so that the image will be blurry at the initial page load, and it will be replaced by the actual image once it is loaded completely.
+
+```jsx
+<Image
+  src={bgImg}
+  alt="Mountains and forests with two cabins"
+  fill
+  className="object-cover object-top"
+  placeholder="blur"
+/>
+```
+
+> Sometimes you don't want the image to fill an entire area, but you want it to act responsively and you are also using a URL as the image source, so the image is somewhere on the web. In this complex case, you need to use another technique with the `fill` attribute. You first need to wrap the image in another element, and specify the size of the parent container. But remember, we want the image to be responsive. So you cannot specifically set the size of the parent container. This should actually be done using the `aspect` tailwind class with the proper value. Then you would have to apply `object-cover` class to the `Image`. This is the syntax:
+
+```jsx
+<div className="aspect-square relative">
+  <Image
+    // The `placeholder` prop cannot be used since it is not statically imported
+    src="/about-2.jpg"
+    fill
+    className="object-cover"
+    alt="Family that manages The Wild Oasis"
+  />
+</div>
+```
 
 ## Fetching data
 
