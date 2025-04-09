@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -209,11 +209,15 @@
   - [Fonts](#fonts)
   - [Images](#images)
     - [Image with static import](#image-with-static-import)
+    - [Images from external sources](#images-from-external-sources)
   - [Fetching data](#fetching-data-1)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundry](#crossing-the-server-client-boundry)
   - [Displaying a loading indicator](#displaying-a-loading-indicator)
+    - [Suspense](#suspense)
+      - [What happens behind the scenes](#what-happens-behind-the-scenes)
     - [Streaming for individual components](#streaming-for-individual-components)
+  - [Environment variables](#environment-variables)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8267,6 +8271,8 @@ export const metadata = {
 
 > Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here.
 
+> Notice that if you want a specific route of your app to have a different layout, you just need to include a `layout.js` file inside the folder related to that route.
+
 ## Fonts
 
 NextJS allows us to easily self-host any google font, without it being downloaded. This prevents layout shifts, and improve performance, and even privacy. Be aware that if you use fonts from google fonts, it won't be good for privacy, and it might be a problem with the GDPR regulations. It is also not good for performance, because that font will need to be downladed from a google server. It is always best to have those files right on your own server.
@@ -8391,6 +8397,14 @@ You can also use `placeholder` prop and set it to `"blur"` so that the image wil
 </div>
 ```
 
+### Images from external sources
+
+When you try to render images on a specific remote URL using the Next's `<Image />` component, you will most probably receive an error. This error is returned to your because of the optimization processes that next needs to do. Since the image is hosted somewhere else, you should put the image's URL path into the `next.config.js` file.
+
+```js
+// next.config.js
+```
+
 ## Fetching data
 
 We are going to fetch data right from a React component. So in the `page.js` of the `/cabins` route, we would have:
@@ -8501,11 +8515,54 @@ To implement a loader indicator that would be displayed as it takes a page to fe
 
 Notice that this will cause only the part of the page which is inside the root layout to be replaced by the loading indicator as it is being rendered on the server. So the surrounding layout will be instantly visible on the page. The children of the root layout is the only part for which the loading indicator will be used automatically by NextJS.
 
-Behind the scenes, this `loading.js` will activate streaming. So the data that is being fetched on the server, would be streamed from the server to the client. This feature needs JavaScript to be enabled in the browser, meaning that your application streaming will not work if the user disables it. So if you want your website to work without JavaScript on the browser, you cannot have a `loading.js` file.
+Behind the scenes, this `loading.js` will activate streaming. So the data that is being fetched on the server, would be streamed from the server to the client. This feature **needs JavaScript to be enabled in the browser**, meaning that your application streaming will not work if the user disables it. So if you want your website to work without JavaScript on the browser, you cannot have a `loading.js` file.
+
+> If you want a different loader to appear on a specific route of your app, you need to create a `loading.js` file inside the folder related to that specific route. This will make it so that this new loader will appear at that specific route instead of the global `loading.js` file.
+
+### Suspense
+
+Suspense is a built-in React component that we can use to catch/isolate components (or entire sub-trees) that are not ready to be rendered, because they are doing some asynchronous work. You can think of suspense as being like a catch block in a try/catch statement, but instead of catching errors, it catches components that are suspending.
+
+But what might actually cause a component to be suspending? There are 2 main reasons, which are both asynchronous tasks:
+
+1. Fetching data using a library that supports suspense
+2. Loading additional code using React's lazy loading feature
+
+The main usecase of suspense is indeed data fetching. Let's look at an example. Imagine you have an e-commerce app with this component tree, where the `Products` component is fetching some data from a database.
+
+![suspense-pre](/images/react/suspense-pre.png)
+
+So you can catch this component using suspense; and notice that since the `Filter` component also works closely coupled with the data fetched by `Products` we decide to catch the whole sub-tree in suspense:
+
+![suspense-post](/images/react/suspense-post.png)
+
+This is a React-native way to support asynchronous operations in a declarative way (no more `isLoading` state and render logic).
+
+#### What happens behind the scenes
+
+During the render process, when React finds a component or a sub-tree that is currently suspending, it will move back up to the closest `Suspense` parent, which we also call a "suspense boundry", since it separates the suspending sub-tree from the rest of the app. At this point, React might already have rendered the `Filter` component that does not depend on the `Product` component. However, in this step, all the already-rendered children are simply discarded, and a **fallback** component or a piece of JSX is rendered instead, while the asynchronous operation happening in the background. Usually, this fallback is a loading spinner. We have use this many times before, but the difference is that before, we had to use an `isLoading` state and then render the spinner inside `Products` whenever `isLoading` was true. In this scenario, with `Suspense`, we can render the spinner instead of the `Products` component whenever it is suspending, making the component a lot more declarative.
+
+Once the asynchronous work is done (the suspended component is ready and no longer suspending), React will render the sub-tree under the `Suspense` boundry again, now with the fetched product data.
+
+> It is important to note that components do NOT automatically suspend just because an asynchronous operation is heppening inside them. Integrating asynchronous operations with Suspense is very hard, so we use libraries (React Query, Next.js, etc.)
 
 ### Streaming for individual components
 
 You can also activate streaming for individual components using the `Suspense` component.
+
+## Environment variables
+
+You can set up your environment variables in a file called `.env.local` at the root of your project.
+
+```json
+// .env.local
+
+// this env variable will not be exposed to the client
+SOME_ENV=somerandomstring
+
+// this env variable will be exposed to the client
+NEXT_PUBLIC_SOME_ENV=someotherrandomstring
+```
 
 # Project deployment
 
