@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -216,6 +216,8 @@
   - [Displaying a loading indicator](#displaying-a-loading-indicator)
     - [Suspense](#suspense)
       - [What happens behind the scenes](#what-happens-behind-the-scenes)
+      - [Question](#question)
+      - [`Suspense` in practice](#suspense-in-practice)
     - [Streaming for individual components](#streaming-for-individual-components)
   - [Environment variables](#environment-variables)
 - [Project deployment](#project-deployment)
@@ -8545,6 +8547,105 @@ During the render process, when React finds a component or a sub-tree that is cu
 Once the asynchronous work is done (the suspended component is ready and no longer suspending), React will render the sub-tree under the `Suspense` boundry again, now with the fetched product data.
 
 > It is important to note that components do NOT automatically suspend just because an asynchronous operation is heppening inside them. Integrating asynchronous operations with Suspense is very hard, so we use libraries (React Query, Next.js, etc.)
+
+Let's now go a bit deeper behind the scened. Using suspense in the app, would give you such a fiber tree:
+
+![suspense-fiber-tree](/images/react/suspense-fiber-tree.png)
+
+> Remember that a fiber tree is a mutable data structure that is never destroyed, which makes it a perfect place to store state, hooks, and so on. It is also this fiber tree that enables concurrent features, which allow React to pause rendering with Suspense.
+
+Behind the scenes, in the reconciliation phase, when we use `Suspense`, the child tree below it will be moved into another built-in component called `Activity`. Again, this happens in the fiber tree, so you won't see it in the component tree, if you check React dev tools. Then the fallback the we specify is also placed in the fiber tree as a sibling of the `Activity`. The fallback is initially hidden, because the **mode** on activity is set to `visible`, meaning that the `Suspense` children, at this stage, are visible. Then as soon as the component suspends, this mode will be set to `hidden`, and as a consequence, a fallback spinner will be rendered and the sub-tree will be hidden.
+
+Then as soon as the asynchronous work is done, the `Activity` mode is set to `visible` and the sub0-tree can then be rendered. If a component suspends again later, the fallback will be displayed again, and this entire process runs again.
+
+![suspense-fiber-tree-2](/images/react/suspense-fiber-tree-2.png)
+
+We mentioned just before that the rendered work will be discarded, but here in the fiber tree, where elements are not destroyed, but hidden and remaining in the fiber tree, all state is preserved during subsequent suspending and unsuspending phases. This is important to remember.
+
+Now there is one exception to the rule that in a new cycle of suspending and unsuspending, the fallback will be rendered. The exception is that **the fallback will NOT be displayed again if the `Suspense` trigger is wrapped in a transition `startTransition`. In NextJS, that is the case with page navigations. In NextJS, all page navigations are wrapped in transitions. We can reset the `Suspense` boundry with a unique `key` prop to go around this.**
+
+#### Question
+
+How does a `Suspense` boundry actually know that its child component is currently suspending? Parents usually don't get informed about their children's state in React. The trick is that, behind the scenes, a component throws a `Promise` which will trigger the `Suspense` boundry to render the fallback. We are used to throwing `Error`s but not `Promis`es, but this is a mechanism that the React team came up with. So a component marks itself as suspending, by throwing a promise, and thereby, notifying the closest suspense boundry.
+
+#### `Suspense` in practice
+
+In a real-world application, a page might need to render a static text on top, and then a table of products, for instance, at the bottom which needs to be fetched, and during the time that it is fetched, the component that is related to it would be suspended. So the text at the top of the page would not have to wait until the data in another component is fetched. It can be rendered immediately, while the table data can be streamed into the browser. This would be a more granular strategy on streaming data.
+
+To do this, all you have to do is to move all the data fetching into its own component, and then wrap that component into a `Suspense`.
+
+So we have this code:
+
+```jsx
+import CabinCard from "@/app/_components/CabinCard";
+import { getCabins } from "../_lib/data-service";
+
+export const metadata = {
+  title: "Cabins",
+};
+
+export default async function Page() {
+  // CHANGE
+  const cabins = await getCabins();
+
+  return (
+    <div>
+      <h1 className="text-4xl mb-5 text-accent-400 font-medium">
+        Our Luxury Cabins
+      </h1>
+      <p className="text-primary-200 text-lg mb-10">
+        Cozy yet luxurious cabins, located right in the heart of the Italian
+        Dolomites. Imagine waking up to beautiful mountain views, spending your
+        days exploring the dark forests around, or just relaxing in your private
+        hot tub under the stars. Enjoy nature&apos;s beauty in your own little
+        home away from home. The perfect spot for a peaceful, calm vacation.
+        Welcome to paradise.
+      </p>
+
+      {cabins.length > 0 && (
+        <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 xl:gap-14">
+          {cabins.map((cabin) => (
+            <CabinCard cabin={cabin} key={cabin.id} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+where `<h1>` and `<p>` can be rendered immediately, and then the `CabinCard`s can be suspended while the `cabins` data arrives:
+
+```jsx
+import { Suspense } from "react";
+import CabinList from "../_components/CabinList";
+import Spinner from "../_components/Spinner";
+
+export const metadata = {
+  title: "Cabins",
+};
+
+export default async function Page() {
+  return (
+    <div>
+      <h1 className="text-4xl mb-5 text-accent-400 font-medium">
+        Our Luxury Cabins
+      </h1>
+      <p className="text-primary-200 text-lg mb-10">
+        Cozy yet luxurious cabins, located right in the heart of the Italian
+        Dolomites. Imagine waking up to beautiful mountain views, spending your
+        days exploring the dark forests around, or just relaxing in your private
+        hot tub under the stars. Enjoy nature&apos;s beauty in your own little
+        home away from home. The perfect spot for a peaceful, calm vacation.
+        Welcome to paradise.
+      </p>
+      <Suspense fallback={<Spinner />}>
+        <CabinList />
+      </Suspense>
+    </div>
+  );
+}
+```
 
 ### Streaming for individual components
 
