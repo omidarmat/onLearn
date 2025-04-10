@@ -200,26 +200,30 @@
     - [Review of dynamic SSR](#review-of-dynamic-ssr)
     - [What about RSC?](#what-about-rsc)
     - [In summary](#in-summary-1)
+  - [Different types of SSR: Static vs. Dynamic](#different-types-of-ssr-static-vs-dynamic)
+    - [Static](#static)
 - [NextJS](#nextjs)
   - [Initializing a project](#initializing-a-project)
   - [Implement routing](#implement-routing)
     - [Navigating between pages](#navigating-between-pages)
     - [Programmatic navigation](#programmatic-navigation)
   - [Layout](#layout)
+    - [Dynamic metadata for dynamic route segments](#dynamic-metadata-for-dynamic-route-segments)
   - [Fonts](#fonts)
   - [Images](#images)
     - [Image with static import](#image-with-static-import)
     - [Images from external sources](#images-from-external-sources)
   - [Fetching data](#fetching-data-1)
   - [Adding interactivity](#adding-interactivity)
-    - [Crossing the server-client boundry](#crossing-the-server-client-boundry)
+    - [Crossing the server-client boundary](#crossing-the-server-client-boundary)
   - [Displaying a loading indicator](#displaying-a-loading-indicator)
-    - [Suspense](#suspense)
+    - [Streaming for individual components (`Suspense`)](#streaming-for-individual-components-suspense)
       - [What happens behind the scenes](#what-happens-behind-the-scenes)
       - [Question](#question)
       - [`Suspense` in practice](#suspense-in-practice)
-    - [Streaming for individual components](#streaming-for-individual-components)
   - [Environment variables](#environment-variables)
+  - [Error handling (`ErrorBoundary`)](#error-handling-errorboundary)
+    - ["Not found" errors](#not-found-errors)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -7998,7 +8002,7 @@ As a practical example, take this UI and see how the components are divided into
 
 ![src-component-tree](/images/react/server-vs-client-components.png)
 
-> Notice that if a client component has some children components, they will all be client components by default. So you only need to use the `"use client"` directive on the parent client component, and not on its childen. So the `"use client"` directive sets a boundry between server components and client components, creating a sub-tree that will only be executed on the client side.
+> Notice that if a client component has some children components, they will all be client components by default. So you only need to use the `"use client"` directive on the parent client component, and not on its childen. So the `"use client"` directive sets a boundary between server components and client components, creating a sub-tree that will only be executed on the client side.
 
 ## Server components vs. client components
 
@@ -8010,7 +8014,7 @@ Let's compare the two types of component in a collective table.
 
 > Notice that data fetching is possible in both server components and client components. It is, however, preferred to do it in server components using `async/await` syntax. In client components it is recommended to use 3rd-party libraries (e.g. React Query) to do this.
 
-> Importing is when a component module imports another component module using the `import` syntax. With this in mind, notice that server components can import both server and client components. Client components can only import other client components, but not server components. Once the client-server boundry is passed, there is no way to go back to the server.
+> Importing is when a component module imports another component module using the `import` syntax. With this in mind, notice that server components can import both server and client components. Client components can only import other client components, but not server components. Once the client-server boundary is passed, there is no way to go back to the server.
 
 > Rendering is when a component calls another component, meaning that it uses another component inside its JSX. With this in mind, client components can render server components that are passed to it as props. Server components can render everything, both client and server components.
 
@@ -8184,6 +8188,27 @@ So SSR is only relevant to the initial render. After that, RSC works just as we 
 
 > Always keep in mind: Both client and server components are initially rendered on the server when SSR is used. From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client.
 
+## Different types of SSR: Static vs. Dynamic
+
+Remember that both server and client components are rendered on the server on the initial page render. But what would a framework like NextJS do in this picture? NextJS uses React and React DOM libraries to render each route one by one on the server. In other words, NextJS splits the rendering work by route (`/`, `/search`, `/product`). Each route can be rendered in a different way. Each route can be either **static** (also called pre-rendered) or **dynamic**. There is also a **Partial Pre-Rendering** (PPR) which mixes dynamic and static rendering in the same route.
+
+### Static
+
+In static rendering, the HTML for the route is generated at build time, which means that the markup is renderd when we run the `build` command in the NextJS app. So it is the developer who triggers the rendering. There is also a special flavor of static rendering which is called Incremental Static Regeneration, where the route is rendered periodically in the background, basically by re-fetching the route data from time to time.
+
+Static essentially means "rendered just once at build time". The idea behind this is that static pages are way faster. This is useful when the data for the route does not change very often, and most importantly, is not personalized to the user. For example, a `/product` page can be static, since it does need any data that belongs to or is generated by a user.
+
+On the other hand, dynamic rendering means that the HTML is generated at request time. In other words, the server renders a new version of the page for each request that hits the server. In this strategy, it is the user who triggers the rendering. This makes sense if the data for the route changes constantly, and if it is personalized to the user (e.g. shopping cart). Dynamic rendering is also necessary when a route requires information that depends on the request itself; for instance, the search params from the URL or a cookie or a header.
+
+By default, in NextJS all routes are rendered statically, even when the page component or another component in the tree fetches some data. It is only under certain conditions that NextJS will switch a route to dynamic rendering.
+
+As mentioned above static pages are beneficial for 2 reasons:
+
+1. They are pre-generated and don't need to be re-built for each request, which allows us to save time and resources.
+2. Static assets can easily be hosted easily on a CDN. This is automatically done when NextJS projects are deployed to Vercel. (On the other hand, each dynamic route, when deployed to Vercel, will auotmatically become a server-less function.)
+
+Finally, in certain situations where we have no personalized user data at all, all routes in the app might actually be static. In this case, the entire app can be exported as a static site, which is also called Static Site Generation (SSG).
+
 # NextJS
 
 There are 4 NextJS key ingredients:
@@ -8225,7 +8250,25 @@ To implement links leading to paths to other pages of your application, you shou
 
 ### Programmatic navigation
 
-Just like React router, NextJS also provide us with some React hooks for programmatic navigation, but these don't work in `page` components, since they are server components, and React hooks don't work on server components.
+Just like React router, NextJS also provide us with some React hooks for programmatic navigation, but these don't work in `page` components, since they are server components, and React hooks don't work on server components. NextJS has implemented this in the app router as dynamic route segments.
+
+For instance, you would have a route called `/cabins`, and then the details of each cabin would be displayed at a route like `/cabins/[cabinId]`. This is the exact structure that you need to follow in the folders of your project, in order for NextJS, to be able to understand you **nested dynamic routes**. So the nested folder inside `/cabins` would have to be named `[cabinId]`. This nested folder would also have to include a `page.js` file, just like any other route folder.
+
+Any page, or even a layout, that is associated with a dynamic route segment, gets access to a `params` argument.
+
+```jsx
+import { getCabin } from "@/app/_lib/data-service";
+
+export default async function Page({ params }) {
+  const cabin = await getCabin(params.cabinId);
+  const { id, name, maxCapacity, regularPrice, discount, image, description } =
+    cabin;
+
+  return (
+    // JSX
+  );
+}
+```
 
 > Notice that in a typical project, you would always want the navbar on top of all your pages. This means that there should be a way of implementing a `<Navigation />` component once, and have it on all your pages. This is where the `layout.js` comes to play as a global layout of your application.
 
@@ -8274,6 +8317,22 @@ export const metadata = {
 > Notice that this layout, like all the pages, is a [server-component](#react-server-components-rsc). This is rendered right on the server. You cannot put states or hooks in here.
 
 > Notice that if you want a specific route of your app to have a different layout, you just need to include a `layout.js` file inside the folder related to that route.
+
+### Dynamic metadata for dynamic route segments
+
+When you have a route, for instance, called `/cabins`, and then you have dynamic nested routes for `/cabins/[cabinId]`, you would most probably need to generate dynamic metadata for these dynamic nested routes. But we cannot get the specific cabin data into the `metadata` variable that we normally export from a page. Instead, you would have to use a function called `generateMetadata`:
+
+```jsx
+// page.js @/cabins/[cabinId]
+export async function generateMetadata({ params }) {
+  const { name } = await getCabin(params.cabinId);
+  return { title: `Cabin ${name}` };
+}
+
+export default async function Page({ params }) {
+  // code
+}
+```
 
 ## Fonts
 
@@ -8467,7 +8526,7 @@ export default async function Page() {
 
 Notice that the hydration process will happen during the loading of this page on the website. So first, the server-rendered HTML arrives at the browser, and it takes a short while until you can actually interact with the `Counter` component. While the hydration is happening, the user can see the data that was fetched on the server and is now apparent on the page, until the hydration completes.
 
-### Crossing the server-client boundry
+### Crossing the server-client boundary
 
 One thing that we can do when we want some data on the front-end, is that we can fetch the data on the server component, and pass it as props to a client component.
 
@@ -8521,7 +8580,7 @@ Behind the scenes, this `loading.js` will activate streaming. So the data that i
 
 > If you want a different loader to appear on a specific route of your app, you need to create a `loading.js` file inside the folder related to that specific route. This will make it so that this new loader will appear at that specific route instead of the global `loading.js` file.
 
-### Suspense
+### Streaming for individual components (`Suspense`)
 
 Suspense is a built-in React component that we can use to catch/isolate components (or entire sub-trees) that are not ready to be rendered, because they are doing some asynchronous work. You can think of suspense as being like a catch block in a try/catch statement, but instead of catching errors, it catches components that are suspending.
 
@@ -8542,9 +8601,9 @@ This is a React-native way to support asynchronous operations in a declarative w
 
 #### What happens behind the scenes
 
-During the render process, when React finds a component or a sub-tree that is currently suspending, it will move back up to the closest `Suspense` parent, which we also call a "suspense boundry", since it separates the suspending sub-tree from the rest of the app. At this point, React might already have rendered the `Filter` component that does not depend on the `Product` component. However, in this step, all the already-rendered children are simply discarded, and a **fallback** component or a piece of JSX is rendered instead, while the asynchronous operation happening in the background. Usually, this fallback is a loading spinner. We have use this many times before, but the difference is that before, we had to use an `isLoading` state and then render the spinner inside `Products` whenever `isLoading` was true. In this scenario, with `Suspense`, we can render the spinner instead of the `Products` component whenever it is suspending, making the component a lot more declarative.
+During the render process, when React finds a component or a sub-tree that is currently suspending, it will move back up to the closest `Suspense` parent, which we also call a "suspense boundary", since it separates the suspending sub-tree from the rest of the app. At this point, React might already have rendered the `Filter` component that does not depend on the `Product` component. However, in this step, all the already-rendered children are simply discarded, and a **fallback** component or a piece of JSX is rendered instead, while the asynchronous operation happening in the background. Usually, this fallback is a loading spinner. We have use this many times before, but the difference is that before, we had to use an `isLoading` state and then render the spinner inside `Products` whenever `isLoading` was true. In this scenario, with `Suspense`, we can render the spinner instead of the `Products` component whenever it is suspending, making the component a lot more declarative.
 
-Once the asynchronous work is done (the suspended component is ready and no longer suspending), React will render the sub-tree under the `Suspense` boundry again, now with the fetched product data.
+Once the asynchronous work is done (the suspended component is ready and no longer suspending), React will render the sub-tree under the `Suspense` boundary again, now with the fetched product data.
 
 > It is important to note that components do NOT automatically suspend just because an asynchronous operation is heppening inside them. Integrating asynchronous operations with Suspense is very hard, so we use libraries (React Query, Next.js, etc.)
 
@@ -8562,11 +8621,13 @@ Then as soon as the asynchronous work is done, the `Activity` mode is set to `vi
 
 We mentioned just before that the rendered work will be discarded, but here in the fiber tree, where elements are not destroyed, but hidden and remaining in the fiber tree, all state is preserved during subsequent suspending and unsuspending phases. This is important to remember.
 
-Now there is one exception to the rule that in a new cycle of suspending and unsuspending, the fallback will be rendered. The exception is that **the fallback will NOT be displayed again if the `Suspense` trigger is wrapped in a transition `startTransition`. In NextJS, that is the case with page navigations. In NextJS, all page navigations are wrapped in transitions. We can reset the `Suspense` boundry with a unique `key` prop to go around this.**
+Now there is one exception to the rule that in a new cycle of suspending and unsuspending, the fallback will be rendered. The exception is that **the fallback will NOT be displayed again if the `Suspense` trigger is wrapped in a transition `startTransition`. In NextJS, that is the case with page navigations. In NextJS, all page navigations are wrapped in transitions. We can reset the `Suspense` boundary with a unique `key` prop to go around this.**
 
 #### Question
 
-How does a `Suspense` boundry actually know that its child component is currently suspending? Parents usually don't get informed about their children's state in React. The trick is that, behind the scenes, a component throws a `Promise` which will trigger the `Suspense` boundry to render the fallback. We are used to throwing `Error`s but not `Promis`es, but this is a mechanism that the React team came up with. So a component marks itself as suspending, by throwing a promise, and thereby, notifying the closest suspense boundry.
+How does a `Suspense` boundary actually know that its child component is currently suspending? Parents usually don't get informed about their children's state in React. The trick is that, behind the scenes, a component throws a `Promise` which will trigger the `Suspense` boundary to render the fallback. We are used to throwing `Error`s but not `Promis`es, but this is a mechanism that the React team came up with. So a component marks itself as suspending, by throwing a promise, and thereby, notifying the closest suspense boundary.
+
+You can also activate streaming for individual components using the `Suspense` component.
 
 #### `Suspense` in practice
 
@@ -8647,10 +8708,6 @@ export default async function Page() {
 }
 ```
 
-### Streaming for individual components
-
-You can also activate streaming for individual components using the `Suspense` component.
-
 ## Environment variables
 
 You can set up your environment variables in a file called `.env.local` at the root of your project.
@@ -8663,6 +8720,120 @@ SOME_ENV=somerandomstring
 
 // this env variable will be exposed to the client
 NEXT_PUBLIC_SOME_ENV=someotherrandomstring
+```
+
+## Error handling (`ErrorBoundary`)
+
+This technique is used to prevent the application from returning exceptions when users try to navigating to a route, for instance `/cabins/[cabinId]` where the `cabinId` actually is not valid and therefore, the route does not actually exists.
+
+As another usecase, this technique is implemented to prevent the application from returning exceptions when the structure of the data fetched from the back-end service changes. For instance, in a page where you render the data related to a cabin, you read a property of the cabin using `cabin.maxCapacity`. The backend team might decide to change the structure of this data, so as to place the same data in another field, like `cabin.capacity.max`, but your front-end code still tries to read using the previous data structure. This will lead to an exception and error. We don't want the user to see error screens on the page.
+
+For these reasons, we are going to set up a global error boundary. This is done by creating another NextJS convensional file called `error.js` at the main route folder. Remember that the error boundary must always be a **client component**.
+
+The `Error` component function defined in this file has access to two arguments:
+
+1. `error`: the error object that happened
+2. `reset`: a funciton that resets the error boundary
+
+```js
+// @/error.js
+"use client";
+
+export default function Error({ error, reset }) {
+  return (
+    <main className="flex justify-center items-center flex-col gap-6">
+      <h1 className="text-3xl font-semibold">Something went wrong!</h1>
+      <p className="text-lg">{error.message}</p>
+
+      <button
+        className="inline-block bg-accent-500 text-primary-800 px-6 py-3 text-lg"
+        onClick={reset}
+      >
+        Try again
+      </button>
+    </main>
+  );
+}
+```
+
+The nice thing to know is that just like with other route-related convensional files like the `load.js` file, you can also have other `error.js` files in your nested routes, so it would appear only if an error happens in those inner routes.
+
+> This works for all errors and exceptions that happen anywhere in the app, but only in **rendering**. Any errors that happen in callback functions will actually NOT be caught by React's error boundary.
+
+> The global error boundary does not catch errors that might happen in the root layout (`RootLayout`). You might sometimes need to fetch data in this layout file. This is a pretty valid thing to do depending on the project, since it is a server component. But if that data fetching runs into some errors, the global error boundary will not be able to catch it. To fix this, you would also have to create a `global-error.js` file in the main route.
+>
+> The important tip to remember here is that the `global-error.js` will replace the entire layout. So this file would have to include its own `<html>` and `<body>` tags.
+
+### "Not found" errors
+
+If a user tries to navigrate to a non-dynamic route that does not exist in our app (for instance, `/lkdfhskjd`), they will receive a NextJS default 404 error page which we usually need to customize according to our own styles. To do this you should create another convensional file called `not-found.js` at the main route of your project structure:
+
+```js
+// @/app/not-found.js
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <main className="text-center space-y-6 mt-4">
+      <h1 className="text-3xl font-semibold">
+        This page could not be found :({" "}
+      </h1>
+
+      <Link
+        href="/"
+        className="inline-block bg-accent-500 text-primary-800 px-6 py-3 text-lg"
+      >
+        Go back home
+      </Link>
+    </main>
+  );
+}
+```
+
+Now that you know this technique, let's go back to the error page which we actually want to display when a user attempts to navigate to a dynamic route that does not exist, such as `/cabins/[cabinId]` where `cabinId` is not valid. This is actually a not-found error. So the proper error message and screen should be displayed in this case.
+
+The `not-found` page could be displayed to the user either automatically or manually. To trigger this page manually, we would have to call the `notFound()` function. This can basically be done anywhere in the app which makes sense, but normally, navigating to a non-existent dynamic route, would make a data fetching function run with an invalid input data like an `id`. This function, therefore, would return with error, and it is in the error handling logic of that function where we usually call the `notFound()` function, provided to us by the Next router.
+
+```js
+// @/app/_lib/data-service.js
+export async function getCabin(id) {
+  const { data, error } = await supabase
+    .from("cabins")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    notFound();
+  }
+
+  return data;
+}
+```
+
+This will trigger the global `not-found.js` file. If you want to a more customized `not-found.js` file for this specific dynamic nested route, you would have to create it in its folder.
+
+```js
+// @/app/cabins/[cabinId]/not-found.js
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <main className="text-center space-y-6 mt-4">
+      <h1 className="text-3xl font-semibold">
+        This cabin could not be found :({" "}
+      </h1>
+
+      <Link
+        href="/cabins"
+        className="inline-block bg-accent-500 text-primary-800 px-6 py-3 text-lg"
+      >
+        Back to all cabins
+      </Link>
+    </main>
+  );
+}
 ```
 
 # Project deployment

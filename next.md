@@ -528,7 +528,7 @@ export default function DashboardPage() {
 }
 ```
 
-The `'use client'` acts as our ticket to cross the boundry from server to client-side and is what allows us to define client components. It signals to NextJS that this component, along with any component it imports, is intended for client-side execution. As a result, the component gains full access to browser APIs and the ability to handle interactivity.
+The `'use client'` acts as our ticket to cross the boundary from server to client-side and is what allows us to define client components. It signals to NextJS that this component, along with any component it imports, is intended for client-side execution. As a result, the component gains full access to browser APIs and the ability to handle interactivity.
 
 Let's now shift our attention to an important point about client components rendering behavior. Let's add a log statement within the dashboard component.
 
@@ -923,7 +923,7 @@ Now if a developer accidentally imports this module into a client-side component
 
 ###### Summary
 
-Maintaining a clear boundry between server-only and client-side code is crucial, especially when dealing with sensitive operations or data.
+Maintaining a clear boundary between server-only and client-side code is crucial, especially when dealing with sensitive operations or data.
 
 Using the `server-only` package, enforces this separation and helps maintain your application security, performance and reliablity.
 
@@ -1345,7 +1345,7 @@ Note that we have also added the `'use client'` directive at the top since we ar
 
 Let's now think about this: if `'use client'` is declared in the `navbar` component, shouldn't that be the only component running client-side? This is a **common misconception**.
 
-When you add `'use-client'` to a component, it not only make that component a client component, but also affects every child component in the component tree below it. In this scenario, `nav-links` and `nav-search` also become client components. You can think of `'use client'` directive as a boundry; once crossed, every subsequent component in the tree operates on the client side.
+When you add `'use-client'` to a component, it not only make that component a client component, but also affects every child component in the component tree below it. In this scenario, `nav-links` and `nav-search` also become client components. You can think of `'use client'` directive as a boundary; once crossed, every subsequent component in the tree operates on the client side.
 
 It is important to understand this concept, especially if you have a large component tree. Imagine converting a server component to a client component to add some interactivity. This change would turn the entire subtree of children into client components, and consequently, all their code will be sent to the browser. Therefore, the recommended practice is to place client components as low as possible in the component tree, ideally making them leaf components.
 
