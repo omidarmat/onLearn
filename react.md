@@ -202,6 +202,7 @@
     - [In summary](#in-summary-1)
   - [Different types of SSR: Static vs. Dynamic](#different-types-of-ssr-static-vs-dynamic)
     - [Static](#static)
+    - [When NextJS switches from static to dynamic](#when-nextjs-switches-from-static-to-dynamic)
 - [NextJS](#nextjs)
   - [Initializing a project](#initializing-a-project)
   - [Implement routing](#implement-routing)
@@ -8208,7 +8209,32 @@ As mentioned above static pages are beneficial for 2 reasons:
 1. They are pre-generated and don't need to be re-built for each request, which allows us to save time and resources.
 2. Static assets can easily be hosted easily on a CDN. This is automatically done when NextJS projects are deployed to Vercel. (On the other hand, each dynamic route, when deployed to Vercel, will auotmatically become a server-less function.)
 
+> CDN is a network of related servers located at many different positions around the world. These servers all cache a website's static content; things like HTML, CSS, JavaScript. It then delivers this content to each user from a server located as close as possible to that user. The advantage of this is that the data does not need to travel across the entire planet, from the website's host to the user's computer. Most hosting providers like Vercel, Netlify, or Render, will automatically host all your website's static assets on a global CDN.
+
+> Server-less function refers to a model called server-less computing where you can run application code (usually backend code) without managing the server outselves. Instead, we can just run single functions on a cloud provider like AWS or Vercel, etc. We call these functions server-less functions. In this model, server is initialized and activated only for the duration that the function is running. This is very different from a traditional NodeJS app where the server is always running and never stops. When we deploy our website to Vercel, each dynamic route will become one server-less function. This means that our NextJS app is not simply one huge NodeJS app running on a server, but instead, a collection of server-less functions, with the servers automatically managed by the provider if you choose to deploy your app to them. This makes it so that if one of your routes gets a huge sudden boost in traffic, Vercel will automtaically provide more resources for that server-less function to handle all the additional load. If you only have static routes, none of this applies. In this case, all static routes will be built at build time, and will then be hosted on a CDN.
+
+> The **Edge** refers to anything that happens as close as possible to the user. So a CDN is certainly a part of an edge network, because files are indeed located as close as possible to each user. There is also server-less edge computing, and this is simply server-less computing that does not happen on the big central server like it usually does, but instead, on a network distributed around the globe, so computing or running the server-less functions will happen as close as possible to the user. Essentially, an edge computing is like a CDN but for running code in the form of server-less functions. If you choose to deploy to Vercel, you can select certain dynamic routes to run on the edge, so that they will become even faster.
+
+> Incremental Static Regeneration is a NextJS feature that allows developers to refetch and update the content of a static page in the background without the user ever noticing, long after the original website is built and deployed. This happens by refetching the data of a certain component or of an entire route after a certain interval, that you can define in your code, has passed. This concept is closely related to static pages.
+
 Finally, in certain situations where we have no personalized user data at all, all routes in the app might actually be static. In this case, the entire app can be exported as a static site, which is also called Static Site Generation (SSG).
+
+![dynamic-vs-static-ssr](/images/react/static-vs-dynamic-ssr.png)
+
+### When NextJS switches from static to dynamic
+
+Usually, developers don't directly choose whether a route should be static or dynamic. NextJS will automatically switch to dynamic rendering in the following scenarios:
+
+- The route containes one or more dynamic segments, meaning that the corresponding page uses the `params` prop in order to render some data that depends on the dynamic segments. These dynamic segments can only be known at request time. Therefore the route needs to be dynamic.
+- The route's `page` component reads some `searchParam` (also called query param) from the URL. An example, would be `/product?quantity=23`.
+- If any of the route's server components reads incoming `headers` or `cookies`. This is done using `headers()` and `cookies()`.
+
+This makes sense, because `searchParams`, `headers` or `cookies` cannot be known by NextJS at build time. The depend inherently on the incoming request, meaning that the route must be rendered dynamically for each of the incoming request. But, there is also another factor that turns dynamic rendering on. This would be an **un-cached data request** in any of the server components that are part of the route's component tree. This caching behavior is something that we can alter. This means that we can basically force NextJS to render a route dynamically simply by manipulating the way `fetch` requests are cached. Here are the different ways by which we can do that:
+
+- `export const dynamic = 'force-dynamic';` from `page.js`
+- `export const revalidate = 0;` from `page.js`
+- `{ cache: 'no-store }` added to a `fetch` request in any of the route's server components
+- `noStore()` in any of the route's server components
 
 # NextJS
 
