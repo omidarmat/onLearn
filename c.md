@@ -453,7 +453,7 @@ In this example, `gnasher`, the new instance of the `struct`, will point to the 
 
 Remember that whenever you pass a data using its variable to a function, what the function receives is **not the data itself, but it is a copy of the data**. So if you modify the data in the function, the original data will still remain untouched. In other words, in C, paramteres are passed to functions **by value**. It is as if the function now has a clone of the original data.
 
-In order to be able to modify the original struct instance in a function, you need a pointer to the struct.
+In order to be able to modify the original struct instance in a function, you need a pointer to the struct, or in other words, you need to pass it to function **by reference**.
 
 > Reminder: When you passed a variable to the `scanf` function, you could not pass the variable itself, you had to pass a pointer. That is because if you tell the `sacnf` function where the variable lives in memory, then the function will be able to update the data stored at that place in memory, which means it can update the variable. You can do the same with struct updates.
 
@@ -499,7 +499,7 @@ typedef union {
 
 To set the value for the union you can choose between 2 options:
 
-1. Setting value for the first field: In the example above, the first field is `count`. If you want to set a value for the `count` field of the union, you can use this syntax:
+1. Setting value for the first field: In the example above, the first field is `count`. If you want to set a value for the `count` field (first field in the `union`), you can use this syntax:
 
 ```c
 quantity q = {4};
@@ -548,6 +548,8 @@ You can then access the values in the `struc`/`union` combination using the **do
 
 ```c
 fruit_order apples = {"apples", "England", .amount.weight = 4.2};
+// could also be written as:
+fruit_order apples = {"apples", "England", {.weight = 4.2}};
 printf("This order containes %2.2f lbs of %s\n", apples.amount.weight, apples.name)
 ```
 
@@ -574,13 +576,13 @@ enum colors {RED, GREEN, PUCE};
 
 > You can also give the enum a proper name using `typedef`.
 
-Any variable defined with a type of `enum colors` can then only be set to one of the keywords in the list. Here is how you can define an `enum colors` variable:
+Any variable defined with a type of `enum colors` can then only be set to one of the keywords in the list. Here is how you can define an `enum colors` instance:
 
 ```c
 enum colors favorite = PUCE;
 ```
 
-Under the hood, the computer will just assign numbers to each of the symbols in your list, and the `enum` will just store a number. But you don't need to worry about what the numbers are, your C code can just refer to the symbold. Advantages of using `enum`s are:
+Under the hood, the computer will just assign numbers to each of the symbols in your list, and the `enum` will just store a number. But you don't need to worry about what the numbers are, your C code can just refer to the symbol. Advantages of using `enum`s are:
 
 1. Your code becomes easier to read
 2. It will prevent storing values like `REB` or `PUSE` by mistake
@@ -647,11 +649,11 @@ typedef struct {
 } synth;
 ```
 
-Notice that `:1` at the end of each declaration line means that the field will only use 1 bit of storage.
+Notice that `:1` at the end of each declaration line means that the field will only use 1 bit (not even a byte) of storage.
 
-> It is important to notice that if you have a sequence of bitfields, the computer can squash them together to save space. In other words, bitfields can save space if they are collected together in a `struct`. But if the compiler finds a single bitfield on its own, it might still have to pad it out to the size of a word. That is why bitfields are usually grouped together. So if you have 8 single-bit bitfields, the computer cna store them in a single byte.
+> It is important to notice that if you have a sequence of bitfields, the computer can squash them together to save space. In other words, bitfields can save space if they are colocated together in a `struct`. But if the compiler finds a single bitfield on its own, it might still have to pad it out to the size of a word. That is why bitfields are usually grouped together. So if you have 8 single-bit bitfields, the computer can store them in a single byte.
 
-> Notice that bitfields can also be useful for other short-range values like months of the year. If you want to store a month number in a `struct`, you know it will have a value between 0 and 11. So you would only need 4 bits of space to store this type of value. That will be:
+> Notice that bitfields can also be useful for other short-range values like months of the year. If you want to store a month number in a `struct`, you know it will have a value between 0 and 11. So you would only need 4 bits (instead of maybe a `short int`) of space to store this type of value. That will be:
 >
 > ```c
 > unsigned int month_no:4;
