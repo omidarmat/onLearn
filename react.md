@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -203,10 +203,13 @@
   - [Different types of SSR: Static vs. Dynamic](#different-types-of-ssr-static-vs-dynamic)
     - [Static](#static)
     - [When NextJS switches from static to dynamic](#when-nextjs-switches-from-static-to-dynamic)
+  - [Bluring the boundary between server and client: server actions](#bluring-the-boundary-between-server-and-client-server-actions)
+    - [Importing components vs. rendering components](#importing-components-vs-rendering-components)
 - [NextJS](#nextjs)
   - [Initializing a project](#initializing-a-project)
   - [Implement routing](#implement-routing)
     - [Navigating between pages](#navigating-between-pages)
+    - [Highlighting current navigation link](#highlighting-current-navigation-link)
     - [Programmatic navigation](#programmatic-navigation)
       - [Making dynamic pages static (`generateStaticParams()`)](#making-dynamic-pages-static-generatestaticparams)
   - [Layout](#layout)
@@ -218,6 +221,8 @@
   - [Fetching data](#fetching-data-1)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundary](#crossing-the-server-client-boundary)
+    - [Passing data from client back to server](#passing-data-from-client-back-to-server)
+      - [The URL](#the-url)
   - [Displaying a loading indicator](#displaying-a-loading-indicator)
     - [Streaming for individual components (`Suspense`)](#streaming-for-individual-components-suspense)
       - [What happens behind the scenes](#what-happens-behind-the-scenes)
@@ -234,6 +239,9 @@
     - [Data cache (server)](#data-cache-server)
     - [Full route cache (server)](#full-route-cache-server)
     - [Router cache (client)](#router-cache-client)
+    - [Cachingin practice](#cachingin-practice)
+      - [Route level: data cache and full route cache](#route-level-data-cache-and-full-route-cache)
+      - [Component level: PPR](#component-level-ppr)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8244,6 +8252,42 @@ This makes sense, because `searchParams`, `headers` or `cookies` cannot be known
 - `{ cache: 'no-store }` added to a `fetch` request in any of the route's server components
 - `noStore()` in any of the route's server components
 
+## Bluring the boundary between server and client: server actions
+
+Let's explore deeply what is actually heppening in NextJS with React Server Component architecture. For this, we should review our traditional notion of server and client. Look at this chart:
+
+![traditional-vs-modern-react-next](/images/react/traditional-vs-moden-react-next.png)
+
+Now with the modern architecture implemented in NextJS with RSC and Server Actions, a component tree is composed of server components and client components, blurring the boundary between backend and frontend. There is no clear separation between frontend and backend. The boundary has actually become completely flexible. This means that the pieces of server and client code are noe interweaved which is a pattern that is called **knitting**. This is a powerful mechanism to compose the domains of server and client all into one true full-stack application living in just one code base, and one React component tree.
+
+One consequence of this is that in many cases you no longer need to build an intermediate API between frontend and backend. You can just easily switch between the two domains at any point in the tree. So you no longer need an artificial boundary to fetch and mutate data. These two operations work in this way in the RSC model:
+
+- Fetching data: You can get some data into a server component (reading straight from a database) and then render the data directly in the server component. Alternatively, if you need the data on the frontend, you can send the data to a client component in the form or `props`. This works between any combination of server and client component.
+- Mutating data: You can use server actions to mutate data on the server directly from client components. Using server actions essentially replaces `POST`, `PUT`, and other requests that we would typically make to a backend API.
+
+### Importing components vs. rendering components
+
+There is an important difference between importing and rendering. Take this component tree as an example:
+
+![import-vs-render-component-tree](/images/react/import-vs-render-component-tree.png)
+
+What might seem strange is that client component `B` has the server component `D` as child. But we learned before that client components cannot **import** server components. It is still true, but they can **render** server components if the server component is passed to the client component as `props` or `children`. This way, the server component would still be executed on the server, and once it is executed, it would be passed to the client component as a prop. In code, it would be like this:
+
+![import-vs-render-code-example](/images/react/import-vs-render-code-example.png)
+
+This means that it is actually server component `A` that is importing server component `D` and passing it as `children` to client component `B`. This is totally possible and ok. Let's visualize this by observing the dependency tree:
+
+![dependency-tree-imports](/images/react/dependency-tree-imports.png)
+
+So it is in the dependency tree where the client-server boundary is established, but not in the component tree. Therefore, let's review our conclustions:
+
+- Can import: Client components can only import client components. Server components can import both client and server components.
+- Can render: Client components can render client components and server components passed as `props`. Server components render both client components and server components.
+
+Let's now focus on another part of the component tree and the dependency tree. You can see that component `C`, which is originally a server component, has appeared first as a server component, but then as a child client component in client component `E`. This has happened because client component `E`, which certainly has the `use client` directive, has imported component `C`. We know that every component that a client component imports will always be client components. So component `C` has two instances in this chart; one as a server component, another as a client component. The type of a component that you write is not written in stone. If you the component that you have written is imported and used by a client component, it will create a client instance of the component.
+
+> You should always, whenever possible, move client components as low into the component as possible, because all child components of client compoents will be client components by default, and won't be server-rendered.
+
 # NextJS
 
 There are 4 NextJS key ingredients:
@@ -8282,6 +8326,42 @@ To implement links leading to paths to other pages of your application, you shou
 1. Next will pre-fetch all the routes that are linked on a certain page (this only happens in production, you cannot see it while developing).
 2. Each page is downloaded separately as a separate chunk.
 3. Each page that we visit in the browser will be cached in the browser as well. Then as we move around, these pages would not have to be re-fetched.
+
+### Highlighting current navigation link
+
+The way in which we can highlight the current navigation link is using a custom React hook called `usePathname()` that NextJS provides us with. There is no way of doing this with server-side rendering. Obviously, you would have to apply the `"use client"` directive at the top of any file you are going to use it in. For instance:
+
+```js
+"use client";
+
+function SideNavigation() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="border-r border-primary-900">
+      <ul className="flex flex-col gap-2 h-full text-lg">
+        {navLinks.map((link) => (
+          <li key={link.name}>
+            <Link
+              className={`py-3 px-5 hover:bg-primary-900 hover:text-primary-100 transition-colors flex items-center gap-4 font-semibold text-primary-200 ${
+                pathname === link.href ? "bg-primary-900" : ""
+              }`}
+              href={link.href}
+            >
+              {link.icon}
+              <span>{link.name}</span>
+            </Link>
+          </li>
+        ))}
+
+        <li className="mt-auto">
+          <SignOutButton />
+        </li>
+      </ul>
+    </nav>
+  );
+}
+```
 
 ### Programmatic navigation
 
@@ -8632,6 +8712,45 @@ export default async function Page() {
 ```
 
 Now as you navigate to this page on the browser, you will be able to see that, even when the hydration process is not complete, you can see the `<p>There are 10 users</p>` output coming from the `Counter` client component on the page. This is because all components are initially rendered on the server, no matter if it is a server or a client component.
+
+### Passing data from client back to server
+
+The most known usecase of this is a filtering component which operates in connection to a table or list of fetched data. For instance, if you have a list of products that are fetched in a server component, and then you have a client component which provides the interactivity needed for the user to filter the list of products, you should be able to pass data from client to a server component. But how? How do we share a state in a client component to a server component?
+
+#### The URL
+
+The easiest and best way to do this is to store state right in the URL. So as a user clicks on a filter, it will add the filter to the URL, and then in the server component we can read it from the URL and filter accordingly. The URL would become something like this:
+
+```
+/cabins?capacity=small
+```
+
+In NextJS, we can access the URL parameters only in a `page.js` file of a specific route. In this file, the `Page` component has access to a `searchParams` argument.
+
+```js
+export default function Page({ searchParams }) {
+  // code
+}
+```
+
+All you need to do now is to implement some way of getting the data to the URL, and then reading the data from the URL in the server. So you can take out the filtering data from the URL and send it as a `prop` to the server component that is responsible for getting the data:
+
+```jsx
+export default function Page({ searchParams }) {
+  const filter = searchParams?.capacity ?? "all";
+  return (
+    <div>
+      <h1 className="text-4xl mb-5 text-accent-400 font-medium">
+        Some heading
+      </h1>
+      <p className="text-primary-200 text-lg mb-10">Some text</p>
+      <Suspense fallback={<Spinner />}>
+        <CabinList filter={filter} />
+      </Suspense>
+    </div>
+  );
+}
+```
 
 ## Displaying a loading indicator
 
@@ -8988,7 +9107,85 @@ This is used store all the pre-fetched pages in the browser, as well as all page
 
 > Caching works in production, not in development.
 
-Let's now see how we can configure and revalidate each cache and opt out of them.
+Let's now see how we can configure and revalidate each cache and opt out of them. Remember that in order to be able to observe the caching behavior while developing the project, you need to simulate the production environment by first building the project (`npm run build`), and running the built project (`npm start`).
+
+### Cachingin practice
+
+#### Route level: data cache and full route cache
+
+If you have a project where the `/cabins` route is rendered statically, if some data about the cabins change at the database, that change will not be reflected in your NextJS app no matter how many times you refresh the page. This is due to **data cache** and therefor **full route cache**. So this route has been cached with the data when the page was statically generated, and the new data won't be visible here until we revalidate the cache. This is good for something that is really static for a long time, but not here in this route where users must be able to see the latest data on cabins.
+
+So let's try to opt out of the data cache which will also automatically opt out of full route cache. So basically, we are going to force this route to become dynamic by setting the `revalidate` of the `/cabins` page to `0` seconds.
+
+```js
+// @/app/cabins/page.jsx
+export const revalidate = 0;
+
+export const metadata = {
+  title: "Cabins",
+};
+
+export default function Page() {
+  // code
+}
+```
+
+> The numeric value inserted into `revalidate` cannot be computed. It must be a static, hard-coded value.
+
+Now the whole `/cabins` route is rendered dynamically; so for each request that hits the server, the data is fetched and the page is rendered. This is clearly not much of an optimized strategy. We need a solution to make this route semi-dynamic. In this case, cabins prices do change, so static rendering is not good, but they don't change every minute or so. So it does not make sense to regenerate this page for every single request. This is where Incremental Static Regenration (ISR) comes to play. This will regenerate a static page and fetch fresh data for it from time to time. You can simply define this time with the same number you inserted into `revalidate`. This will make this route a middle-ground between fully static and fully dynamic. The value that you set for `revalidate` depends on how often your data changes.
+
+One approach is to revalidate data on the `/cabins` page once per hour, since it is an overview page, but on the `/cabins/[cabinId]` page you can refetch data more often; so if the user really wants to reserve a cabin, they would see the real updated data.
+
+```js
+// @/app/cabins/page.jsx
+export const revalidate = 3600;
+```
+
+> Notice that we are talking here about time-based revalidation. But we can also use on-demand (or manual) revalidation. That would be done with `revalidatePath` or `revalidateTag` which would be applicable in server actions.
+
+#### Component level: PPR
+
+Revalidation can be altered at the component level or at the individual fetch level. In the `page.js` of the `/cabins` route, we have a component called `<CabinsList />` which is responsible for data fetching. So this is the `CabinsList.js` file:
+
+```js
+// @/app/cabins/
+export default async function CabinList() {
+  const cabins = await getCabins();
+  if (!cabins.length) return null;
+
+  return (
+    <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 xl:gap-14">
+      {cabins.map((cabin) => (
+        <CabinCard cabin={cabin} key={cabin.id} />
+      ))}
+    </div>
+  );
+}
+```
+
+To opt out of caching in this case, remember that can only operate on the data that is fetched using the `fetch` function. If data is being fetched using a library like `supabase`, you cannot implement this. You really need to insert the revalidation time into the `fetch` function. However, if you insist on using such libraries, you can still opt out of caching. To do this you can use NextJS `noStore` function and call it at the very beginning of the component.
+
+```js
+import { unstable_noStore } from "next/cache";
+
+export default async function CabinList() {
+  unstable_noStore();
+  const cabins = await getCabins();
+  if (!cabins.length) return null;
+
+  return (
+    <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 xl:gap-14">
+      {cabins.map((cabin) => (
+        <CabinCard cabin={cabin} key={cabin.id} />
+      ))}
+    </div>
+  );
+}
+```
+
+> Notice that as of NextJS 14 the function might still be unstable, and therefore officially called `unstable_noStore`.
+
+Notice that opting a component out of caching might result in a whole route of your app to be excluded from caching. In this case, it doesn't make a difference, and you can keep using the previous route level appraoch. But in a more complex `/cabins` page where there might be multiple components rendering different data, this will very well make sense and you would basically be using Partial Pre-Rendering (PPR) appraoch, where the shell would be fully static, while the holes in the shell would be dynamic and opted out of caching. Remember that you would definately want to wrap your dynamic components in `Suspense` so as to display the fallback until they are ready.
 
 # Project deployment
 
