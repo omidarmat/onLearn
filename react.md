@@ -208,6 +208,7 @@
   - [Implement routing](#implement-routing)
     - [Navigating between pages](#navigating-between-pages)
     - [Programmatic navigation](#programmatic-navigation)
+      - [Making dynamic pages static (`generateStaticParams()`)](#making-dynamic-pages-static-generatestaticparams)
   - [Layout](#layout)
     - [Dynamic metadata for dynamic route segments](#dynamic-metadata-for-dynamic-route-segments)
   - [Fonts](#fonts)
@@ -226,6 +227,13 @@
   - [Environment variables](#environment-variables)
   - [Error handling (`ErrorBoundary`)](#error-handling-errorboundary)
     - ["Not found" errors](#not-found-errors)
+  - [Static Site Generation (SSG)](#static-site-generation-ssg)
+  - [Partial Pre-Rendering (PPR)](#partial-pre-rendering-ppr)
+  - [Caching in NextJs](#caching-in-nextjs)
+    - [Request memoization (server)](#request-memoization-server)
+    - [Data cache (server)](#data-cache-server)
+    - [Full route cache (server)](#full-route-cache-server)
+    - [Router cache (client)](#router-cache-client)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8211,7 +8219,7 @@ As mentioned above static pages are beneficial for 2 reasons:
 
 > CDN is a network of related servers located at many different positions around the world. These servers all cache a website's static content; things like HTML, CSS, JavaScript. It then delivers this content to each user from a server located as close as possible to that user. The advantage of this is that the data does not need to travel across the entire planet, from the website's host to the user's computer. Most hosting providers like Vercel, Netlify, or Render, will automatically host all your website's static assets on a global CDN.
 
-> Server-less function refers to a model called server-less computing where you can run application code (usually backend code) without managing the server outselves. Instead, we can just run single functions on a cloud provider like AWS or Vercel, etc. We call these functions server-less functions. In this model, server is initialized and activated only for the duration that the function is running. This is very different from a traditional NodeJS app where the server is always running and never stops. When we deploy our website to Vercel, each dynamic route will become one server-less function. This means that our NextJS app is not simply one huge NodeJS app running on a server, but instead, a collection of server-less functions, with the servers automatically managed by the provider if you choose to deploy your app to them. This makes it so that if one of your routes gets a huge sudden boost in traffic, Vercel will automtaically provide more resources for that server-less function to handle all the additional load. If you only have static routes, none of this applies. In this case, all static routes will be built at build time, and will then be hosted on a CDN.
+> Server-less function refers to a model called server-less computing where you can run application code (usually backend code) without managing the server outselves. Instead, we can just run single functions on a cloud provider like AWS or Vercel, etc. We call these functions server-less functions. In this model, server is initialized and activated only for the duration that the function is running. This is very different from a traditional NodeJS app where the server is always running and never stops. When we deploy our website to Vercel, each dynamic route will become one server-less function. This means that our NextJS app is not simply one huge NodeJS app running on a server, but instead, a collection of server-less functions, with the servers automatically managed by the provider if you choose to deploy your app to them. This makes it so that if one of your routes gets a huge sudden boost in traffic, Vercel will automtaically provide more resources for that server-less function to handle all the additional load. If you only have static routes, none of this applies. In this case, all static routes will be built at build time, and will then be hosted on a CDN.the
 
 > The **Edge** refers to anything that happens as close as possible to the user. So a CDN is certainly a part of an edge network, because files are indeed located as close as possible to each user. There is also server-less edge computing, and this is simply server-less computing that does not happen on the big central server like it usually does, but instead, on a network distributed around the globe, so computing or running the server-less functions will happen as close as possible to the user. Essentially, an edge computing is like a CDN but for running code in the form of server-less functions. If you choose to deploy to Vercel, you can select certain dynamic routes to run on the edge, so that they will become even faster.
 
@@ -8298,6 +8306,34 @@ export default async function Page({ params }) {
 ```
 
 > Notice that in a typical project, you would always want the navbar on top of all your pages. This means that there should be a way of implementing a `<Navigation />` component once, and have it on all your pages. This is where the `layout.js` comes to play as a global layout of your application.
+
+#### Making dynamic pages static (`generateStaticParams()`)
+
+As you remember from the [static-vs-dynamic-SSR](#different-types-of-ssr-static-vs-dynamic) section of React, we said that NextJS has no way of knowing, at build time, which values are valid for dynamic route segments. For instance, if you are going to render different cabins at `/cabins/[cabinId]`, the content of each page should be generated dynamically on demand. But, the truth is that NextJS has provided us with a way to inform it about the different possible `cabinId`s that might be requested by users. This is done using the `generateStaticParams` function.
+
+If you, as the developer, know which `cabinId`s exist in the cabins data, you can give these IDs to NextJS. So NextJS will prerender the page with those limited number of cabin IDs. To do this, you go the `page.js` file of the `[cabinId]` route, and define the `generateStaticParams` function. This function should basically retrieve all the different IDs related to the cabins. So you should fetch all the cabins, extract their IDs and store them each in an object containing a `cabinId` property (same as the route segment), and place the ID value in it. These objects would then have to be inserted into an array, and this array is what the function should return. So this is how you do it:
+
+```js
+// @/app/cabins/[cabinId]
+export async function generateMetadata({ params }) {
+  const { name } = await getCabin(params.cabinId);
+  return { title: `Cabin ${name}` };
+}
+
+export async function generateStaticParams() {
+  const cabins = await getCabins();
+  const ids = cabins.map((cabin) => ({ cabinId: String(cabin.id) }));
+  return ids;
+}
+
+export default async function Page({ params }) {
+  // code
+}
+```
+
+So if by any chance, in your application you have a finite set of values for a dynamic segment of a URL, it is always a good idea to tell NextJS about those by using the `generateStaticParams` function. Then these routes would be statically generated, and it would benefit the app performance-wise.
+
+After doing this, if all of your app routes are static, you can use [Static Site Generation (SSG)](#static-site-generation-ssg). If you attempt to do this while you have some dynamic routes and did not use `generateStaticParams` to make them static, executing SSG will return with error.
 
 ## Layout
 
@@ -8871,6 +8907,88 @@ export default function NotFound() {
   );
 }
 ```
+
+## Static Site Generation (SSG)
+
+This is only useful if all your routes in your application are static, and not dynamic. To use this feature you need to tweak some settings in the `next.config.js` file:
+
+```js
+// @/next.config.json
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "dinstwtamagksvviqwcv.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/cabin-images/**",
+        search: "",
+      },
+    ],
+  },
+  output: "export",
+};
+
+export default nextConfig;
+```
+
+You can then run the same build command like before:
+
+```
+npm run build
+```
+
+The output forlder from this process will be named `out` and placed in the root of your project. You can take this folder and deploy it to any static hosting provider.
+
+> The problem with this feature is that images are no longer optimized in this version of the app. The reason for this is that in NextJS, images are optimized behind the scenes by Vercel on the Vercel server using their own image optimization API. So the optimization happens dynamically on a server that we no longer have in SSG output. This could be fixed in two ways: (1) you could use the regular HTML `<img />` element, (2) you can create your own custom loader that will then use a different service like _Cloudinary_.
+
+## Partial Pre-Rendering (PPR)
+
+Most pages of an application neither need to be rendered full static nor fully dynamic, but rather a mix of them. For instance, if you have a website that is fully static, except for the navigation that displays the name of the logged-in user. So this website would be fully dynamic just because that username can only beknown at request time, but this would be a huge waste to dynamically render a whole website because of just a username at the top of the page. This is the problem that PPR solves.
+
+PPR combines static and dynamic rendering in the same route. It is _prerendering_ because that is basically the same as static, and it is _partial_ because the prerendering happens only for a part of the page, not the whole page. Let's see how it works.
+
+A fully static (pre-rendered) page is served as fast as possible from a CDN when a user visits the page. This makes the initial loading super fast. We call this a static **shell**, because it leaves some holes for the dynamic content. In the meantime, the server starts rendering the dynamic content which takes a bit longer. As soon as some rendering results are available, the server starts streaming the dynamic parts of the page to the client, filling the holes. This results in even faster pages that can mostly be delivered from the Edge; so from a CDN even when there are small dynamically rendered parts on the page. This means that pages are no longer fully dynamically rendered just because one tiny part of the page depends on an incoming request or an un-cached data request. This could easily be 80% static and 20% dynamic content, making it a great candidate for PPR.
+
+The bad news, as of NextJS 14, is that PPR is not available yet, but we are going to see how we can implement and use it once it becomes available. To be able to use it, you would first have to activate it in the `next.config.js` file. Now, remember how static rendering is the default rendering mechanism in NextJS. So when PPR is enabled in NextJS, it would still try to statically render as much of each route as possible. This statically rendered part will then become the static shell. However, some parts of the route might be dynamic. For instance, a component that uses the `cookies()` function. Before PPR, this would make the entire route dynamic. But with PPR, we can just place that dynamic component into a `Suspense` boundary. So this feature leverages a React API that we already know. So we won't need to learn any new APIs to be able to use PPR, because we will regularly use `Suspense`.
+
+Essentially, the suspense boundary isolates dynamic components or sub-trees that will be dynamically rendered. While that dynamic part is rendering, we can provide a static fallback that can be rendered immediately, by passing it to the `Suspense` component. Then, once the rendering is done, each dynamic part will be inserted into the static shell, replacing the static fallback. So it would all be about placing dynamic components into `Suspense`.
+
+## Caching in NextJs
+
+Caching, in the context of a web app, means storing fetched or computed data in a temporary location for future access, instead of having to re-fetch or re-compute the data every time it is requested. In NextJS, caching is done pretty aggressively, both on the server and user's browser. Basically, everything that can be cached will be cached by NextJS, such fethed data, visited routes, and so on.
+
+Besides caching, NextJS also provides APIs to revalidate different caches. Revalidating is to remove all data from a cache and update it with fresh data; so fetching or computing fresh data again. The main idea of caching is that it makes apps not only more performant with faster page loads, but it also saves computing and data access costs. This benefits you if you pay for computation and data access. Now the problem is the very aggressive caching in NextJS app router.
+
+This can lead so some strange behavior of your app, like displaying stale data on the client. Additionally, knowing the fact that some caches cannot even be turned off, it becomes very annoying to work with the app. Many developers hate the way NextJS caching works. If you do need to control how NextJS caches data, you need to get familiar with so many different NextJS APIs. It can be really difficult to grasp.
+
+We are now going to take a look at 4 different caching machanisms, compare them, and learn how to control them effectively.
+
+### Request memoization (server)
+
+This caches the data that has been fetched with similar GET requests (same URL and options in `fetch` function) during the life span of one request by one user. In other words, data is cached and reused only during exactly 1 page render. This way, when a certain route fetches the same data in multiple places in the component tree during one render, only 1 actual network request will be made. This cache acts like a short-term memory for the `fetch`ed data. So for example, if you fetch products in multiple components, NextJS will only get the data from the API once, and not multiple times. This is a great feature.
+
+> This is a React feature and therefore only works in a React tree, not in _route handlers_ or _server actions_.
+
+### Data cache (server)
+
+This stores all the data that has been fetched either in a specific route or from a single `fetch` request. The unique thing about this cache, is that data stays there forever, unless we decide to revalidate the cache. So the data would be available across multiple requests from different users, it even survives when the app is re-deployed. If you had 1 million users requesting the same data over time, NextJS would only have made 1 `fetch` request. This sounds like a static page. This is the data that is actually fed into static pages. This is used to statically render routes. When this data is re-validated, the corresponding static page will be regenerated. This is the whole idea behind ISR. This cache mechanism and revalidating it that enables ISR. This is also very good for performance. It is very configurable and also confusing.
+
+### Full route cache (server)
+
+This stores the entire static pages in the form of HTML and RSC payload at build time. Static pages only have to be built once, and then served to many users. This cache is what enables static pages to work the way they do, acting as a storing mechanism for the static routes. So full route cache is nothing more than building static routes and storing them as HTML and RSC payload. Since this cache is so related to the data cache, a full route cache is persisted until the data cache is invalidated or cleared. Because, if the underlying data changes, the page needs to be regenerated and stored in the cache again to reflect the latest data. This cache does not survive re-deploys. It will be deleted if you deploy a new version of the app.
+
+All these caches are store on the server.
+
+### Router cache (client)
+
+This is used store all the pre-fetched pages in the browser, as well as all pages that the users visits while navigating around the application. This applies to both static and dynamic routes, since the browser does not care about how the route was generated. The idea behind this cache is that having all the pages stored in memory, allows for instant navigation, giving the user the feel of a true single page application with no hard reloads. The problem with this is that pages are not requested from the server again, as the user navigates back and forth, which can lead to stale data being displayed. Pages are stored for 30 seconds if they are dynamic, and for 5 minutes if they are static, with no way of revalidating this cache. Unless the user performs a hard reload or closes and reopens the tab, we run into the possibility of rendering outdated data. This is the biggest problem with the NextJS cache system.
+
+> Caching works in production, not in development.
+
+Let's now see how we can configure and revalidate each cache and opt out of them.
 
 # Project deployment
 
