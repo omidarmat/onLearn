@@ -149,8 +149,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -219,10 +219,12 @@
     - [Image with static import](#image-with-static-import)
     - [Images from external sources](#images-from-external-sources)
   - [Fetching data](#fetching-data-1)
+    - [Fething different data in one page](#fething-different-data-in-one-page)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundary](#crossing-the-server-client-boundary)
     - [Passing data from client back to server](#passing-data-from-client-back-to-server)
-      - [The URL](#the-url)
+      - [The URL (client component inside server component)](#the-url-client-component-inside-server-component)
+      - [Server component inside client component](#server-component-inside-client-component)
   - [Displaying a loading indicator](#displaying-a-loading-indicator)
     - [Streaming for individual components (`Suspense`)](#streaming-for-individual-components-suspense)
       - [What happens behind the scenes](#what-happens-behind-the-scenes)
@@ -8630,6 +8632,8 @@ export default async function Page() {
 }
 ```
 
+### Fething different data in one page
+
 ## Adding interactivity
 
 Using client components, you can now add interactivity to your page. Let's now implement a `Counter` component and include it in a server-side rendered page.
@@ -8717,7 +8721,7 @@ Now as you navigate to this page on the browser, you will be able to see that, e
 
 The most known usecase of this is a filtering component which operates in connection to a table or list of fetched data. For instance, if you have a list of products that are fetched in a server component, and then you have a client component which provides the interactivity needed for the user to filter the list of products, you should be able to pass data from client to a server component. But how? How do we share a state in a client component to a server component?
 
-#### The URL
+#### The URL (client component inside server component)
 
 The easiest and best way to do this is to store state right in the URL. So as a user clicks on a filter, it will add the filter to the URL, and then in the server component we can read it from the URL and filter accordingly. The URL would become something like this:
 
@@ -8732,6 +8736,8 @@ export default function Page({ searchParams }) {
   // code
 }
 ```
+
+> Notice that whenever the `searchParams` changes, the `Page` server component will re-render. It doesn't matter what causes the change in `searchParams`. It could be done using a client component, like a filtering mechanism. A server component re-renderes as a result of navigation.
 
 All you need to do now is to implement some way of getting the data to the URL, and then reading the data from the URL in the server. So you can take out the filtering data from the URL and send it as a `prop` to the server component that is responsible for getting the data:
 
@@ -8751,6 +8757,151 @@ export default function Page({ searchParams }) {
   );
 }
 ```
+
+Then inside the `<CabinsList />` component you would have to receive the `filter` prop and use it to filter the data:
+
+```jsx
+export default async function CabinList({ filter }) {
+  const cabins = await getCabins();
+  if (!cabins.length) return null;
+
+  let displayedCabins;
+  if (filter === "all") displayedCabins = cabins;
+  if (filter === "small")
+    displayedCabins = cabins.filter((cabin) => cabin.maxCapacity <= 3);
+  if (filter === "medium")
+    displayedCabins = cabins.filter(
+      (cabin) => cabin.maxCapacity >= 4 && cabin.maxCapacity <= 7
+    );
+  if (filter === "large")
+    displayedCabins = cabins.filter((cabin) => cabin.maxCapacity >= 8);
+
+  return (
+    <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 xl:gap-14">
+      {displayedCabins.map((cabin) => (
+        <CabinCard cabin={cabin} key={cabin.id} />
+      ))}
+    </div>
+  );
+}
+```
+
+Now it is time to implement the client component that is responsible for filtering interaction with the user. Before that, there is a really important thing to notice. The filtering state that is being stored in the URL makes the `/cabins` page a dynamically rendered one. You cannot know before runtime what would the filters be until there is a request. So the page will not be rendered statically. And since it is now a dynamic page, you cannot use the `export const revalidate` technique that you'll learn in the [data cache and full route cache section](#route-level-data-cache-and-full-route-cache). It just does not make sense anymore. So as a general rule, if you're going to make the user capable of filtering and sorting a list of data, you cannot statically render that data. So now the `Page` component of `/cabins` cannot be statically rendered. On the other hand, if you are going to render a list of data on which the user will have no control, you can safely render that page statically.
+
+Let's now go on and create a client component for filtering the data; so basically a component that would enable the user to insert the filtering values into the URL via the UI. This would be kind of the boiler plate of the `<Filter />` component:
+
+```js
+export default function Filter() {
+  function handleFilter(filter) {}
+
+  return (
+    <div className="border border-primary-800 flex">
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("all")}
+      >
+        All cabins
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("small")}
+      >
+        1&mdash;3 guests
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("medium")}
+      >
+        4&mdash;7 guests
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("large")}
+      >
+        8&mdash;12 guests
+      </button>
+    </div>
+  );
+}
+```
+
+We are now going to use the `URLSearchParams` API in the `handleFilter` function to form the URL as we need it to be. We also need to use some additional NextJS's custom hooks as explained below:
+
+```js
+export default function Filter() {
+  // useSearchParams is a client-side way of getting URL search parameters. The server-side way was `{ searchParams }` as the server component's prop.
+  const searchParams = useSearchParams();
+  //   The router enables us to navigate to a given URL
+  const router = useRouter();
+  //   Pathname gives us the route (like https://www.some.com/cabins)
+  const pathName = usePathname();
+
+  function handleFilter(filter) {
+    // URLSearchParams is an API helping us form a URL with search params
+    const params = new URLSearchParams(searchParams);
+    params.set("capacity", filter);
+    // URLSearch params creates the URL internally. We need a way of navigating to the created URL, which is the router.
+    router.replace(`${pathName}?${params.toString()}`, { scroll: false });
+  }
+
+  return (
+    <div className="border border-primary-800 flex">
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("all")}
+      >
+        All cabins
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("small")}
+      >
+        1&mdash;3 guests
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("medium")}
+      >
+        4&mdash;7 guests
+      </button>
+      <button
+        className="px-5 py-2 hover:bg-primary-700"
+        onClick={() => handleFilter("large")}
+      >
+        8&mdash;12 guests
+      </button>
+    </div>
+  );
+}
+```
+
+Let's now place the `<Filter />` component in the page where the data list is being rendered.
+
+```jsx
+export default function Page({ searchParams }) {
+  const filter = searchParams?.capacity ?? "all";
+  return (
+    <div>
+      <h1 className="text-4xl mb-5 text-accent-400 font-medium">
+        Some heading
+      </h1>
+      <p className="text-primary-200 text-lg mb-10">Some text</p>
+      <div className="flex justify-end mb-8">
+        <Filter />
+      </div>
+      <Suspense fallback={<Spinner />} key={filter}>
+        <CabinList filter={filter} />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+> Also notice that we have inserted a unique `key` prop for the `Suspense`. This is because in NextJS, all navigations are wrapped inside transitions, so after the first page load, next page loads will not cause the `<CabinList />` component to suspend, and therefore the `fallback` will not be displayed. To fix this, we insert a `key` prop into the `Suspense`.
+
+#### Server component inside client component
+
+You can only _render_ server components in client components as a prop (usually `children`). You cannot _import_ server components into client components.
 
 ## Displaying a loading indicator
 
