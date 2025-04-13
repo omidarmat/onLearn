@@ -84,6 +84,8 @@
     - [Types of state](#types-of-state)
     - [Where to place state](#where-to-place-state)
     - [State management tool options](#state-management-tool-options)
+    - [Some practical techniques](#some-practical-techniques)
+      - [Sharing state between siblings](#sharing-state-between-siblings)
   - [Thinking: Components](#thinking-components)
     - [Splitting a UI into components](#splitting-a-ui-into-components)
       - [When to create a new component?](#when-to-create-a-new-component)
@@ -220,6 +222,9 @@
     - [Images from external sources](#images-from-external-sources)
   - [Fetching data](#fetching-data-1)
     - [Fething different data in one page](#fething-different-data-in-one-page)
+    - [Sharing state between siblings (Review)](#sharing-state-between-siblings-review)
+  - [Route handlers](#route-handlers)
+  - [Server actions](#server-actions)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundary](#crossing-the-server-client-boundary)
     - [Passing data from client back to server](#passing-data-from-client-back-to-server)
@@ -3345,6 +3350,16 @@ Let's now take a look at the tools that we can use to manage each variation.
 > In large-scale applications using the combination of `fetch` + `useEffect` + `useState` to manage local remote state is not simply enough. This brings us to the tools that we need to manage global remote state.
 
 > The specialized methods included in managing global remote state involve built-in mechanisms like caching and re-fetching in order to deal with the asynchronous nature of remote state. These solutions are highly recommended.
+
+### Some practical techniques
+
+#### Sharing state between siblings
+
+Imagine you are working on a page where the user might be clicking on a calendar to choose dates, and then you need to share the selected dates state with a sibling component. What are the options:
+
+1. Storing state in the URL: This is a nice choice if each click by the user on the calendar would not result a re-render of the parent component. However, if the parent component is a **server component** this would actually cause it to re-render each time the user clicks on calendar days. It could get worse if the server component also fetches some data. Then, each re-render would trigger a re-fetch.
+2. Lifting state: This is a familiar technique which works well.
+3. The Context API: Remember that if you are working with server and client component, the Context API only works in client components. With the Context API, you should always remember to place the context provider as deep down as possible in the component tree in order to not cause any unnecessary re-renders.
 
 ## Thinking: Components
 
@@ -8633,6 +8648,153 @@ export default async function Page() {
 ```
 
 ### Fething different data in one page
+
+In a real-world application, you may very well need to get data from multiple endpoints to display on the page. In this case, and especially when the different pieces of data do not depend on each other, it is not a good practice to fetch all these data in the `Page` component of a route, because the `Page` component is a server component and this would create a slow experience for the user.
+
+You could use a `Promise.all` technique to reduce the waiting time for the user, and it is a nice way to go, but you can do even better. You can create a bunch of different component and then have each component fetch all the data it needs, and then those components can be streamed in as they become ready. This would be a much better strategy.
+
+Take this page component of the `/cabins/[cabinId]` route as example:
+
+```jsx
+export default async function Page({ params }) {
+  const cabin = await getCabin(params.cabinId);
+  const settings = await getSettings();
+  const bookedDates = await getBookedDatesByCabinId(params.cabinId);
+
+  const { id, name, maxCapacity, regularPrice, discount, image, description } =
+    cabin;
+
+  return (
+    // Cabin's image
+    // cabin's name
+    // cabin's description
+    // cabin's max capacity
+    // date selector component
+    // reservation form component
+  );
+}
+```
+
+You can see that 3 pieces of data are being fetched in a waterfall, where each fetch is waiting for the previous one to return with a response, while they don't depend on each other. We could implement the `Promise.all` technique, but let's just go with the better way. We are going to create a component which would include the `<DateSelector />` and `<ReservationForm />` components in itself, and call it `<Reservation />`. We will now also have to activate streaming on this component.
+
+```jsx
+// @/app/cabins/[cabinId]
+export default async function Page({ params }) {
+  const cabin = await getCabin(params.cabinId);
+  const { id, name, maxCapacity, regularPrice, discount, image, description } =
+    cabin;
+
+  return (
+    // cabin's image
+    // cabin's name
+    // cabin's description
+    // cabin's max capacity
+    <Suspense fallback={<Spinner />}>
+      <Reservation cabin={cabin} />
+    </Suspense>
+  );
+}
+```
+
+We would then use the `Promise.all` technique inside this component just for `getSettings()` and `getBookedDatesByCabinId()` and leave `getCabin()` in the `Page` component.
+
+```jsx
+export default async function Reservation({ cabin }) {
+  const [settings, bookedDates] = await Promise.all([
+    getSettings(),
+    getBookedDatesByCabinId(cabin.id),
+  ]);
+  return (
+    <div className="grid grid-cols-2 border border-primary-800 min-h-[400px]">
+      <DateSelector
+        settings={settings}
+        bookedDates={bookedDates}
+        cabin={cabin}
+      />
+      <ReservationForm cabin={cabin} />
+    </div>
+  );
+}
+```
+
+### Sharing state between siblings (Review)
+
+Let's review the things we briefly pointed out in a previous section called [sharing state between siblings](#sharing-state-between-siblings). We mentioned there that one way of doing this is to use the Context API. You should remember that the Context API would only work in a client component. So you cannot set up context in a server component. However, you can use the context provider, which is a client component, to wrap some other server components. This is no problem as long as you're only wrapping server components inside client components. What you cannot do is to import server components in client components. So it is actually very ok to wrap all the `children` in the `RootLayout` inside a context provider like this:
+
+```js
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body
+        className={`${josefin.className} antialiased bg-primary-950 text-primary-100 min-h-screen flex flex-col`}
+      >
+        <Header />
+        <div className="flex-1 px-8 py-12">
+          <main className="max-w-7xl mx-auto">
+            <ReservationProvider>{children}</ReservationProvider>
+          </main>
+        </div>
+      </body>
+    </html>
+  );
+}
+```
+
+This would basically wrap your whole routes in the provider, but that is no problem as you learned before.
+
+## Route handlers
+
+Route handlers help you build API endpoints right in a NextJS project. Although creating API endpoints is not as important as before (since we now have [**server actions**](#server-actions) in the app router), we are going to see how we can do this using route handlers.
+
+You can create a route handler by creating a convensional `route.js` files in any folder that does NOT inlcude a `page.js` file. When a request is sent to the URL that corresponds to the route handler, no HTML is returned. Instead, the route handler is going to be executed and usually a JSON data is returned.
+
+From the `route.js` file we can export one or more functions, each of which can correspond to one of the HTTP verbs.
+
+```js
+// @/app/api/route.js
+export async function GET() {}
+```
+
+In order to send back a response from this GET function or even to check out the request itself, route handlers use web standards such as `Request` and `Response`.
+
+```js
+// @/app/api
+export async function GET(request, { params }) {
+  return Response.json({ test: "test" });
+  // returning a JSON data as response
+}
+```
+
+> You can also use an extended version of the `Response` which is provided to you by NextJS.
+
+The `GET` function has access to 2 arguments:
+
+1. `request`:
+2. `{params}`:
+
+You can now navigate and send a GET request to `/api` and you will see the JSON response. This, of course, means that if you want to generate nested routes, you can simply follow NextJS's app router routing convension of nested folders, this time including a `route.js` instead of `page.js`.
+
+```js
+// @/app/api/cabins/[cabinId]
+export async function GET(request, { params }) {
+  const { cabinId } = params;
+
+  try {
+    const [cabin, bookedDates] = await Promise.all([
+      getCabin(cabinId),
+      getBookedDatesByCabinId(cabinId),
+    ]);
+
+    return Response.json({ cabin, bookedDates });
+  } catch (err) {
+    return Response.json({ message: "Cabin not found" });
+  }
+}
+```
+
+> Notice that we are trying to handle errors in this route handler since the error boundary applied to the app does not work in API endpoints defined in route handlers.
+
+## Server actions
 
 ## Adding interactivity
 
