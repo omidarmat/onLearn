@@ -249,6 +249,16 @@
     - [Cachingin practice](#cachingin-practice)
       - [Route level: data cache and full route cache](#route-level-data-cache-and-full-route-cache)
       - [Component level: PPR](#component-level-ppr)
+  - [Authentication and authorization](#authentication-and-authorization)
+    - [Implementing authentication](#implementing-authentication)
+      - [Define environment variables](#define-environment-variables)
+      - [Configure Google to accept logins](#configure-google-to-accept-logins)
+      - [Install and use the library](#install-and-use-the-library)
+      - [Getting the user session](#getting-the-user-session)
+    - [Implementing authorization](#implementing-authorization)
+      - [Authorization by middleware](#authorization-by-middleware)
+      - [Protecting routes](#protecting-routes)
+      - [Leading to custom sign-in page](#leading-to-custom-sign-in-page)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -9499,6 +9509,339 @@ export default async function CabinList() {
 > Notice that as of NextJS 14 the function might still be unstable, and therefore officially called `unstable_noStore`.
 
 Notice that opting a component out of caching might result in a whole route of your app to be excluded from caching. In this case, it doesn't make a difference, and you can keep using the previous route level appraoch. But in a more complex `/cabins` page where there might be multiple components rendering different data, this will very well make sense and you would basically be using Partial Pre-Rendering (PPR) appraoch, where the shell would be fully static, while the holes in the shell would be dynamic and opted out of caching. Remember that you would definately want to wrap your dynamic components in `Suspense` so as to display the fallback until they are ready.
+
+## Authentication and authorization
+
+We are going to learn to use `NextAuth` or, as it is called now, `Auth.js` to handle authentication and authorization. This is a library that just simplifies authentication in a NextJS application. It is not its own authentication service, like the one that Supabase presents, but it helps us to use and integrate authentication into an application. A special service that this library provides is that it makes it easy to connect to many different auth providers, for instance, Google, Github, Facebook, and so on. We are now going to learn using the Google authentication provider.
+
+### Implementing authentication
+
+#### Define environment variables
+
+To implement authentication using AuthJS library, you first need to define some environment variables inside `.env.local`:
+
+```
+NEXTAUTH_URL=http://localhost:3000/
+NEXTAUTH_SECRET=d985ef3ced79cb6c3ae71de125ae268c
+```
+
+The `NEXTAUTH_SECRET` variable holds a random secret string.
+
+#### Configure Google to accept logins
+
+You should navigate to Google developer console, and create a project with a custom name. Then inside this project, you first need to go to **OAuth consent screen**. Then you would have to go to **OAuth client ID** and create a client. Once the client is created, you are presented with a **client ID** and a **client secret**, based on which you need to add 2 more environment variables:
+
+```
+AUTH_GOOGLE_ID=263213453309-7qu0is632e5mn191s11ldrsr0hdunroc.apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=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
+```
+
+During the process of creating the OAuth client ID, you should use the exact value you set for `NEXTAUTH_URL` in the **Authorized JavaScript origins** and **Authorized redirect URIs**. In the latter however, the `NEXTAUTH_URL` must be followed by the path that AuthJS documentation on Google provides. So that would be `http://localhost:3000/api/auth/callback/google`
+
+#### Install and use the library
+
+You first need to install the AuthJS library.
+
+```
+npm install next-auth@beta
+<!-- this command might change in near future -->
+```
+
+You then need to create a file called `auth.js` in your `_lib` folder:
+
+```js
+// @/app/_lib/auth.js
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+
+const authConfig = {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+};
+```
+
+You then need to call the `NextAuth` function and give it the config:
+
+```js
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+
+const authConfig = {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+};
+
+export const {
+  auth,
+  handlers: { GET, POST },
+} = NextAuth(authConfig);
+```
+
+> Notice that you are exporting the `auth` function, which you can use in any component of your app.
+
+You should then create an API endpoint and route handler for authenticaion using this structure:
+
+```
+/app/api/auth/[...nextauth]/route.js
+```
+
+This will make it so that all URLs starting with `/api/auth` followed by whatever (`...`) will be handled by the `route.js` file we placed inside it. So for example, `/api/auth/provider` or `/api/auth/signin` or anything like this will be handled by this route handler file.
+
+In the route handler file, we are going to export the `GET` and `POST` functions we destructured in from the `auth.js` file.
+
+```js
+// @/app/api/auth.js
+export { GET, POST } from "@/app/_lib/auth";
+```
+
+You can now go on and navigate to `/api/auth/signin` and see the Google's signin button if you have set everything up correctly.
+
+#### Getting the user session
+
+We now need to customize our app according to the logged in user. For instance, you may want to render the user's image in the navbar. But how do we get the data about the currently logged in user into a component? The `auth` function we exported from the `auth.js` file is going to help us do that.
+
+So for instance, in the `Navigation.js` file we are going to use it:
+
+```js
+export default async function Navigation() {
+  const session = await auth();
+
+  return (
+    // JSX
+  )
+}
+```
+
+The `session` variable will hold an object that has a `user` property, in which there are `name`, `email`, `image` properties. So we can use them.
+
+```jsx
+export default async function Navigation() {
+  const session = await auth();
+
+  return (
+    <ul>
+      <li>
+        {session?.user?.image ? (
+          <Link
+            href="/account"
+            className="hover:text-accent-400 transition-colors"
+          >
+            <img
+              className="h-8 rounded-full"
+              src={session.user.image}
+              alt={session.user.name}
+              referrerPolicy="no-referrer"
+            />
+            <span>Guest area</span>
+          </Link>
+        ) : (
+          <Link
+            href="/account"
+            className="hover:text-accent-400 transition-colors"
+          >
+            Guest area
+          </Link>
+        )}
+      </li>
+    </ul>
+  );
+}
+```
+
+We are now displaying the logged in user's photo.
+
+> Notice that it is a good practice to use `referrerPolicy="no-referrer"` on the image to make sure it would be displayed correctly.
+
+If you now go to `/api/auth/signin` and click on the sign in button, you will get signed in and your user photo will be displayed in your app. You can also navigate to `/api/auth/signout` and click on the sign out button, and you will get signed out.
+
+> Notice that any route that you use the `auth()` function in it, will become fully dynamic. The `auth()` function works with cookies and headers, so it reads the cookies from the incoming request. Reading cookies actually switches a route to dynamic rendering, since cookies can only be known at run time, not build time. Now in this case, since we are calling the `auth()` function in the `Navigation.js` which is part of the root layout, all our routes, so our entire website becomes dynamic since the root layout is part of each route. So keep an eye for that if that is not what you want.
+
+> There is a way of using the `auth()` function on client components, but it is a good practice and highly beneficial to keep everything related to authentication on the server, so on server components. So try to deal with logged in and logged out users only on the server.
+
+### Implementing authorization
+
+Authorization is basically, to only allow access of certain areas of the website to users that are logged in and have the right privilage to visit that route. So for example, if your application is going to have a dashboard for users, a user must be authorized to access the dashboard route. This means that you should protect some routes against unauthorized users, and this is done by using **middleware**.
+
+#### Authorization by middleware
+
+Middleware is some sort of program that sits between two things. In the case of NextJS, a middleware is a function that sits between the incoming request and the outgoing response. NextJS middleware allows us to run some code based on the incoming request, but before the response is completed. But let's go deeper.
+
+By default, middleware runs before every single route in our NextJS app. But we can use a **matcher** to specify for which routes a middleware should run. The important point is that middleware always runs after the request, but before the route that the user is visiting is rendered and sent back as response. This way, a common logic between multiple parts of our application can become centralized.
+
+The middleware function needs to be exported from `middleware.js` located at the root directory of the project (not the `app` directory).
+
+Why do we really need this? The main function of middleware which powers many different usecases is reading incoming cookies and headers, as well as setting cookies and headers on the response. This enables us to implement features such as authentication and authorization, server-side analytics, redirects based on GeoLocation for internationalizaiton, A/B testing, and many more.
+
+There is one exception to the idea that _middleware runs before a route is rendered_. A middleware function always needs to produce a response, which can happen in 2 ways:
+
+1. Redirects or re-writes to some route in our app. The middleware runs before routes are rendered.
+2. Directly send a JSON response to the client. You can still read and set cookies and headers, but the route won't ever be reached and rendered. This is useful when all you want to do is to send some data as JSON like an API, eventhough we have route handlers for that. So most of the times you won't be using this. Just know that this possibility exists.
+
+#### Protecting routes
+
+So again as a NextJS convension, you need to create a file exactly called `middleware.js` at the root directory of your project. In this file, you should export a function called `middleware`. This middleware function has access to the `request` object. You can, for instance, try to redirect users when they reach this middleware:
+
+```js
+// @/middleware.js
+import { NextResponse } from "next/server";
+
+export function middleware(request) {
+  // this will redirect the user to another route
+  return NextResponse.redirect(new URL("/about", request.url));
+}
+```
+
+> Notice the use of `URL` API to create a URL.
+
+But this will result in an error saying `ERR_TOO_MANY_REDIRECTS`. This is because the middleware runs for every route in our app. So the user is redirected to `/about` but the middleware runs again for this route, and it basically creates an infinite loop. So you are going to need to use a `matcher`.
+
+```js
+// @/middleware.js
+export function middleware(request) {
+  console.log(request);
+  return NextResponse.redirect(new URL("/about", request.url));
+}
+
+export const config = {
+  matcher: ["/account"],
+};
+```
+
+But let's now use the middleware for authorization. AuthJS provides us with a middleware function that we can use in the `middleware.js` file. Here, we are going to use the `auth()` function again. Remember that we exported it from the `auth.js` file.
+
+```js
+// @/middleware.js
+import { auth } from "@/app/_lib/auth";
+
+export const middleware = auth;
+
+export const config = {
+  matcher: ["/account"],
+};
+```
+
+> Notice that you still need to export a `middleware` function.
+
+Now you also need to add a callback to the configuration of the AuthJS (`auth.js`) file.
+
+```js
+// @/app/_lib/auth.js
+const authConfig = {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+  callbacks: {
+    authorized({ auth, request }) {
+      return !!auth?.user;
+    },
+  },
+};
+```
+
+The `authorized()` function needs to return either `true` or `false`, where `true` means the user is authorized to go through on to the route that is being protected. This will now protect your `/account` route against unauthorized users, which are basically not logged in users.
+
+#### Leading to custom sign-in page
+
+You can create a `login` folder in your `app` directory and place a `page.js` file in it and design a login page. But how would you tell the authentication mechanism to lead unauthorized users to your custom login page and not the default login page available at `/api/auth/signin?<some-chars>`? That is done in the `auth.js` configuration file, by adding a `pages` property to the `authConfig` object, and adding your custome `/login` path to it.
+
+```js
+// @/app/_lib/auth.js
+
+const authConfig = {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+  callbacks: {
+    authorized({ auth, request }) {
+      return !!auth?.user;
+    },
+  },
+  pages: {
+    signIn: "/login",
+  },
+};
+```
+
+Since you would have to use authentication functionalities of AuthJS in your custom login/logout pages, you need to export two more functions from `auth.js` file: `signIn` and `signOut`.
+
+```js
+// @/app/_lib/auth.js
+
+const authConfig = {
+  providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+  callbacks: {
+    authorized({ auth, request }) {
+      return !!auth?.user;
+    },
+  },
+  pages: {
+    signIn: "/login",
+  },
+};
+
+export const {
+  auth,
+  signIn,
+  signOut,
+  handlers: { GET, POST },
+} = NextAuth(authConfig);
+```
+
+We are now going to use these functions. So we are basically going to connect the `signIn` function with out custom sign in button. Now since we are trying to keep the entire authentication/authorization flow on the server, we cannot simply use `onClick` prop on our custom sign in button. Instead, we need to create a server action. Server actions allow us to add **interactivity** to server components, usually through **forms**. The idea is to connect a server action with a form. The form may contain only a single button, and no input fields, since it is there just to trigger a server action.
+
+So we basically wrap a `button` in a `form` and set the `action` attribute of the form to a special function, which is called a server action. There are several places where you can define server actions, but the best and most common place is in the `_libs` folder, and creating a file called `actions.js`.
+
+```js
+// @/app/_lib/actions.js
+
+"use server";
+
+import { signIn } from "./auth";
+
+export async function signInAction() {
+  await signIn("google", { redirectTo: "/account" });
+}
+```
+
+> Notice that you need to apply the `use server` directive at the beginning of a server action file. This will make sure that the server action will always be called on the server, and will never leak to the client.
+
+> Notice that the `signIn` function exported from the `auth.js` file receives first, the authentication provider, and second, an object of options. The authentication provider is hard coded as `google` here, but it can also be read dynamically from the response you can get from `/api/auth/providers` by looping over it.
+
+Let's now implement the form in the custom login page.
+
+```js
+// @/app/_components/SignInButton.js
+import { signInAction } from "@/app/_lib/actions";
+
+export default function SignInButton() {
+  return (
+    <form action={signInAction}>
+      <button className="flex items-center gap-6 text-lg border border-primary-300">
+        Continue with Google
+      </button>
+    </form>
+  );
+}
+```
 
 # Project deployment
 
