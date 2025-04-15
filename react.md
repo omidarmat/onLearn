@@ -259,6 +259,7 @@
       - [Authorization by middleware](#authorization-by-middleware)
       - [Protecting routes](#protecting-routes)
       - [Leading to custom sign-in page](#leading-to-custom-sign-in-page)
+      - [Signing out with custom button](#signing-out-with-custom-button)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -9842,6 +9843,28 @@ export default function SignInButton() {
   );
 }
 ```
+
+#### Signing out with custom button
+
+In order to implement the signout using our own custom button, not the default signout button rendered at `/api/auth/signout`, we need to define another server action in the `actions.js` file.
+
+```js
+"use server";
+
+import { signIn, signOut } from "./auth";
+
+export async function signInAction() {
+  await signIn("google", { redirectTo: "/account" });
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/" });
+}
+```
+
+So we basically use the `signOut` function that we exported from the `auth.js` file. We then have to incorporate this server action into our custom button, again by wrapping the button in a `<form>` and set the `action` attribute to the `signOutAction` function we exported from `action.js`.
+
+> Server actions can be called from client components. So for example if your signout button is located inside a navigation component, and if your navigation component is a client component, then your signout button will also be a client component, but still, you can call the server action from this client component using the `<form>` element. This is a special thing about server actions, which basically allow you to call them from the client while the action will only be executed on the server.
 
 # Project deployment
 
