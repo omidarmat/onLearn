@@ -224,7 +224,6 @@
     - [Fething different data in one page](#fething-different-data-in-one-page)
     - [Sharing state between siblings (Review)](#sharing-state-between-siblings-review)
   - [Route handlers](#route-handlers)
-  - [Server actions](#server-actions)
   - [Adding interactivity](#adding-interactivity)
     - [Crossing the server-client boundary](#crossing-the-server-client-boundary)
     - [Passing data from client back to server](#passing-data-from-client-back-to-server)
@@ -260,6 +259,11 @@
       - [Protecting routes](#protecting-routes)
       - [Leading to custom sign-in page](#leading-to-custom-sign-in-page)
       - [Signing out with custom button](#signing-out-with-custom-button)
+  - [Mutations with server actions](#mutations-with-server-actions)
+    - [Server action in practice](#server-action-in-practice)
+      - [Updating user profile](#updating-user-profile)
+      - [Manually revalidate browser cache](#manually-revalidate-browser-cache)
+        - [Display loading indicators](#display-loading-indicators)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8805,8 +8809,6 @@ export async function GET(request, { params }) {
 
 > Notice that we are trying to handle errors in this route handler since the error boundary applied to the app does not work in API endpoints defined in route handlers.
 
-## Server actions
-
 ## Adding interactivity
 
 Using client components, you can now add interactivity to your page. Let's now implement a `Counter` component and include it in a server-side rendered page.
@@ -9865,6 +9867,180 @@ export async function signOutAction() {
 So we basically use the `signOut` function that we exported from the `auth.js` file. We then have to incorporate this server action into our custom button, again by wrapping the button in a `<form>` and set the `action` attribute to the `signOutAction` function we exported from `action.js`.
 
 > Server actions can be called from client components. So for example if your signout button is located inside a navigation component, and if your navigation component is a client component, then your signout button will also be a client component, but still, you can call the server action from this client component using the `<form>` element. This is a special thing about server actions, which basically allow you to call them from the client while the action will only be executed on the server.
+
+## Mutations with server actions
+
+We are now going to learn about server actions which is how we mutate data in RSC model. Server actions is the missing piece in the RSC architecture that enables full-stack apps to become really interactive. With server actions, we can basically allow our users to mutate the application's data. So server actions complement server components.
+
+Server actions are async functions that run exclusively on the server, allowing us to perform data mutations. We can easily create server actions just be applying the `"use server"` directive at the top of a function or an entire module. So, to see it more detailed, we can have server actions in 2 forms:
+
+1. As an async function defined inside a server component, that can be used directly in the component or passed as a prop to a client component. (Remember that we cannot pass functions as props to client components.)
+2. As a standalone file starting with the `"user server"` directive. Exported functions from this file become server actions that can be imported into any server or client component (recommended). This way, all the mutations are stored in one central place. It is a common practice to have only one server actions file, but it can also be multiple files, in case the application is really huge.
+
+> `"use server"` is really only for server actions, not for server components. An as reminder about the `"use client"` directive, imagine we are now on the server, in a server component. The `"use client"` directive would act as a bridge that allows our code to cross from server to the client. This is similar to including a `<script>` tag in an HTML file sent to the browser. On the other hand, the `"use server"` directive is a bridge for the other way round. So it bridges the gap from client to server, allowing the client to talk to server. It is like an API endpoint, and actually server actions are API endpoints. NextJS automatically creates an API endpoint (with URL) for each server action. So the function itself never reaches the client, on the URL does. So the code will always stay on the server. Therefore in server actions, it is completely safe to connect to databases, use secret API keys, and so on. When a server action is invoked, behind the scenes, a POST request is made to the endpoint, and all inputs that are sent in the request is serialized. As developers, we never see or use an API endpoint or a URL, because it is all abstracted away in the server action. All we see and use, is the function itself. With this, we don't have to manually create APIs or route handlers to mutate data. Unlike server components, server actions actually require a running web server.
+
+Server actions are typically used to handle form submissions. We can use a server action as an `action` attibute of the `<form>` element in server and client components. Forms will simply automatically take all the form data and send to the server action in a serialized form, using the provided endpoint behind the scenes.
+
+Server actions can also be called just like regular functions is event handlers and `useEffect`s. This only works on client components.
+
+Once again, and this time more complete, in server actions we can do:
+
+1. Perform data mutations
+2. Update the UI with new data: revalidate cache with `revalidatePath` and `revalidateTag`. This is because when data is mutated, our application must reflect the new data in the UI, and since we are not storing data in a state variable, we cannot simply update the state.
+3. Work with cookies
+4. Many more...
+
+> Since server action codes run on the back-end we need to make sure the user that is triggering the action is authorized to do so. We also need to assume that user inputs are potentially unsafe.
+
+### Server action in practice
+
+We are now going to see how to implement different example features in a typical real-world app.
+
+#### Updating user profile
+
+If you have a submission form in your user profile page in order to allow the user to edit their information, you can define a server action in the `actions.js` file like this:
+
+```js
+// @/app/_lib/actions.js
+
+export async function updateGuest(formData) {
+  // some logic
+}
+```
+
+And then call this function from the submission form as:
+
+```jsx
+// @app/account/profile
+
+import { updateGuest } from "../_lib/actions";
+
+export default function UpdateProfileForm({ guest }) {
+  const [count, setCount] = useState();
+  const { fullName, email, nationality, nationalId, countryFlag } = guest;
+
+  return (
+    <form action={updateGuest}>
+      <div className="space-y-2">
+        <label>Full name</label>
+        <input disabled name="fullName" defaultValue={fullName} />
+      </div>
+
+      <div className="space-y-2">
+        <label>Email address</label>
+        <input disabled name="email" defaultValue={email} />
+      </div>
+
+      <div>
+        <div>
+          <label htmlFor="nationality">Where are you from?</label>
+          <img src={countryFlag} alt="Country flag" />
+        </div>
+
+        {children}
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="nationalID">National ID number</label>
+        <input defaultValue={nationalId} name="nationalID" />
+      </div>
+
+      <button>Update profile</button>
+    </form>
+  );
+}
+```
+
+The big advantage of this technique is that the form data will automatically be sent to the server action. Also notice that for this technique to work fine, each input in the form needs to include the `name` attribute.
+
+Now as for the server action logic, you must always remember that this code runs on the server. So you should be extremely careful about the input data. You must always assume that the input data is unsafe and that the user is basically authorized to trigger the server action. So back to the server action code:
+
+```js
+export async function updateGuest(formData) {
+  const session = auth();
+  if (!session) throw new Error("You must be logged in.");
+
+  const nationalID = formData.get("nationalID");
+  const [nationality, countryFlag] = formData.get("nationality").split("%");
+
+  if (!/^[a-zA-Z0-9]{6-12}$/.test(nationalID)) {
+    throw new Error("Please provide a valid national ID");
+  }
+
+  const updateData = { nationality, countryFlag, nationalID };
+
+  const { data, error } = await supabase
+    .from("guests")
+    .update(updateData)
+    .eq("id", session.user.guestId);
+
+  if (error) throw new Error("Guest could not be updated");
+}
+```
+
+> Notice that it is a common practice in server actions not to use a `try/catch` block, but instead, you should simply `throw` errors right in the function's body, and they will be caught by the closest error boundary.
+
+Now as a user updates their profile by invoking this server action, the browser cache will still hold on to the data before mutation. So if they navigate to another page and return back to this page, they will see their previous data, not the updated data. It takes, by default, 30 seconds to refresh browser cache. This might create confusions for the user, so we need to manually revalidate the browser cache to replace the stale data with the fresh data.
+
+#### Manually revalidate browser cache
+
+There are 2 types of revalidation:
+
+1. Time-based revalidation: the cache will revalidate after a certain defined time
+2. Manual on-demand revalidation: we use when we want to clear the cache an refetch data right away
+
+To implement the second way of revlidating, we need to call the `revalidatePath()` function with the path of our application which we want its cached data to be revlidated. Notice that this revalidating is usually done within the logic of the server action that is responsible for mutating the related data.
+
+```js
+export async function updateGuest(formData) {
+  const session = auth();
+  if (!session) throw new Error("You must be logged in.");
+
+  const nationalID = formData.get("nationalID");
+  const [nationality, countryFlag] = formData.get("nationality").split("%");
+
+  if (!/^[a-zA-Z0-9]{6-12}$/.test(nationalID)) {
+    throw new Error("Please provide a valid national ID");
+  }
+
+  const updateData = { nationality, countryFlag, nationalID };
+
+  const { data, error } = await supabase
+    .from("guests")
+    .update(updateData)
+    .eq("id", session.user.guestId);
+
+  if (error) throw new Error("Guest could not be updated");
+
+  revalidatePath("/account/profile");
+}
+```
+
+> Notice that the path we passed to the `revalidatePath()` function is `/account/profile`. We could also pass `/account` to the function. This way, all the sub-routes of `/account`, including `/profile`, would be refetched and revalidated.
+
+##### Display loading indicators
+
+If you want the submission form to understand that the server action passed into it is currently doing some work, it is actually not a very straight forward thing to do. So React provides us with a new hook called `useFormStatus` to handle this. This new hook is part of the React DOM. The strange thing about this hook is that it must be used in a component that is rendered **inside a form**, not inside a component that contains a form.
+
+What you typically need to do to implement this technique is to create a separate component for the form button, and in it, you can use the hook. Then you use the button component in the form.
+
+```jsx
+// the button
+function Button() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className="bg-accent-500 px-8 py-4 text-primary-800 font-semibold hover:bg-accent-600 transition-all disabled:cursor-not-allowed disabled:bg-gray-500 disabled:text-gray-300"
+      disabled={pending}
+    >
+      {pending ? "Updating..." : "Update profile"}
+    </button>
+  );
+}
+```
+
+> Notice that since we are using a React hook, the button needs to be a client component. Now if the parent component in which the button is being used is a server component, you would have to export the button into its separate file, effectively making it a client component by using the `"use client"` directive at the top of its file.
 
 # Project deployment
 
