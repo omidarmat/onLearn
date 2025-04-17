@@ -263,7 +263,9 @@
     - [Server action in practice](#server-action-in-practice)
       - [Updating user profile](#updating-user-profile)
       - [Manually revalidate browser cache](#manually-revalidate-browser-cache)
-        - [Display loading indicators](#display-loading-indicators)
+      - [Defining server actions in server component module](#defining-server-actions-in-server-component-module)
+        - [Display loading indicators: `useFormStatus`](#display-loading-indicators-useformstatus)
+        - [Display loading indicators: `useTransition`](#display-loading-indicators-usetransition)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -10018,7 +10020,39 @@ export async function updateGuest(formData) {
 
 > Notice that the path we passed to the `revalidatePath()` function is `/account/profile`. We could also pass `/account` to the function. This way, all the sub-routes of `/account`, including `/profile`, would be refetched and revalidated.
 
-##### Display loading indicators
+#### Defining server actions in server component module
+
+If you want to define and use a server action right inside a server action module, you need to use `"use server"` directive at the top of the server action function. That would be like:
+
+```jsx
+export default function DeleteReservation({bookingId}) {
+  function deleteReservation() {
+    "use server";
+    // code
+  }
+
+  return (
+    // JSX
+  )
+}
+```
+
+So the `"use server"` directive is not at the top of the file. The file is for the server component, which should not be marked with `"use server"` directive. Also notice that the `DeleteReservation` component can be a client component that renders a button. This button would then invoke the server action using the `onClick` prop.
+
+```js
+export default function DeleteReservation({ bookingId }) {
+  function deleteReservation(bookingId) {
+    "use server";
+    // code
+  }
+
+  return <button onClick={() => deleteReservation(bookingId)}>Delete</button>;
+}
+```
+
+> Notice that this way of defining a server action inside a component is not recommended at all. Always try to centralize your server actions in one separate file, like the `actions.js` file we used before.
+
+##### Display loading indicators: `useFormStatus`
 
 If you want the submission form to understand that the server action passed into it is currently doing some work, it is actually not a very straight forward thing to do. So React provides us with a new hook called `useFormStatus` to handle this. This new hook is part of the React DOM. The strange thing about this hook is that it must be used in a component that is rendered **inside a form**, not inside a component that contains a form.
 
@@ -10041,6 +10075,48 @@ function Button() {
 ```
 
 > Notice that since we are using a React hook, the button needs to be a client component. Now if the parent component in which the button is being used is a server component, you would have to export the button into its separate file, effectively making it a client component by using the `"use client"` directive at the top of its file.
+
+##### Display loading indicators: `useTransition`
+
+What if you are not using a `<form>` to invoke a server action? Then you cannot use the `useFormStatus` hook. In this case, you can use the `useTransition` hook. At its core, the `useTransition` hook allows us to mark a **state update as a transition**. When a state update is marked as a transition by using this hook, that state update will happen without blocking the UI, meaning that the UI will stay responsive during a re-render and we also get an indication that state transition is happening.
+
+In NextJS we can actually use this hook to mark a server action as a transition. Again, since this is a hook, the component in which you use it must be marked with a `"use client"` directive.
+
+```jsx
+"use client";
+
+import { useTransition } from "react";
+import { deleteReservation } from "../_lib/actions";
+import SpinnerMini from "./SpinnerMini";
+
+function DeleteReservation({ bookingId }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (confirm("Are you sure you want to delete this reservation?"));
+    startTransition(() => deleteReservation(bookingId));
+  }
+
+  return (
+    <button onClick={handleDelete}>
+      {!isPending ? (
+        <>
+          <TrashIcon className="h-5 w-5 text-primary-600 group-hover:text-primary-800 transition-colors" />
+          <span className="mt-1">Delete</span>
+        </>
+      ) : (
+        <span className="mx-auto">
+          <SpinnerMini />
+        </span>
+      )}
+    </button>
+  );
+}
+
+export default DeleteReservation;
+```
+
+> Behind the scenes NextJS uses `Suspense` boundaries for all of this. And also remember that in NextJS all navigations are wrapped into transitions.
 
 # Project deployment
 
