@@ -9955,6 +9955,8 @@ export default function UpdateProfileForm({ guest }) {
 
 The big advantage of this technique is that the form data will automatically be sent to the server action. Also notice that for this technique to work fine, each input in the form needs to include the `name` attribute.
 
+> You can add hidden input fields to any `<form>` element in JSX. This way you would be able to add some fields to the form data while it is not visible for the user to manipulate. This is a trick to gather all necessary information about a form submission in one place. To do this you create an `<input />` element with the `type` attribute set to `hidden`.
+
 Now as for the server action logic, you must always remember that this code runs on the server. So you should be extremely careful about the input data. You must always assume that the input data is unsafe and that the user is basically authorized to trigger the server action. So back to the server action code:
 
 ```js
@@ -10019,6 +10021,8 @@ export async function updateGuest(formData) {
 ```
 
 > Notice that the path we passed to the `revalidatePath()` function is `/account/profile`. We could also pass `/account` to the function. This way, all the sub-routes of `/account`, including `/profile`, would be refetched and revalidated.
+
+> Also notice that if you had dynamic sub-routes in a route given to the `revalidatePath()` function, the dynamic sub-routes cache will not get revlidated. You should use another `revalidatePath(`/path/${}`)` function call and give it the dynamic path using a template string.
 
 #### Defining server actions in server component module
 
