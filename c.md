@@ -44,6 +44,8 @@
     - [`fopen()`](#fopen)
       - [Entering numbers with `scanf`](#entering-numbers-with-scanf)
       - [Buffer overflow with `scanf`](#buffer-overflow-with-scanf)
+    - [`fread()` and `fwrite()`](#fread-and-fwrite)
+    - [`fwrite()`](#fwrite)
     - [`fgets()`](#fgets)
   - [`<stdlib.h>`](#stdlibh)
   - [`<string.h>`](#stringh)
@@ -776,12 +778,14 @@ fscanf(stdin, "%79[^\n]\n")
 
 ### `fopen()`
 
-Each data stream is represented by a pointer to file, and you can create a new data stream using the `fopen` function. The function receives first the file name that you want to be used as your input data stream, and second, the mode which can either be `"r"` for read or `"w"` for write, or `"a"` for append.
+Each data stream is represented by a pointer to file, and you can create a new data stream using the `fopen` function. The function receives first the file name that you want to be used as your input data stream, and second, the mode which can either be `"r"` for read or `"w"` for write, or `"a"` for append. You can also use other variations like `"rb"`, `"wb"` (for reading and writing binary files), and so on for the second argument.
 
 ```c
 FILE *in_file = fopen("input.txt", "r");
 FILE *out_file = fopen("output.txt", "w");
 ```
+
+> Notice that the `fopen` function returns the address of the file that is just created or referred to. So the pointer variable to which you assign the `fopen` function will hold the address of that file.
 
 Once you have created your custom data streams you can read data from or write data to them using the `fprintf` and `fscanf` functions:
 
@@ -813,6 +817,32 @@ Just like with strings, you need to give the `scanf` function a pointer. The rea
 If you forget to limit the length of the string that you read with `scanf()` function, the extra data gets written into memory that has not been properly allocated by the computer. You might get lucky and the data will simply be stored and not cause any problems. However, it is very likely that buffer overflows will cause bugs. It might be called a _segmentation fault_ or an _abort trap_. You program will crash.
 
 To go around this risk, you can use `fgets()` function.
+
+### `fread()` and `fwrite()`
+
+After opening a file using a function like `fopen`, you would usually want to use the `fread` function to read from the file into a buffer, or `fwrite` to write from a buffer to the file.
+
+> A **buffer** is a chunk of memory that can temporarily store some data.
+
+A file is really just a collection of data or bytes. To read from a file we can use the `fread` function like this:
+
+```c
+// fread(<location-to-store-blocks>, <size-of-blocks-to-read-in-bytes>, <how-many-blocks-to-read>, <where-to-read-from>)
+fread(buffer, 1, 4, input)
+// 'buffer' and 'input' are pointer variables pointing to the beginning of the 4-byte long buffer and the input file respectively
+```
+
+The reason we need to store the result of this function in a buffer, and not simply read the input and put in the output in one go, is that we cannot know how long a file would be.
+
+To write from a buffer to a file we can use the `fwrite` function like this:
+
+```c
+// fwrite(<where-to-read-from>, <size-of-blocks-to-write-in-bytes>, <how-many-blocks-to-write>, <location-to-store-into>)
+fwrite(buffer, 1, 4, output)
+// 'buffer' and 'output' are pointer variables pointing to the beginning of the 4-byte long buffer and the output file respectively
+```
+
+### `fwrite()`
 
 ### `fgets()`
 
