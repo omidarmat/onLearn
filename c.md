@@ -21,6 +21,8 @@
     - [`double`](#double)
     - [`unsigned` keyword](#unsigned-keyword)
     - [`long` keyword](#long-keyword)
+  - [Other data types provided by libraries](#other-data-types-provided-by-libraries)
+    - [`uint8_t`](#uint8_t)
   - [Putting big values in small variables](#putting-big-values-in-small-variables)
   - [Casting](#casting)
   - [`struct`s](#structs)
@@ -273,6 +275,12 @@ Using the `unsigned` keyword before an `int` variable, will make the number alwa
 ### `long` keyword
 
 You can prefix a data type with the word `long` and make it longer. So a `long int` is a longer version of `int`, and a `long long` is longer than `long`. You can also use `long double` which is really really precise.
+
+## Other data types provided by libraries
+
+### `uint8_t`
+
+This is the same as `unsigned int` which gives you the option to have exactly 1 byte. This is provided by the `<stdint.h>` library.
 
 ## Putting big values in small variables
 
@@ -831,6 +839,10 @@ A file is really just a collection of data or bytes. To read from a file we can 
 fread(buffer, 1, 4, input)
 // 'buffer' and 'input' are pointer variables pointing to the beginning of the 4-byte long buffer and the input file respectively
 ```
+
+Setting `fread` or `fwrite` functions is a loop, will actually make them operate in a progressive way on the targetted file. So for example, if the `fread` function is called once like above, it will ready 4 bytes of the file, and if it is called once more, it will read the next 4 bytes of the file. So `fread` and `fwrite` simply remember the position in the file where they stopped last time they were called.
+
+> `fread` will not mutate the input file.
 
 The reason we need to store the result of this function in a buffer, and not simply read the input and put in the output in one go, is that we cannot know how long a file would be.
 
