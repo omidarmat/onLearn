@@ -1516,6 +1516,28 @@ docker build -t goals-react
 
 And you can run a container on it.
 
+> If you want to Dockerize a frontend React application build using Vite, you will most probably need to implement the Dockerfile like this:
+
+```Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package.json .
+
+RUN npm install
+
+RUN npm i -g serve
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD [ "serve", "-s", "dist" ]
+```
+
 ## Adding Docker network
 
 Let's first list all the currently available network.
