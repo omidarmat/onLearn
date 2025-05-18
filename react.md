@@ -151,8 +151,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -8036,25 +8036,25 @@ In a typical React application, we can think of UI as a function of state, chang
 But there are downsides to 100% client-side rendered apps:
 
 1. React apps require a lot of JavaScript to be downloaded to the user's computer. This impacts the performance and this is a serious concernt when we developers want to build our apps.
-2. Client-server waterfall: This happens when multiple components on a page, need to fetch different data one after another; so when data in one component depends on the data fetched in another component. This is a very common problem in large applications, cause by the fact that we have to fetch data on the client.
+2. Client-server waterfall: This happens when multiple components on a page, need to fetch different data one after another; so when data in one component depends on the data fetched in another component. This is a very common problem in large applications, caused by the fact that we have to fetch data on the client.
 
-The alternative, until a few years ago was a 100% server-side rendered app, like what we had in the days of PHP. There were no interactivity and no components at all. However, it was easy and fast to fetch all data. We didn't need to ship any JS to the client. In this approach, the UI was not a function of state, but a function of data.
+The alternative, until a few years ago was a 100% server-side rendered app, like what we had in the days of PHP. There were no interactivity and no components at all. However, it was easy and fast to fetch all data. We didn't need to ship any JS to the client. In this approach, the UI was not a **function of state**, but a **function of data**.
 
-Now we are going to learn about another approach where the UI is a function of both state and data. This is where React server components (RSC) come to play. We can now have React components both on client and on the server.
+Now we are going to learn about another approach where the UI is a **function of both state and data**. This is where _React server components (RSC)_ come to play. We can now have React components both on client and on the server.
 
-React Server Components is a new full-stack architecture for React apps. It introduces server as a first-class citizen in React apps, meaning that the server is now an integral part of React component trees. In other words, the React tree now extends all the way to the server, acting as a bridge, closing the gap between the client and the server.
+React Server Components is a new full-stack architecture for React apps. It introduces **server as a first-class citizen** in React apps, meaning that the **server is now an integral part of React component trees**. In other words, **the React tree now extends all the way to the server**, acting as a bridge, closing the gap between the client and the server.
 
-So to clarify things, **RSC** or React Server Components is the name of this new architecture, and the new component type used in this architecture is called **server component**. Server components are only rendered on the server, and never on the client. They are usually responsible for retching data right on the server. So these functions would be responsible for creating those parts of the UI that are a function of the data. Since server components only run on the server, they have no interactivity; so no state, meaning that they need no JavaScript in the downloadable bundle to do their job. So we can essentially build the back-end with React.
+So to clarify things, **RSC** or React Server Components is the name of this new architecture, and the new component type used in this architecture is called **server component**. Server components are **only rendered on the server**, and never on the client. They are **usually responsible for fetching data** right on the server. So these functions would be responsible for creating those parts of the UI that are a **function of the data**. Since server components only run on the server, they have **no interactivity**; so **no state**, meaning that they need **no JavaScript** in the downloadable bundle to do their job. So we can essentially build the back-end with React.
 
-Besides server components, we still have our old regular components that run entirely on the client. These are called **client components**. They are responsible for the interactivity; so for those parts of the UI that are a function of state.
+Besides server components, we still have our old regular components that run entirely on the client. These are called **client components**. They are responsible for the **interactivity**; so for those parts of the UI that are a **function of state**.
 
-But where does NextJS sit in all this? RSC is not active by default in new React apps (e.g. Vite apps). It needs to be implemented by a framework, and this is where NextJS is sitting. NextJS with its app router provides this architecture, resulting in server components being the default component in NextJS apps using the app router. You would have to specifically tell a component that it should be a client component using the `"use client"` directive at the top of a client component file.
+But where does NextJS sit in all this? RSC is **not active by default** in new React apps (e.g. Vite apps). It needs to be implemented by a framework, and this is where NextJS is sitting. NextJS with its **app router** provides this architecture, resulting in server components being the default component in NextJS apps using the app router. You would have to specifically tell a component that it should be a client component using the `"use client"` directive at the top of a client component file.
 
 As a practical example, take this UI and see how the components are divided into server components (orange) and client components (blue). Notice that client components usually appear as the last children in the React component tree.
 
 ![src-component-tree](/images/react/server-vs-client-components.png)
 
-> Notice that if a client component has some children components, they will all be client components by default. So you only need to use the `"use client"` directive on the parent client component, and not on its childen. So the `"use client"` directive sets a boundary between server components and client components, creating a sub-tree that will only be executed on the client side.
+> Notice that if a client component has some children components, they will all be client components by default. So you only need to use the `"use client"` directive on the parent client component, and not on its childen. So the `"use client"` directive sets a **boundary between server components and client components**, creating a sub-tree that will only be executed on the client side.
 
 ## Server components vs. client components
 
@@ -8062,15 +8062,15 @@ Let's compare the two types of component in a collective table.
 
 ![server-vs-client-components](/images/react/server-vs-client-components-table.png)
 
-> Notice that passing state is possible from server components to server components, or from server components to client components.
+> Notice that passing state is possible from server components to client components, or from client components to server components. So it is a 2-way road.
 
 > Notice that data fetching is possible in both server components and client components. It is, however, preferred to do it in server components using `async/await` syntax. In client components it is recommended to use 3rd-party libraries (e.g. React Query) to do this.
 
-> Importing is when a component module imports another component module using the `import` syntax. With this in mind, notice that server components can import both server and client components. Client components can only import other client components, but not server components. Once the client-server boundary is passed, there is no way to go back to the server.
+> Importing is when a component module imports another component module using the `import` syntax. With this in mind, notice that **server components can import both server and client components**. **Client components can only import other client components, but not server components**. Once the client-server boundary is passed, there is no way to go back to the server.
 
-> Rendering is when a component calls another component, meaning that it uses another component inside its JSX. With this in mind, client components can render server components that are passed to it as props. Server components can render everything, both client and server components.
+> Rendering is when a component calls another component, meaning that it uses another component inside its JSX. With this in mind, **client components can render server components that are passed to it as props**. Server components can render everything, both client and server components.
 
-> It is important to know when each type of these components re-render. We know from before that client components only re-render if their state or their parent state changes. Server component re-render each time that the URL changes; so when the user navigates to the URL that has a server component. That is because server components are tied to specific routes in the framework.
+> It is important to know when each type of these components re-render. We know from before that **client components only re-render if their state or their parent state changes**. **Server component re-render each time that the URL changes; so when the user navigates to the URL that has a server component**. That is because server components are tied to specific routes in the framework.
 
 ## Traditional React vs. RSC
 
@@ -8082,28 +8082,28 @@ Let's try to understand a bit more about the difference of the newly introduced 
 
 ### Rendering behind the scenes
 
-In tradition React, we wrote some components, and finally, as we composed all our components into a UI, we ended up with a tree of component instances (component tree). The next step would be to render the component tree. Rendering in React means to call each component function. The result of calling a component function is a React element which is simply a JavaScript object containing all the information necessary for creating DOM elements for the corresponding component instance. As a result of rendering, we ended up with the React element tree or the virtual DOM. This virtual DOM would then be commited to the actual DOM, which means DOM elements in HTML. We are ignoring rerendering, diffing and reconciliation since we don't need them here. We just need to understand how rendering worked in traditional React.
+In tradition React, we wrote some components, and finally, as we composed all our components into a UI, we ended up with a **tree of component instances** (_component tree_). The next step would be to **render** the component tree. Rendering in React means to **call each component function**. The result of calling a component function is a _React element_ which is simply a **JavaScript object** containing all the information necessary for creating **DOM elements** for the corresponding component instance. As a result of rendering, we ended up with the **React element tree** or the **virtual DOM**. This virtual DOM would then be commited to the **actual DOM**, which means DOM elements in HTML. We are ignoring _re-rendering_, _diffing_ and _reconciliation_ since we don't need them here. We just need to understand how rendering worked in traditional React.
 
 Regarding the two steps of: creating the component tree and rendering it to the virtual DOM, how is it going to work in the RSC architecture where client components and server components are involved? The idea here is to learn how and where server and client components are rendered step by step.
 
-When React encounters a tree involving server and client components, the first thing that happens is that all server components are rendered on the server. Again, rendering a component results in a React element. The React elements created from server components really only contain the output of the server component; so containing only the information determining how the element will look like in the DOM, but not including the code that was necessary to render the component. This means that the component's code has disappeared on the server. This is the exact technical reason why we cannot use state in server components. Functions like `useState` and `useEffect` would just disappear as the component is rendered. It needs to be this way because these elements have to be sent to the client later, so the whole thing needs to be serializable, which functions are not. There would also be no way of keeping track of state since there is no fiber tree on the server. Even if we had one, we could not send it to the client.
+When React encounters a tree involving server and client components, the first thing that happens is that **all server components are rendered on the server**. Again, rendering a component results in a React element. The **React elements created from server components really only contain the output of the server component; so containing only the information determining how the element will look like in the DOM, but not including the code that was necessary to render the component**. This means that **the component's code has disappeared on the server**. This is the exact technical reason why we cannot use state in server components. Functions like `useState` and `useEffect` would just disappear as the component is rendered. It needs to be this way because these elements have to be sent to the client later, so the whole thing needs to be **serializable**, which **functions are not**. There would also be no way of keeping track of state since there is **no fiber tree on the server**. Even if we had one, we could not send it to the client.
 
-What happens to client components in this architecture? Since at this point, we are still on the server, client components are not yet going to be renderd. Instead, we can imagine that this component tree contains a placeholder where each client component can finally be rendered. Each of these placeholders contain the serialized props that might have been passed from a server component to the current client component, plus the URL to the script that contains the actual component code. This reference to the code is necessary so that the client component can be executed on the client; so being rendered on the client.
+What happens to client components in this architecture? Since at this point, we are still on the server, **client components are not yet going to be renderd**. Instead, we can imagine that **this component tree contains a placeholder where each client component can finally be rendered**. Each of these **placeholders contain the serialized props that might have been passed from a server component to the current client component, plus the URL to the script that contains the actual component code**. This reference to the code is necessary so that the client component can be executed on the client; so being rendered on the client.
 
-Creating this script with the component code and the URL pointing to it is so complex that must be powered by the bundler that the framework is using, and not by React itself. So client components won't be rendered on the server, and therefore we would need a way to pass them to the client. This is the information necessary for that:
+Creating this script with the component code and the URL pointing to it is so complex that must be powered by the bundler that the framework is using, and not by React itself. So **client components won't be rendered on the server, and therefore we would need a way to pass them to the client**. This is the information necessary for that:
 
-1. Props that they received
-2. The code to actually run the components on the client
+1. **Props** that they received
+2. The **code** to actually run the components on the client
 
-At this step we have a somewhat strange tree including executed and unexecuted component instances. This is called RSC payload. This payload is the virtual DOM of all server components, since they are all rendered, plus some sub-trees of un-rendered client components. This is called the RSC payload because it is this data structure that would be sent to the client in the next step.
+At this step we have a somewhat **strange tree including executed and non-executed component instances**. This is called _RSC payload_. This payload is **the virtual DOM of all server components**, since they are all rendered, plus some sub-trees of non-rendered client components. This is called the RSC payload because it is this **data structure that would be sent to the client in the next step**.
 
-In the next step, client components are finally rendered as well, also resulting in new React elements. We now have the complete final virtual DOM on the client, ready to be committed to the DOM in the usual way that we already know.
+In the next step, **client components are finally rendered as well, also resulting in new React elements**. We now have the **complete final virtual DOM on the client**, ready to be committed to the DOM in the usual way that we already know.
 
-So looking at the whole picture, rendering in RSC is pretty similar to rendering in traditional React, but it is done in 2 steps, in 2 different environments. Let's now ask: why do we need such a complex process with the RSC payload? Why not just render server components as HTML and send that HTML to the browser? The fundamental reason is that React really wants to always describe UI as data, and not as finished HTML. This is why the virtual DOM and fiber trees exist in React. In the case of RSC, representing the UI as data even on the server gives React the ability to correctly react to re-renders of server components. This means that when a server component re-renders and produces a new React component, this element can be merged seamlessly into the already existing virtual DOM on the client. So when a server component is re-rendered, a new RSC payload is generated and sent to the client where React can then reconcile the current tree on the client with the new tree coming from the server. Being able to reconcile a new tree with an existing tree on re-render is really what React is all about at its core. So this core idea should work with server components. It is important that this works correctly, because this would allow React to preserve UI state as a new tree comes in from the server. If, instead, just HTML would be sent, the entire UI would have to be replaced with the new HTML, losing all the current UI state.
+So looking at the whole picture, rendering in RSC is pretty similar to rendering in traditional React, but it is done in **2 steps**, in **2 different environments**. Let's now ask: why do we need such a complex process with the RSC payload? **Why not just render server components as HTML and send that HTML to the browser?** The fundamental reason is that **React really wants to always describe UI as data**, and **not as finished HTML**. This is why the virtual DOM and fiber trees exist in React. In the case of RSC, **representing the UI as data even on the server gives React the ability to correctly react to re-renders of server components**. This means that when a server component re-renders and produces a new React component, this element can be **merged seamlessly into the already existing virtual DOM on the client**. So when a server component is re-rendered, **a new RSC payload is generated and sent to the client where React can then reconcile the current tree on the client with the new tree coming from the server**. Being able to **reconcile a new tree with an existing tree on re-render** is really what React is all about at its core. So this core idea should work with server components. It is important that this works correctly, because **this would allow React to preserve UI state as a new tree comes in from the server**. If, instead, just HTML would be sent, the entire UI would have to be replaced with the new HTML, losing all the current UI state.
 
-> Notice that these steps are not sequential and blocking. One step does not wait for the other step to finish. Instead, completed render work on a server is streamed to the client right away and integrated seamlessly into the tree on the client over time.
+> Notice that these steps are not sequential and blocking. One step does not wait for the other step to finish. Instead, **completed render work on a server is streamed to the client right away and integrated seamlessly into the tree on the client over time**.
 
-> The UI is not really a function of data and state at the same time. UI is first a function of data, and then a function of state.
+> The UI is not really a function of data and state **at the same time**. UI is **first a function of data**, and then a function of state.
 
 #### In summary
 
@@ -8113,60 +8113,60 @@ Let's summarize all we said in a chart like this:
 
 ## Clients-side renderng (CSR) vs. server-side rendering (SSR)
 
-In CSR, the page that the user requests, which is basically the HTML markup, is rendered on the client using JavaScript. It is generated on the client, which is the user's computer. This is what we do normally using the React library.
+In **CSR**, the page that the user requests, which is basically the **HTML markup**, is **rendered on the client using JavaScript**. It is **generated on the client**, which is the user's computer. This is what we do normally using the React library.
 
-On the other hand, in SSR, the HTML is generated upfront on a web server. The server then sends the generated website to the client whenever is requested. So this shifts the work of rendering from the user's to the developer's computer or the server.
+On the other hand, in **SSR**, the **HTML is generated upfront on a web server**. The server then **sends the generated website to the client whenever is requested**. So this shifts the work of rendering from the user's to the developer's computer or the server.
 
 ### Two types of SSR
 
 There are two types of SSR:
 
-1. Static: HTML generated at build time (often called Static Site Generation or SSG). In other words, once the developer is finished developing the site, they export it to static HTML, CSS, and JavaScript files which can then be deployed to a web server. This web server will not re-generate the markup all the time, it will simply send what was generated once by the developer in the build step.
-2. Dynamic: HTML is generated each time server receives new request. This is great when the underlying data of the page changes often.
+1. **Static:** HTML generated at **build time** (often called _Static Site Generation_ or **SSG**). In other words, once the developer is finished developing the site, they export it to static HTML, CSS, and JavaScript files which can then be deployed to a web server. This web server will not re-generate the markup all the time, it will simply send what was generated once by the developer in the build step.
+2. **Dynamic:** HTML is **generated each time server receives new request**. This is great when the underlying data of the page changes often.
 
-> But if we are going to use SSR in our apps, what happens to interactivity? The website that is sent to the client in SSR, typically will still include a JavaScript bundle, which will be downloaded and executed just like before, and then a process called **hydration** happens. Hydration is the process in which a static HTML becomes interactive by adding JavaScript to it.
+> But if we are going to use SSR in our apps, what happens to interactivity? The website that is sent to the client in SSR, typically **will still include a JavaScript bundle**, which will be downloaded and executed just like before, and then a process called **hydration** happens. **Hydration is the process in which a static HTML becomes interactive by adding JavaScript to it**.
 
 #### Hydration
 
-So we have a React app with its component tree that we want to render on the server. This is typically written by using something like NextJS. So we are goin to render our app as server-side rendered HTML markup. This HTML is then sent to the client, and rendered in the browser as a web page. The web page at this stage is not interactive, because it is just HTML. This is where the process of hydration comes to play.
+So we have a React app with its component tree that we want to render on the server. This is typically written by using something like NextJS. So we are going to render our app as server-side rendered HTML markup. This HTML is then sent to the client, and rendered in the browser as a web page. The web page **at this stage is not interactive**, because **it is just HTML**. This is where the process of **hydration** comes to play.
 
-In the context of server-side rendering a React app, hydration is the process that adds back the interactivity and event handlers that the initial React app had, but that were lost in the process of server-side rendering. So the HTML page that we got on the client, will also download the React bundle of out initial React app. This bundle will then hydrate the static DOM of our web page. React will build back the component tree on the client and will compare it to the actual server-side rendered DOM that is currently on the page. If they match, React will simply adopt the existing DOM, and attach all event handlers and fire off existing effects.
+In the context of **server-side rendering** a React app, hydration is the process that adds back the **interactivity** and **event handlers** that the initial React app had, but that were lost in the process of server-side rendering. So **the HTML page that we got on the client, will also download the React bundle** of our initial React app. This bundle will then **hydrate** the static DOM of our web page. **React will build back the component tree on the client and will compare it to the actual server-side rendered DOM that is currently on the page**. If they match, React will simply adopt the existing DOM, and **attach all event handlers** and **fire off existing effects**.
 
-So instead of creating brand new DOM elements which can take a long time, in hydration, React attempts to adopt the already existing DOM. Hydration simply continues and also finishes the process of SSR. In the end we have the exact same React app that we started with, but now on the client. After this whole process, the page becomes interactive, which is another important metric for page performance.
+So instead of creating brand new DOM elements which can take a long time, in hydration, React attempts to **adopt the already existing DOM**. Hydration simply continues and also finishes the process of SSR. In the end we have the exact same React app that we started with, but now on the client. After this whole process, the page becomes interactive, which is another important metric for page performance.
 
-> Remember we said that this process only works if the existing server-rendered DOM fits exactly to the DOM that React would output on the client. That is because hydration can take a few seconds, and if there were differences between the two DOMs, then the page content would change after hydration finishes, which would be a bad UX. Therefore, if there is a mismatch between the page that we have and the page that client-side React thinks that we should have, we get something called a **hydration error**.
+> Remember we said that this process only works if the existing server-rendered DOM fits exactly to the DOM that React would output on the client. **That is because hydration can take a few seconds, and if there were differences between the two DOMs, then the page content would change after hydration finishes, which would be a bad UX**. Therefore, if there is a mismatch between the page that we have and the page that client-side React thinks that we should have, we get something called a **hydration error**.
 >
-> Most common cases of hydraor includes incorrect HTML element nesting (like using `div` in a `p` element), different data used for rendering, using browser-only APIs (like local storage or the `window` variable), incorrect use of side effects, etc.
+> Most common cases of hydration errors includes incorrect HTML element nesting (like using `div` in a `p` element), **different data used for rendering**, using **browser-only APIs** (like local storage or the `window` variable), **incorrect use of side effects**, etc.
 
 ### Pros and cons
 
 #### Cons of CSR
 
-1. Slow initial page loads: The JavaScript bundle that is required to render the app might be quite large and must be fully downloaded before anything else can happen on the page.
+1. **Slow initial page loads:** The JavaScript bundle that is required to render the app might be quite large and must be fully downloaded before anything else can happen on the page.
 2. Most apps require some kind of data, which can only start to be fetched after the components have already mounted; so after they have been rendered on the client. This leads to the so-called waterfall causing a slow down in the entire experience.
-3. SEO problems: Content is not rendered until after JavaScript is executed and data is fetched. Search engines might find a blank page when they try to index the site. This is getting better actually, but in projects where SEO is important, SSR should be chosen.
+3. **SEO problems:** Content is not rendered until after JavaScript is executed and data is fetched. **Search engines might find a blank page when they try to index the site**. This is getting better actually, but in projects where SEO is important, SSR should be the choice.
 
 #### Pros of CSR
 
-1. Highly interactive UX: After the initial page load, the entire app has been downloaded. This leads to the single-page application feel.
+1. **Highly interactive UX:** After the initial page load, the entire app has been downloaded. This leads to the single-page application feel.
 
 #### Cons of SSR
 
-1. Less interactive: Navigating from page to page may require the server to render a new page each time, which is going to lead to full-page reloads in the browser. However, modern frameworks like NextJS are blurring these lines. They allow us developers to build server-side rendered pages that can also hydrate on the client in order to become interactive.
+1. **Less interactive:** Navigating from page to page may require the server to render a new page each time, which is going to lead to full-page reloads in the browser. However, modern frameworks like NextJS are blurring these lines. They allow us developers to **build server-side rendered pages that can also hydrate on the client in order to become interactive.**
 
 #### Pros of SSR
 
-1. Much faster initial page loads: A lot less JavaScript should be downloaded for the app to work. The client does not need any JavaScript in order to render the HTML. It has all been rendered on the server.
-2. Data for each page will be downloaded on the server right before the HTML is generated. This data is then incorporated into the page that gets sent to the browser.
-3. SEO benefits: This is where SSR really shines. Pre-generated content is much easier for search engines like Google to index.
+1. **Much faster initial page loads:** A lot less JavaScript should be downloaded for the app to work. The client does not need any JavaScript in order to render the HTML. It has all been rendered on the server.
+2. **Data for each page will be downloaded on the server right before the HTML is generated.** This data is then incorporated into the page that gets sent to the browser.
+3. **SEO benefits:** This is where SSR really shines. Pre-generated content is much easier for search engines like Google to index.
 
 #### Conclusion
 
 So where should we use each of these technologies?
 
-SSR: Content-driven websites or apps where SEO is essential like e-commerce, blogs, news, marketing websites, etc.
+**SSR:** **Content-driven websites** or apps where **SEO** is essential like e-commerce, blogs, news, marketing websites, etc.
 
-CSR: When you need to build highly-interactive sing-page applications. These should be apps where SEO does not matter at all, like admin panels.
+**CSR**: When you need to build **highly-interactive sing-page applications**. These should be apps **where SEO does not matter at all**, like admin panels.
 
 ## Pros and cons of RSC
 
@@ -8174,13 +8174,13 @@ CSR: When you need to build highly-interactive sing-page applications. These sho
 
 1. We can compose entire full-stack apps with React components alone (+ server actions for mutations)
 2. One single codebase for front and back-end
-3. Server components have more direct and secure access to the data source (no API, no exposing API keys, etc.)
-4. Eliminate client-server waterfalls by fetching all the data needed for a page at once before sending it to the client
-5. Disappearing code: server components ship no JS, so they can import huge libraries with no performance cost on the client.
+3. Server components have **more direct and secure access to the data source** (no API, no exposing API keys, etc.)
+4. **Eliminate client-server waterfalls** by fetching all the data needed for a page at once before sending it to the client
+5. Disappearing code: server components ship no JS, so they can **import huge libraries with no performance cost on the client**.
 
 ### Cons
 
-1. This architecture makes React a lot more complex. So there are more things to learn and understand.
+1. This architecture makes React **a lot more complex**. So there are more things to learn and understand.
 2. Things like the Context API don't work in server components, like all other hooks.
 3. More decisions: Should this be a client or a server component? Should I fetch this data on the server or the client?
 4. Sometimes you still need to build an API (for example if you also have a mobile app)
@@ -8192,24 +8192,24 @@ SSR and RSC are not the same thing, but they do interact with each other. We are
 
 ### Review of dynamic SSR
 
-When we want to render HTML from a React app on the server, we start from a component tree. This tree will then be rendered to the virtual DOM and then to HTML, ready to be shipped to the client. In essence, we can say that SSR means: just take this React component tree, render it as HTML and send it to the browser. Now, besides the HTML, the React bundle (contining React itself + the component tree) will also need to be sent to the browser, so the HTML could then be hydrated with interactivity. So this would finally be an app like any other React application with the only difference that the DOM is generated on the server, not on the client. So in dynamic SSR we mainly have:
+When we want to render HTML from a React app on the server, we start from a component tree. This tree will then be rendered to the virtual DOM and then to HTML, ready to be shipped to the client. In essence, we can say that **SSR means: just take this React component tree, render it as HTML and send it to the browser.** Now, **besides the HTML, the React bundle (contining React itself + the component tree) will also need to be sent to the browser, so the HTML could then be hydrated with interactivity**. So this would finally be an app like any other React application with the only difference that the **DOM is generated on the server, not on the client**. So in dynamic SSR we mainly have:
 
 1. Just take this component tree, render it as HTML, and send the HTML to the browser.
 2. Also send the React code to make the HTML interactive.
 
 ### What about RSC?
 
-So how does SSR work when we use React server components? First of all, let's just keep in mind that RSC and SSR are completely different technologies. So RSC is not meant to replace SSR, but to complement it. These two technologies usually work together. So there should be a framework that combines the two.
+So how does SSR work when we use React server components? First of all, let's just keep in mind that RSC and SSR are completely different technologies. So RSC is not meant to replace SSR, but to complement it. These two technologies usually work together. So **there should be a framework that combines the two**.
 
-When a framework combines SSR with RSC, SSR still works in the exact same way we just described in the review above as if we were using traditional React without server components at all. This means that both server and client components are initially rendered on the server, when we are using SSR with RSC.
+When a framework **combines SSR with RSC**, SSR still works in the exact same way we just described in the review above as if we were using traditional React without server components at all. This means that **both server and client components are initially rendered on the server, when we are using SSR with RSC**.
 
 But isn't that strange? Why would client components also be rendered on the server? Let's review the RSC architecture flow:
 
 ![RSC-vs-SSR](/images/react/rsc-vs-ssr.png);
 
-It is now time to reveal that the `server` part and the `client` part of this RSC architecture both run inside the actual web server. React's server in RSC is not the same is server in SSR. React's server and Reac't client are simply 2 different environments of the RSC architecture. The React server does not even need to be an actual web server. In the RSC model, a server is just a computer different from the browser; so a computer that the developer has access to and can run code on it. This, in theory, means that RSC does not require a running web server. Instead, server and client components could just be rendered once at build time in a process that we call static site generation. The developer could even read files from their own filesystem during this process, because they are on their own computer, or in other words, on the React server. But this is just theory. In practice, RSC is indeed coupled with SSR.
+It is now time to reveal that the `server` part and the `client` part of this RSC architecture, which both run inside the actual web server. **React's server** in **RSC** is not the same as server in **SSR**. **React's server and Reac't client are simply 2 different environments of the RSC architecture**. **The React server does not even need to be an actual web server**. In the RSC model, a server is **just a computer different from the browser**; so a computer that the developer has access to and can run code on it. This, in theory, means that **RSC does not require a running web server**. Instead, server and client components could just be rendered once at build time in a process that we call **Static Site Generation (SSG)**. The developer could even read files from their own filesystem during this process, because they are on their own computer, or in other words, on the React server. But this is just theory. **In practice, RSC is indeed coupled with SSR**.
 
-In a similar way, the React client does not need to be a web browser. The React client, is simply a part of the architecture that consumes the rendered React app. In the case of SSR, consuming means to render the app not as DOM elements, but as HTML.
+In a similar way, the **React client does not need to be a web browser**. The React client, is simply **a part of the architecture that consumes the rendered React app**. In the case of SSR, **consuming means to render the app not as DOM elements, but as HTML.**
 
 ### In summary
 
@@ -8218,37 +8218,37 @@ SSR works just like before, without RSC. SSR is still:
 1. Just take this component tree, render it as HTML, and send the HTML to the browser.
 2. Also send the React code to make the HTML interactive.
 
-The difference is that now, both client and server components are rendered on the web server that NextJS provides, in the two different environments on the RSC architecture: React server, and React client. Both of these environments run on the server on the initial render, and therefore, the output is not DOM nodes, but HTML which is sent to the browser.
+The difference is that now, **both client and server components are rendered on the web server that NextJS provides, in the two different environments on the RSC architecture: React server, and React client.** Both of these environments run on the server on the initial render, and therefore, the output is not DOM nodes, but HTML which is sent to the browser.
 
-It now makes sense that client components are also rendered on the server on the first render, because before React Server Components even existed, all components were basically client components, and they would all render on the server during SSR. It makes sense that the same continues to happen now with RSC in place. SSR will still render all components on the server on the initial render.
+It now makes sense that client components are also rendered on the server on the first render, because before React Server Components even existed, all components were basically client components, and **they would all render on the server during SSR**. It makes sense that the same continues to happen now with RSC in place. **SSR will still render all components on the server on the initial render**.
 
 We can now abstract away the idea of React server and React client, and think of it like this:
 
 ![summary-ssr-rsc](/images/react/summary-of-rsc-ssr.png)
 
-It is simply the entire component tree being rendered to HTML and then shipped off to the browser. After the HTML has been sent, the React bundle also needs to be sent just like before. This will contain the React library itself, plus the components code; so the components can later be rendered or hydrated on the client. Now, in practice, since there is streaming and code splitting involved, this bundle will be in many different chunks, which will be requested by the client as they become necessary over time.
+It is simply the entire component tree being rendered to HTML and then shipped off to the browser. After the HTML has been sent, the React bundle also needs to be sent just like before. This will contain the React library itself, plus the components code; so the components can later be rendered or hydrated on the client. Now, in practice, **since there is streaming and code splitting involved, this bundle will be in many different chunks, which will be requested by the client as they become necessary over time.**
 
-Finally, as we learned before, rendering the server components produces the RSC payload, which contains:
+Finally, as we learned before, **rendering the server components produces the RSC payload**, which contains:
 
-1. Renderd server components
-2. Props that have been passed from server to client component
-3. For each client component, the URL that corresponds to one of the chunks mentioned above.
+1. **Renderd server components**
+2. **Props** that have been passed from server to client component
+3. For each client component, the **URL** that corresponds to one of the chunks mentioned above.
 
-The RSC payload is also sent to the client along with the React bundle, so that React has access to the entire component tree, including server components, and not just the HTML. This is important in order to preserve state in the browser, as server components get re-rendered later. The RSC payload is also important besides the React bundle for hydrating the HTML. Now since only client components are interactive, only client components get hydrated. From this point on, we have a normal React app in the browser, but one follows the RSC architecture and behaves as we learned.
+The **RSC payload is also sent to the client along with the React bundle, so that React has access to the entire component tree, including server components, and not just the HTML.** This is important in order to preserve state in the browser, as server components get re-rendered later. **The RSC payload is also important besides the React bundle for hydrating the HTML**. Now since only client components are interactive, **only client components get hydrated**. From this point on, we have a normal React app in the browser, but one that follows the RSC architecture and behaves as we learned.
 
-So SSR is only relevant to the initial render. After that, RSC works just as we learned before. After the initial render, the React server is the same as the web server where NextJS is running, and React client is the same as the user's browser. So then, when a server component gets re-rendered a new RSC payload is generated and sent to the client (the actual user's browser) ready to be merged into the already existing React tree. This way, the existing UI state can always be preserved.
+So **SSR** is only relevant to **the initial render**. After that, RSC works just as we learned before. **After the initial render, the React server is the same as the web server where NextJS is running, and React client is the same as the user's browser**. So then, when a server component gets re-rendered a new RSC payload is generated and sent to the client (the actual user's browser) ready to be merged into the already existing React tree. This way, the existing UI state can always be preserved.
 
-> Always keep in mind: Both client and server components are initially rendered on the server when SSR is used. From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client.
+> Always keep in mind: **Both client and server components are initially rendered on the server when SSR is used.** **From there on, as the app is interactive in the browser, server components only run on the actual web server, and client components only run on the actual client.**
 
 ## Different types of SSR: Static vs. Dynamic
 
-Remember that both server and client components are rendered on the server on the initial page render. But what would a framework like NextJS do in this picture? NextJS uses React and React DOM libraries to render each route one by one on the server. In other words, NextJS splits the rendering work by route (`/`, `/search`, `/product`). Each route can be rendered in a different way. Each route can be either **static** (also called pre-rendered) or **dynamic**. There is also a **Partial Pre-Rendering** (PPR) which mixes dynamic and static rendering in the same route.
+Remember that both server and client components are rendered on the server on the initial page render. But what would a framework like NextJS do in this picture? **NextJS uses React and React DOM libraries to render each route one by one on the server**. In other words, NextJS **splits the rendering work by route** (`/`, `/search`, `/product`). Each route can be rendered in a different way. Each route can be either **static** (also called pre-rendered) or **dynamic**. There is also a **Partial Pre-Rendering** (PPR) which mixes dynamic and static rendering in the same route.
 
 ### Static
 
-In static rendering, the HTML for the route is generated at build time, which means that the markup is renderd when we run the `build` command in the NextJS app. So it is the developer who triggers the rendering. There is also a special flavor of static rendering which is called Incremental Static Regeneration, where the route is rendered periodically in the background, basically by re-fetching the route data from time to time.
+In static rendering, **the HTML for the route is generated at build time**, which means that the markup is renderd when we run the `build` command in the NextJS app. So it is the developer who triggers the rendering. There is also a special flavor of static rendering which is called **Incremental Static Regeneration**, where the route is rendered periodically in the background, basically by re-fetching the route data from time to time.
 
-Static essentially means "rendered just once at build time". The idea behind this is that static pages are way faster. This is useful when the data for the route does not change very often, and most importantly, is not personalized to the user. For example, a `/product` page can be static, since it does need any data that belongs to or is generated by a user.
+Static essentially means "rendered just once at build time". The idea behind this is that **static pages are way faster**. This is useful **when the data for the route does not change very often, and most importantly, is not personalized to the user.** For example, a `/product` page can be static, since it doesn't need any data that belongs to or is generated by a user.
 
 On the other hand, dynamic rendering means that the HTML is generated at request time. In other words, the server renders a new version of the page for each request that hits the server. In this strategy, it is the user who triggers the rendering. This makes sense if the data for the route changes constantly, and if it is personalized to the user (e.g. shopping cart). Dynamic rendering is also necessary when a route requires information that depends on the request itself; for instance, the search params from the URL or a cookie or a header.
 
