@@ -1196,6 +1196,8 @@ docker run --name mongodb --rm -d -p 27017:27017 mongo
 
 If you now want to try the project to see if backend and database can communicate with each other, you should stop and restart the node server in its terminal.
 
+> **Practical guide:** If you are going to use Postgres official Docker image, you must remember several important considerations. First, when initating the Postgres instance using a Docker container, you should expose Postgresql's default port 5432 to some port to your local machine, usually the same port (`-p 5432:5432`).
+
 ### Implementing additional requirements
 
 > Based on the tutorial on which this note file is based upon, this section is added after basic implementation of all three containers of this application.
@@ -1307,6 +1309,8 @@ docker run --name goals-backend --rm -d -p 80:80 goals-node
 ```
 
 Now the frontend non-Dockerized locally-running app can connect to the backrnd app on port `80`.
+
+> **Practical guide:** If you want to run your backend service in a container and make it connect to another container (e.g. Postgres container), using `host.docker.internal` in your backend code will not work if your working on a Linux machine. In this case, you should use Docker bridge network gateway IP address which is usually `172.17.0.1`.
 
 ### Implementing additional requirements
 
