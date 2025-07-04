@@ -1310,7 +1310,7 @@ docker run --name goals-backend --rm -d -p 80:80 goals-node
 
 Now the frontend non-Dockerized locally-running app can connect to the backrnd app on port `80`.
 
-> **Practical guide:** If you want to run your backend service in a container and make it connect to another container (e.g. Postgres container), using `host.docker.internal` in your backend code will not work if your working on a Linux machine. In this case, you should use Docker bridge network gateway IP address which is usually `172.17.0.1`.
+> **Practical guide:** If you want to run your backend service in a container and make it connect to another container (e.g. [Postgres container](#dockerizing-the-database)), using `host.docker.internal` in your backend code will not work if your working on a Linux machine. In this case, you should use Docker bridge network gateway IP address which is usually `172.17.0.1`.
 
 ### Implementing additional requirements
 
@@ -1482,6 +1482,8 @@ A container runs, but once you try to access it inyour browser on `localhost:300
 You need to run the frontend container with the `-it` flag. This means that the container will become interactive, although you are not really going to interact with it. However, a React project needs this _Input Trigger_ to keep the frontend server live.
 
 Up until this point, this whole application is Dockerized and all three containers are actively communicating with each other. Let's now add some other parts of our initial requirements, like persisting data. Additionally, these three containers are connecting together through your local machine. It would be much better if you could put all these containers in one Docker network, so they would be able to connect together just with their container names. Let's first stop all three containers to address these issues.
+
+> **Practical guide:** If you are using `serve` Node package to publish a built version of your React application, you should remember that this package exposes port `3000` to your local machine. Therefore, if you are going to run a Docker conainer for your frontend React application you would have to connect `3000` to a port on your local machine (`-p <some-port>:3000`)
 
 ### Implementing additional requirements
 
@@ -2051,6 +2053,8 @@ You can now use the `docker-compose up` command:
 ```
 docker-comspose up -d
 ```
+
+> **Practical guide:** Docker command `docker-compose up` might not work as expected. Instead you would have to use `docker compose up` with any flags that you need. This is also true about `docker-compose down`. You may very probably need to change it to `docker compose down`.
 
 Everything should work fine at this point with your applications triple services.
 
