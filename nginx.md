@@ -809,3 +809,95 @@ http {
 ```
 
 > Generally, you could disable the majority of the access logs, and leave error logging in place. But this would definitely depend on each individual server requirements.
+
+## Inheritance and directive types
+
+As with scope in a programming language, an nginx context inherits configurations from its parent contexts. Inheritance in general starts from the main context which is the configuration file itself, then going down to the `http` context, then the `server` context, and finally to the `location` context.
+
+Inheritance is not always straight forward, and will vary depending on the type of directive being inherited from.
+
+The 3 main directive types are:
+
+1. Standard directive: The most common directive type which can only be declared once in a given context, like the `root` directive. Inheritance works in the exact same way as array directives, so from the context where they are declared, all the way down to its children, while each child can override with its own declaration of the directive.
+2. Array directive: this is a directive that can be applied multiple times without overriding the previous. The `access_log` is a perfect example of an array directive. Array directives get inherited straight down. All child contexts of a parent context where an array directive is applied, will share the directive configuration. However, if a child context overwrites the directive, this new directive declaration will be inherited from there on to the children of the overwriting context. For instance, if `access_log` directives declared in the main context get overwritten by an `access_log off;` directive in a `server` context, all `location` contexts inside this `server` contexts will have access logging disabled, unless any of the location contexts declare their own access logging behavior.
+3. Action directive: this type invokes an action such as a rewrite or redirect. Inheritance does not apply as a request is either stopped (redirected or responded) or re-evaluated (rewritten).
+
+## Worker processes
+
+Whenever you check the nginx service status using the `systemctl status nginx` command in the terminal, you will see a `master` process and a `worker` process. Knowing about these is extremely important if you want to be able to optimize them.
+
+The master process is the actual nginx server or software instance. This master process, being the nginx itself, spawns worker processes that listen for and respond to client requests. The default number of worker processes for nginx is 1. To change this, you can use the `worker_processes` directive in the main context of the configuration file.
+
+```
+worker_processes 2;
+
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location /secure {
+            access_log off;
+            return 200 "Welcome to secure area."
+        }
+    }
+}
+```
+
+Reload nginx and check its status. You will now see 2 worker processes.
+
+> Basic technicality: Increasing the number of nginx worker processes does not necessarily equate to better performance. Each worker process is asynchronous, meaning that they will handle incoming requests as fast as the hardware is capable of. Creating a second worker process does not increase the hardware's ability.
+>
+> When a machine has several CPU cores, these cores cannot share processes, meaning that an nginx worker process can only run on a single CPU core. Most of the time, you can configure nginx to run the exact number of processes as the number of CPU cores. If you attempt to create a higher number of processes and hope that your hardware will perform better, you can actually think of 2 worker processes in a single core, each running only at 50% of the core's power.
+
+To find out about the number of CPU cores of your machine you can use this command:
+
+```
+nproc
+```
+
+This will return with a number that tells you the number of CPU cores. You can also use:
+
+```
+lscpu
+```
+
+which will give you more detailed information about your CPU. You can use this data to set the value for the `worker_processes` directive. Nginx gives you a way to automate spawning one worker for each CPU core.
+
+```
+worker_processes auto;
+```
+
+Another directive to know about workers is the `worker_connections` directive which is, up until now, the only directive you can use in the `events` context. This sets the number of connections each worker process can accept. This is also not a number that you can simply increase. Your server has a limit to how many files can be open at once, for each CPU core.
+
+You can check the open file limit by using this command:
+
+```
+ulimit -n
+```
+
+It usually returns with 1024, to which you can set the `worker_connections` directive in order to really max out the server.
+
+```
+events {
+    worker_connections 1024;
+}
+```
+
+We now also have the maximum number of concurrent requests that the server should be able to accept. You can guess that `worker_processes * worker_connections` equals to maximum connections, as each of the worker processes can open 1024 connections or requests. These 2 directives are very important to understand if you want to really be able to optimize the nginx process performance.
+
+Another directive to know about is the `pid` directive, which allows you to reconfigure the `pid path` you set in the initial nginx configuration.
+
+At the moment, our pid file is located at `/var/run/nginx.pid`. If you want to change this without rebuilding the whole nginx instance, you can use the `pid` directive in the main context:
+
+```
+pid /var/run/new_nginx.pid;
+```
