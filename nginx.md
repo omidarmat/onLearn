@@ -293,11 +293,11 @@ http {
 
 After reloading the nginx service, you will now receive the HTML page with correct styles.
 
-## The location block
+## The location context
 
 We are going to learn how to use location blocks to define and configure the behavior of specific URIs or requests. This is the most used block in any nginx configuration file. Basically, a location block intercepts a request based on its URI and then does some things other than just serving a matching file relative to the root directory. So with the configuration that we have set up until now, if someone tries to approach a path (like `167.99.93.26/greet`) under our machines IP address, they will get a _404 - Not found_ page.
 
-Inside a location block, you can do many things. For the most simple thing, you can use the `return` statement which receives first a response status code, and then a simple string as the response itself.
+Inside a location block, you can do many things. For the most simple thing, you can use the `return` directive which receives first a response status code, and then the response data which in this case will be a simple string.
 
 ```nginx
 events {}
@@ -319,6 +319,8 @@ http {
 }
 ```
 
+> The `return` directive can also receive a URI as its second argument if you give it a status code of the `300` family variant, which will make it act as a [rewrite](#rewrites-and-redirects) in nginx.
+
 > Don't forget to reload nginx after any change you apply to the configuration file.
 
 ### Different ways of matching URIs in location blocks
@@ -329,6 +331,22 @@ There are several ways of matching URIs in location blocks, which are prioritize
 2. Preferential prefix match `^~ /uri`: which is basically the same as prefix match but considered with higher priority over regular expression matches.
 3. Regular expression case-sensitive match `~ /uri[0-9]`: matching a URI that has `uri` followed by any number between 0 and 9. Using `~*` before the URI regex will make it case-insesitive. If, by any chance, two case-sensitive and case-insensitive regular expressions match a request URI, the first one declared in the configuration file will take precedence.
 4. Prefix match `/uri`: matching URIs starting with `/uri`. So `/uri/more` will also match.
+
+### Named location
+
+This simply means to assign a name to a location context. Then using a directive such as [`try_files`](#the-try_files-directive) to refer to that location by its name, ensuring no re-evaluation has to happen on the final argument of the `try_files` directive, but instead just a definite call to the location.
+
+```nginx
+location @friendly_404 {
+    return 404 "Sorry, that file could not be found.";
+}
+```
+
+Refer to this location in a `try_files` directive like:
+
+```
+try_files $uri /thumb.png @friendly_404
+```
 
 ## Nginx variables and conditionals
 
@@ -463,3 +481,331 @@ http {
 ```
 
 So we first defined the `$weekend` variable and set it to `No`. Then we match the current date (using nginx native variable `$date_local`) against `Saturday` or `Sundary` regex, and if it matches we re-set the `$weekend` variable to `Yes` and then print it in the response given to `/is_weekend` request URI.
+
+## Rewrites and redirects
+
+There are 2 directives you can use to implement a rewrite in nginx.
+
+1. `rewrite [pattern] uri`
+2. `return [status-code] uri`
+
+> Note that the `return` directive can only accept a URI as its second argument only if it is given a status code of `300` variant. All 300 variants refer to some sort of redirect.
+
+Let's see an example where you can use a rewrite or redirect. Currently, as you navigate to `167.99.93.26/thumb.png` you will be served with the static image file placed inside the root directory defined in the nginx configuration file. If you want this file to also be served for requests with `/logo` URI, you can use a rewrite.
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+
+        location /logo {
+            return 307 /thumb.png
+        }
+    }
+}
+```
+
+> You can also use a complete URI with protocol, host, etc., but a relative URI is fine in this case since we are redirecting to the same host as the request is coming from.
+
+If you now try to navigate to `167.99.93.26/logo` you will see that the URL of your browser changes (redirects) to `/thumb.png`. This is the essential difference between rewrites and redirects. So a redirect simply tells the client where to go instead. A rewrite, on the other hand, mutates the URI internally, so the URL in the browser won't change.
+
+Let's now try a rewrite directive. Inside the server context, before matching any URIs in location contexts, we will use a `rewrite` directive. The directive can accept a regular expression with which you can match the request URI, and then the URI to which you want to rewrite.
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        rewrite ^/user/\w+ /greet;
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+> When a request URI gets re-written, it gets re-evaluated by nginx as a completely new request. This makes rewrites very powerfull but also requires more resources than a `return` redirect.
+
+Now navigating to `167.99.93.26/user/omid` will cause the request URI to be re-written **internally** to `/greet` and intercepted by the `/greet` location context.
+
+With rewrites, you can also capture certain parts of the original request URI using standard regular expression capture groups. To do this, you can wrap the word after the `/user/` path and refer to it with its index in the rewritten URI. Then you can define an exact match location context to respond to a specific URI like `/greet/omid`:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        rewrite ^/user/(\w+) /greet/$1;
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+
+        location = /greet/omid {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+while the more general `/greet` location context will intercept the URI related to other users.
+
+### Passing optional flags to rewrites
+
+There are some flags you can pass to a `rewrite` directive. Here we are going to examine one called `last`. Passing this to a `rewrite` directive will make that rewrite be performed as the final rewrite on the given URI. For instance:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        rewrite ^/user/(\w+) /greet/$1;
+        rewrite ^/greet/omid /thumb.png;
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+Navigating to `/users/omid` will rewrite the URI to `/greet/omid`, and then it will once again be rewritten, this time to `/thumb.png`. But if you add the `last` flag to the first rewrite directive:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        rewrite ^/user/(\w+) /greet/$1 last;
+        rewrite ^/greet/omid /thumb.png;
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+
+        location = /greet/omid {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+The second rewrite directive will be ignored for `/user/omid` request URI and it will be intercepted by the `/greet/omid` location context.
+
+### The `try_files` directive
+
+This directive, as with the `rewrite` and `return` directives, can be used in the server context (applying to all coming requests), or inside a location context. This directive makes nginx check for a resource to respond with in any number of locations relative to the root directory, with a final(and only final) argument resulting in a rewrite.
+
+Let's take a look at some examples. First, let's put this `try_files` directive in the server context, applying to all incoming requests:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        try_files /thumb.png /greet
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+Knowing that `sites/demo/thumb.png` (the root directive value followed by the resource path assigned to `try_files`) does exist, all incoming request will be responded with that file, no matter what the URI will be. If, by any chance, this first argument does not exist, the request URI will be rewritten to `/greet` and therefore intercepted by the related location context defined above.
+
+Typically, `try_files` directive is used with nginx variables. For instance, to first check the request as it is in this directive, you can use `$uri` as the first argument:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        try_files $uri /thumb.png /greet
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+    }
+}
+```
+
+So now any request URI will be checked for the resource to which the original request URI is pointing. If no files exists, it will attempt to check for the second argument, which is `thumb.png`, and if this does not exist too, the request URI will be rewritten to `/greet`.
+
+Knowing that the last argument of the `try_files` directive is a rewrite, this final argument should ideally be something that **won't ever fail**. This can be one safe approach:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        try_files $uri /thumb.png /friendly_404
+
+        location /friendly_404 {
+            return 404 "Sorry, that file could not be found.";
+        }
+
+
+        location /greet {
+            return 200 "Hello user."
+        }
+
+    }
+}
+```
+
+Now if you try to navigate to something that will fail in `try_files` attempts, like `167.99.93.26/nothing`, it will be responded with the `friendly_404` block. You can also confirm the status code using `curl`:
+
+```
+curl -I http://167.99.93.26/nothing
+```
+
+## Logging
+
+Nginx has essentially two different log types:
+
+1. Error logs: for anything that failed or did not happen as expected
+2. Access logs: for all requests that hit the server
+
+Logging is an extremely important aspect of any web server in general. They enable us to find errors or even track down malicious users.
+
+Logging is enabled in nginx by default. Most of the time, leaving the logging configuration as is will be fine. Nevertheless, you should understand how you can alter this configuration, for instance, to disable logs for certain conditions or to create resource-specific logs.
+
+> Remember that we defined the path to our log files when we were building nginx from source (`/var/log/nginx/error.log` and `var/log/nginx/access.log`)
+
+You list the logging directory using this terminal command:
+
+```
+ls -l /var/log/nginx/
+```
+
+You can also empty each file by first changing to their directory and then using this command:
+
+```
+echo '' > access.log
+echo '' > error.log
+```
+
+> A common misconseption is that 404 responses get logged in the error logs file, which most of the time is not the case. A request that gets properly responded (handled) with 404 will certainly get logged in the access logs and not in the error logs. However, in case the request is not handled and met error, an error will also get logged in the error log file.
+
+You can create custom log files or disabled logging for a given context using `access_log` or `error_log` directives. For instance, take this example where we define a `/secure` location context:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location /secure {
+            access_log /var/log/nginx/secure.access.log
+            return 200 "Welcome to secure area."
+        }
+    }
+}
+```
+
+Now as you relaod nginx, if you list the content of the `/var/log/nginx` directory, you will see that the new log file is created and ready to receive logs. Now any request that gets intercepted by the `/secure` location context, will put a log in the `secure.access.log` file. You can use `access_log` directive multiple times, one after another.
+
+You can also use `access_log` directive to disable logging for certain requests. This is done by setting this directive to `off`. This can reduce server load and keep log files smaller, especially for websites that undergo heavy usage traffic.
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location /secure {
+            access_log off;
+            return 200 "Welcome to secure area."
+        }
+    }
+}
+```
+
+> Generally, you could disable the majority of the access logs, and leave error logging in place. But this would definitely depend on each individual server requirements.
