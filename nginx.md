@@ -225,3 +225,241 @@ http {
     }
 }
 ```
+
+> Server names can also include wildcard characters, like `*` which will make `*.mydomain.com` accessible through all of its sub-domains including `www.mydomain.com`.
+
+You can then define the `root` directive, which is the root path from which nginx will be serving requests, or interpretting static requests from. For instance, if a request hits the server requesting `images/cat.png`, by default, nginx will look for it in the root path `[root-path]/images/cat.png`. Knowing from before that have creatad a directory for our web server static files at `/sites/demo`, this would be the path that we will assign to the `root` direcive.
+
+Now that you have altered the default nginx configuration file you have to `reload` the nginx service to make it work as you just configured it:
+
+```
+systemctl reload nginx
+```
+
+Note that the `reload` command is a lot more preferrable over the `restart` command because the `reload` will prevent any downtime. If the configuration contains any errors, the reload job will fail without taking down the current nginx running instance. The `restart` command however, will first stop the current running instance of nginx, then try to load the new configuration, and if there are any errors, refuse to start nginx back up. So your service will remain down.
+
+> You can check your configuration file against any possible errors using the `nginx -t` command.
+
+If you now try to approach the server's IP address using the browser, you will see a raw HTML page with no styling applied. You might think the stylsheet is not loaded, but it actually is. The problem is that nginx is sending the wrong **mime type** for the stylesheet. You can confirm this using this curl:
+
+```
+cur -I http://167.99.93.26/style.css
+```
+
+This will return the `Content-Type` header as `text/plain` which should not be. To fix this you should provide nginx with content types for given file extensions. This can be done using another context called `types`. Then you can define the relevant mime types like this example:
+
+```nginx
+events {}
+
+http {
+
+    types {
+        text/html html;
+        text/css css;
+    }
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+    }
+}
+```
+
+But there is an easier way to do this. Nginx allows you to include separate pieces of configuration from several files. One of those files that already exists within the nginx installation is the `mime.types` file. You can check the nginx directory to find it:
+
+```
+ls -l /etc/nginx
+```
+
+This file includes a rather complete list of mime types defined. You can `include` this file into your configuration with a relative path to this file. Remember the file is located in the same directory where the configuration file exists, so the relative path would be very simple - the file name itself:
+
+```nginx
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+    }
+}
+```
+
+After reloading the nginx service, you will now receive the HTML page with correct styles.
+
+## The location block
+
+We are going to learn how to use location blocks to define and configure the behavior of specific URIs or requests. This is the most used block in any nginx configuration file. Basically, a location block intercepts a request based on its URI and then does some things other than just serving a matching file relative to the root directory. So with the configuration that we have set up until now, if someone tries to approach a path (like `167.99.93.26/greet`) under our machines IP address, they will get a _404 - Not found_ page.
+
+Inside a location block, you can do many things. For the most simple thing, you can use the `return` statement which receives first a response status code, and then a simple string as the response itself.
+
+```nginx
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        location /greet {
+            return 200 'Hello from nginx /greet location.'
+        }
+    }
+}
+```
+
+> Don't forget to reload nginx after any change you apply to the configuration file.
+
+### Different ways of matching URIs in location blocks
+
+There are several ways of matching URIs in location blocks, which are prioritized by nginx when a request arrives at the server. Here is a quick list of these different matchings from the highest priority to the lowest:
+
+1. Exact match `= /uri`: matching only `/uri` and nothing else.
+2. Preferential prefix match `^~ /uri`: which is basically the same as prefix match but considered with higher priority over regular expression matches.
+3. Regular expression case-sensitive match `~ /uri[0-9]`: matching a URI that has `uri` followed by any number between 0 and 9. Using `~*` before the URI regex will make it case-insesitive. If, by any chance, two case-sensitive and case-insensitive regular expressions match a request URI, the first one declared in the configuration file will take precedence.
+4. Prefix match `/uri`: matching URIs starting with `/uri`. So `/uri/more` will also match.
+
+## Nginx variables and conditionals
+
+There two types of variables in nginx:
+
+1. Variables you can set yourself with `set $var 'something';` directive
+2. Variables pre-defined by nginx such as `$http`, `$uri` and `$args`. You can find a list of these variables in the `documentation` page of `nginx.org` website, inside the _Alphabetical index of variables_ document.
+
+### Nginx native variables and conditionals
+
+Native nginx variables can be extremely useful. For instance, you can see their values returned by a location block like this:
+
+```nginx
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        location /inspect {
+            return 200 "$host\n$uri\n$args"
+        }
+    }
+}
+```
+
+Now as you navigate to `167.99.93.26/inspect` address (don't forget to reload nginx), you will receive this text on the browser screen:
+
+```
+167.99.93.26 (host)
+/inspect (uri)
+```
+
+So the `$args` variable has no value since the request has no query string. If you try to approach `167.99.93.26/inspect?name=omid` you will get:
+
+```
+167.99.93.26 (host)
+/inspect (uri)
+name=omid (args)
+```
+
+You can also access an expected URI query parameter using a variation of the `$args` variable as `$arg_[parameter-name]`:
+
+```nginx
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        location /inspect {
+            return 200 "Name: $arg_name"
+        }
+    }
+}
+```
+
+Again matching URI `167.99.93.26/inspect?name=omid` will give you:
+
+```
+Name: omid
+```
+
+Nginx also allow you to use some basic conditionals which are commonly used along with some of the native variables. What you should keep in mind is that **using nginx conditionals inside location contexts are highly discouraged, as it can lead to unexpectd behavior by nginx.** Now to demonstrate the use of conditionals in nginx take this example:
+
+```nginx
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        if($arg_apiKey != 1234) {
+            return 401 "Incorrect API key."
+        }
+
+        location /inspect {
+            return 200 "Name: $arg_name"
+        }
+    }
+}
+```
+
+In this example, if a user tries to access our server without providing the `1234` API key in the URI as a query parameter, they will receive 401 response.
+
+### User-defined variables and conditionals
+
+Variables in nginx can be set to simple strings, integeres, or booleans. Conditionals can come into play with user-defined variables also. Take this example:
+
+```
+events {}
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26
+
+        root /site/demo
+
+        set $weekend 'No';
+
+        if($date_local ~ 'Saturday|Sunday') {
+            set $weekend 'Yes';
+        }
+
+        location /is_weekend {
+            return 200 "$weekend"
+        }
+    }
+}
+```
+
+So we first defined the `$weekend` variable and set it to `No`. Then we match the current date (using nginx native variable `$date_local`) against `Saturday` or `Sundary` regex, and if it matches we re-set the `$weekend` variable to `Yes` and then print it in the response given to `/is_weekend` request URI.
