@@ -899,5 +899,133 @@ Another directive to know about is the `pid` directive, which allows you to reco
 At the moment, our pid file is located at `/var/run/nginx.pid`. If you want to change this without rebuilding the whole nginx instance, you can use the `pid` directive in the main context:
 
 ```
-pid /var/run/new_nginx.pid;
+pid /var/runnew_nginx.pid
+
+worker_processes 2;
+
+events {
+    worker_connections 1024;
+}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location /secure {
+            access_log off;
+            return 200 "Welcome to secure area."
+        }
+    }
+}
 ```
+
+## Buffers and timeouts
+
+By understanding buffer sizes and timeouts you can go deeper in nginx performance optimization.
+
+There are a couple of configuration directives that you should know about, but before that, it is good to know that while confuring processes is a fairly easy and measurable task, buffer sizes and timeouts is the complete oposite. These are not so much dependant on the server, but more on the nature of the requests that arrives at the server.
+
+### Buffer
+
+Buffering is when a process or nginx worker reads data into memory (RAM) before writing it to its next destination. Buffering can happen in 2 oposite ways: in processing the request, or in processing the response.
+
+For instance, imagine your nginx server receives a request which it reads from a TCP port `80`, writes this request to memory (this is buffering, and if the buffer is too small will write the rest of it to a disk). The other way round, for example, to serve a static file, would be nginx reading the file from memory and writing it to the memory (again this is buffering) and send the file from memory to the client. This is mainly done to add a layer of protection between reading and writing data.
+
+### Timeout
+
+Timeouts suggest a cutoff time for a given event. For instance, if receiving a request from the client stops after a certain number of seconds, thus preventing a client from sending an endless stream of data and breaking the server.
+
+### How to configure
+
+The first directives which we use in the `http` context are:
+
+1. `client_body_buffer_size`: sets the amount of memory to allocate for buffering a `POST` data from a client, most likely coming from a form submission. Setting this to `10k` will result in 10 kilobytes of space. For data sizes, nginx accepts a plain number which will default to _byte_ unit, or it can receive the unit as `k` equating to kilobytes, `m` for megabytes.
+2. `client_max_body_size`: sets the maximum size of `POST` request body size, so a request with a body bigger than the defined amount will be responded with a `413` error saying "Request entity too large". Setting this to `8m` would be a proper configuration for almost any request coming to the server.
+3. `client_header_buffer_size`: sets the amount of memory allocated for reading request headers. Setting this to `1k` would be fine (and even more than enough) for nearly all requests.
+4. `client_body_timeout`: sets the amount of acceptable time between consecutive read operations on the request body - those reads that happen to the buffer. This timeout is set by default to 60 seconds which is too much. You might want to set to something around `12` which equates to 12 milliseconds.
+5. `client_header_timeout`: sets the amount of acceptable time between consecutive read operations on the request header - those reads that happen to the buffer. This timeout is set by default to 60 seconds which is too much. You might want to set to something around `12` which equates to 12 milliseconds. For time durations, nginx accepts a plain number which will default to _milliseconds_ unit, or it can receive the unit as `s` equating to seconds, `m` for minutes, `h` for hours, and `d` for days.
+6. `keepalive_timeout`: sets the amount of time nginx will keep a connection to a client open in case more data is on the way. This is extremely useful when a client requests a number of files. Keeping a connection open reduces the time it takes to open another new connection. Equally, you should not leave a connection open for too long, as it can result in our pool of max connections (`worker_processes * worker_connections`) being used up. Most of the time, there is no reason to keep a connection open for more than a few milliseconds - `15` would be fine. You can increase this to a couple of seconds if your machine resources allow you to.
+7. `send_timeout`: if a client does not receive any of the response data in the amount of time defined in this directive, abort sending the response all together. This can be set to `10`.
+8. `sendfile`: this configuration directive will provide a vast majority of web servers a descent increase in performance. Setting this directive to `on` means when sending a client some data from disk (typically a static file) don't use a buffer. This configuration will help websites with a lot of static resources to gain performance upgrades.
+9. `tcp_nopush`: this configuration directive will provide a vast majority of web servers a descent increase in performance. Setting this configuration to `on` will enable nginx to optimize the size of those data packets being sent to the client. This configuration will help websites with a lot of static resources to gain performance upgrades.
+
+Here is a configuration example:
+
+```nginx
+worker_processes auto;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+
+  include mime.types;
+
+  # Buffer size for POST submissions
+  client_body_buffer_size 10K;
+  client_max_body_size 8m;
+
+  # Buffer size for Headers
+  client_header_buffer_size 1k;
+
+  # Max time to receive client headers/body
+  client_body_timeout 12;
+  client_header_timeout 12;
+
+  # Max time to keep a connection open for
+  keepalive_timeout 15;
+
+  # Max time for the client accept/receive a response
+  send_timeout 10;
+
+  # Skip buffering for static files
+  sendfile on;
+
+  # Optimise sendfile packets
+  tcp_nopush on;
+
+  server {
+
+    listen 80;
+    server_name 167.99.93.26;
+
+    root /sites/demo;
+
+    index index.php index.html;
+
+    location / {
+      try_files $uri $uri/ =404;
+    }
+  }
+}
+```
+
+## Adding dynamic modules
+
+To add more functionality available to your nginx server, you can add dynamic modules. You can add them by rebuilding the source. Dynamic modules are modules we can load _selectively_ from nginx configuration, unlike _static_ modules which are always loaded.
+
+> Adding standard modules is the same as adding dynamic modules, as is upgrading nginx itself to a newer version.
+
+So in order to add dynamic modules to nginx, you will have to rebuild nginx from source. Once again, you will need the nginx `tar.gz` file you downloaded in the beginning. If at the time of adding new dynamic modules, nginx has released a newer version, you can download the new version an build it from the new source, which is exactly what you need to do when you want to upgrade nginx.
+
+The first thing to remember when trying to rebuild nginx is to make sure you don't change any of the existing configuration. Remember how you can see your current nginx configurations?
+
+```
+nginx -V
+```
+
+Copy them, and you only need to add the configurations related to the new modules you want. To see a list of available modules for the currently downloaded nginx source code you can use this command inside the nginx extracted source code folder:
+
+```
+./configure --help
+```
+
+In this list, you can see some module names ending in `=dynamic` dynamic modules. You can then add the module name with the `=dynamic` string at the end of it, telling nginx to install it as a dynamic module.
