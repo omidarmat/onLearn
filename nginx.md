@@ -1029,3 +1029,39 @@ Copy them, and you only need to add the configurations related to the new module
 ```
 
 In this list, you can see some module names ending in `=dynamic` dynamic modules. You can then add the module name with the `=dynamic` string at the end of it, telling nginx to install it as a dynamic module.
+
+```
+.configure --sbin-path=/usr/bin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=var/log/nginx/error.log http-log-path=var/log/nginx/access.log --with-pcre --pid-path=/var/run/nginx.pid --with-http_image_filter_module=dynamic
+```
+
+The next step in this process is to set the path for the dynamic modules that we are going to add to nginx. Remember from before that we set the `--conf-path` to `/etc/nginx/nginx.conf` which was the path to nginx configuration files? We are now going to add a `modules` directory in the same path for our dynamic modules. This will make enabling modules easier.
+
+```
+.configure --sbin-path=/usr/bin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=var/log/nginx/error.log http-log-path=var/log/nginx/access.log --with-pcre --pid-path=/var/run/nginx.pid --with-http_image_filter_module=dynamic --modules-path=/etc/nginx/modules
+```
+
+Running this configuration command will fail because we need the dependency needed for `-with-http_image_filter_module=dynamic` which is the `GD` library. So we need to install this beforehand:
+
+```
+sudo apt install libgd-dev
+```
+
+Then run the configuration command again and it will work fine this time. Just like the build process we performed at the beginning, we now need to use the `make` command to compile the source code with the recently created configurations. And finally, use `make install` to install the compiled source code over the current installation of nginx. Before trying to use this new instance of nginx, you might need to reload the service as well.
+
+### Using the dynamic module
+
+Before being able to use the dynamic module we just added to nginx, you should apply the `load_module` directive at the main context of the `nginx.conf` file. The directive receives the path (relative to `nginx.conf` file) to the module as argument.
+
+```
+load_module modules/ngx_http_image_filter_module.so;
+```
+
+You should now be able to validate the configuration file using `nginx -t` command (remember this command is usable with the terminal located at the installed nginx path).
+
+To use the dynamic module we added to the nginx configuration, go on and create a new location context in the configuration file:
+
+```
+location = /thumb.png {
+            image_filter rotate 180;
+        }
+```
