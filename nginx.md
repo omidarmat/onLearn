@@ -1066,7 +1066,6 @@ location = /thumb.png {
         }
 ```
 
-<<<<<<< Updated upstream
 # Performance
 
 ## Headers and expires
@@ -1076,8 +1075,6 @@ We are now going to cover some useful modules and directives outside of the ngin
 The `expires` response header informs the client how long it can cache that response for. As an example, imagine a piece of content on your website that does not change often. In this case, you can tell the browser to cache a copy of that content for a relatively long time. Doing so will avoid any future request to the server for that specific content, until its cache is expired. So requests to our server will be reduced and the website load time on the client-side will reduce drastically.
 
 Let's now see how to set a generic response header in the nginx configuration file:
-=======
-<!-- //////// -->
 
 Now to test this you can use a curl like this to try uncompressed responses:
 
@@ -1123,7 +1120,6 @@ An nginx micro cache is a simple server-side cache that allows you to store dyna
 Let's say a user requests a dynamic content, nginx passes the request to the server application you provided (like a nodejs application). The server application would then process the request and even do some database queries, and send back some response to nginx, at which point nginx can cache that response to disk. This means that next time the same request arrives at nginx, it will simply send a response from cache to the client, and not pass the request to the server application.
 
 To enable caching for a php server using nginx `fastcgi` cache, you can enable it in the `http` context to make it available in all its child server contexts. To start, use the `fastcgi_cache_path` directive:
->>>>>>> Stashed changes
 
 ```
 events {}
@@ -1133,28 +1129,21 @@ http {
 
     include mime.types;
 
-<<<<<<< Updated upstream
-=======
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
 
->>>>>>> Stashed changes
     server{
         listen 80;
         server_name 167.99.93.26;
 
         root /site/demo;
-<<<<<<< Updated upstream
 
         location = /thumb.png {
             add_header my_header "Hello world!"
         }
-=======
->>>>>>> Stashed changes
     }
 }
 ```
 
-<<<<<<< Updated upstream
 Now accessing this path through a curl request with `I` flag will return the response headers:
 
 ```
@@ -1162,7 +1151,6 @@ curl -I http://167.99.93.26/thumb.png
 ```
 
 We can now configure this location as a typical static resource by setting the `Cache-Control` header to `public`, telling the receiving client that this response can be cached in any way. Along with this directive you need to use other directives as below:
-=======
 The `fastcgi_cache_path` directive accepts a path as first parameter, leading to the directory where the cache should be stored on disk. It is conventionally better to use the `/tmp` directory as it gets emptied on boot for most linux distributions.
 
 The second paramter is the `levels` paramter which is poorly documented. This paramter determines the depth of directories to split the cache entries into. leaving this paramter out, nginx will simply store all entries in the path you mentioned as a flat list. Using a `1:2` ratio however will organize the entries into folders named by the ending characters of the hashed entry name.
@@ -1174,7 +1162,6 @@ Finally, an optional parameter of this directive is `inactive` which receives a 
 More optional parameters exist on this directive, but these are the key ones.
 
 The next directive to use is `factcgi_cache_key`. It is a standard directive accepting a string format from which to create cache entry names.
->>>>>>> Stashed changes
 
 ```
 events {}
@@ -1184,18 +1171,14 @@ http {
 
     include mime.types;
 
-<<<<<<< Updated upstream
-=======
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
     fastcgi_cache_key "$scheme$request_method$host$request_uri"
 
->>>>>>> Stashed changes
     server{
         listen 80;
         server_name 167.99.93.26;
 
         root /site/demo;
-<<<<<<< Updated upstream
 
         location = /thumb.png {
             add_header my_header "Hello world!";
@@ -1203,25 +1186,20 @@ http {
             add_header Vary Accept-Encoding;
             expires 1M
         }
-=======
->>>>>>> Stashed changes
     }
 }
 ```
 
-<<<<<<< Updated upstream
 The `Pragma` header is just the older version of `Cache-Control` header. The `Vary` header says that the contents of this response can vary based on the value of the _request_ header `Accept-Encoding`. Finally the `expires` header with a value based on nginx time notation, will set the time during which the cache is considered valid client-side. Capital `M` in nginx time notations translates to month.
 
 > Note that the `expires` literal name that you use as nginx directive will then appear in the actual response headers as `Expires`. This directive also inserts another response header as `Cache-Control: max-age=[duration-in-seconds]`.
 
 In order to enable caching for some specific resources you can use a regular expression case-insensitive match in the location URI:
-=======
 The string format we used here translates `$scheme` to `http` or `https` from which the request will come from, `$request_method` to `GET`, `POST`, etc., `$host` to domain name or IP address, and `$request_uri` to request path. Remember that this string will be hashed using _MD5_ algorithm to generate the cache entry name.
 
 > If your website is accessible over both `http` and `https`, including `$scheme` in the string format applied to `fastcgi_cache_key` will generate a cache entry for two requests of the same kind but with different schemes, which is not really necessary. So in this specific case, leaving out `$scheme` from the string format could possibly be a wise decision.
 
 The next step is to configure where you want your dynamic server response to be cached by nginx. For instance, we would like to cache the server repsonse to a request arriving at `\.php$` locations.
->>>>>>> Stashed changes
 
 ```
 events {}
@@ -1231,36 +1209,29 @@ http {
 
     include mime.types;
 
-<<<<<<< Updated upstream
-=======
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
     fastcgi_cache_key "$scheme$request_method$host$request_uri"
 
->>>>>>> Stashed changes
     server{
         listen 80;
         server_name 167.99.93.26;
 
         root /site/demo;
 
-<<<<<<< Updated upstream
         location ~* \.(css|js|jpg|png)$ {
             access_log off;
             add_header my_header "Hello world!";
             add_header Pragma public;
             add_header Vary Accept-Encoding;
             expires 1M
-=======
         path ~\.php$ {
             fastcgi_cache ZONE_1;
             fastcgi_cache_valid 200 404 60m;
->>>>>>> Stashed changes
         }
     }
 }
 ```
 
-<<<<<<< Updated upstream
 > Note that you can turn access logs off on such location contexts.
 
 ## Compressed responses with `gzip`
@@ -1270,8 +1241,7 @@ You can improve static resource delivery from your nginx server by configuring c
 Step one to active this feature on the server, is to enable the `gzip` compression. To to this, within the `html` context, you would have to set `gzip on;` directive. Note that this is a standard directive type, meaning that while enabling it in the `http` context, every child context of the `http` context will be able to override it.
 
 > `gzip` comes with the nginx core.
-=======
-The `fastcgi_cache` receives the cache name defined by the `keys_zone=ZONE_1:100m` directive. You then need to use `fastcgi_cache_valid` directive to specify how long a cache response should be valid for, based on the response status code.
+> The `fastcgi_cache` receives the cache name defined by the `keys_zone=ZONE_1:100m` directive. You then need to use `fastcgi_cache_valid` directive to specify how long a cache response should be valid for, based on the response status code.
 
 > The `fastcgi_cache_valid` directive is an array directive, meaning that you can use it multiple times to define valid time for different status codes separately.
 
@@ -1328,7 +1298,6 @@ You will see `X-Cache: MISS`, since the new path would create a new cache entry 
 ### Cachce exceptions
 
 Caching exceptions are implemented for many reasons. To test a scenario, you can check for request method and then based on that, you can disable caching in a specific location context:
->>>>>>> Stashed changes
 
 ```
 events {}
@@ -1338,9 +1307,7 @@ http {
 
     include mime.types;
 
-<<<<<<< Updated upstream
     gzip on;
-=======
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
     fastcgi_cache_key "$scheme$request_method$host$request_uri";
 
@@ -1351,7 +1318,6 @@ http {
     if($request_method = POST) {
         set no_cache 1;
     }
->>>>>>> Stashed changes
 
     server{
         listen 80;
@@ -1359,26 +1325,22 @@ http {
 
         root /site/demo;
 
-<<<<<<< Updated upstream
         location = /thumb.png {
             add_header my_header "Hello world!";
             add_header Pragma public;
             add_header Vary Accept-Encoding;
             expires 60m
-=======
         location ~\.php$ {
             fastcgi_cache ZONE_1;
             fastcgi_cache_valid 200 404 60m;
 
             fastcgi_cache_bypass $no_cache;
             fastcgi_no_cache $no_cache;
->>>>>>> Stashed changes
         }
     }
 }
 ```
 
-<<<<<<< Updated upstream
 Next, you have to configure the compression. The directive to use here is `gzip_comp_level` determining the level of compression, as the name says. Lower levels of compression will result is larger file, but requiring less server resource, and higher levels will result in smaller files, but requiring more server resource. It is important to know that in levels higher then `5` the reduction in file size is not very significant, so generally a value between `3` and `4` would be nice.
 
 ```
@@ -1444,7 +1406,7 @@ Again, keep in mind that setting these directives on your nginx server is not en
 ```
 add_header Vary Accept-Encoding;
 ```
-=======
+
 As clear as it is, we first set a variable `$no_cache` to `0` and make it `1` for any request with request method `POST`. Then, in the location where we want the cache to be disabled, we can use 2 directives `fastcgi_cache_bypass` (bypass serving this response from cache) and `fastcgi_no_cache` (don't cache the response) with their value connected to the value of the variable we set.
 
 To be able to perform a test scenario, you can use another condition like `$arg_skipcache = 1`. You are then able to test this cache exception by using this curl:
@@ -1474,4 +1436,3 @@ To see the list of available configuration flags in your current source code dow
 ```
 
 You can see the `--with-http_v2_module` flag available. So add this to the current configuration flags of your nginx.
->>>>>>> Stashed changes
