@@ -1072,11 +1072,181 @@ location = /thumb.png {
 
 We are now going to cover some useful modules and directives outside of the nginx fundamental configuration. Let's now understand how to configure `expires` headers.
 
-The `expires` response header informs the client how long it can cache that response for. As an example, imagine a piece of content on your website that does not change often. In this case, you can tell the browser to cache a copy of that content for a relatively long time. Doing so will avoid any future request to the server for that specific content, until its cache is expired. So requests to our server will be reduced and the website load time on the client-side will reduce drastically.
+The `expires` header is a response header informs the client how long it can cache that response for. As an example, imagine a piece of content on your website that does not change often. In this case, you can tell the browser to cache a copy of that content for a relatively long time. Doing so will avoid any future request to the server for that specific content, until its cache is expired. So requests to our server will be reduced and the website load time on the client-side will reduce drastically.
 
 Let's now see how to set a generic response header in the nginx configuration file:
 
-[MISSING NOTES]
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!"
+        }
+    }
+}
+```
+
+Now accessing this path through a curl request with `I` flag will return the response headers:
+
+```
+curl -I http://167.99.93.26/thumb.png
+```
+
+We can now configure this location as a typical static resource by setting the `Cache-Control` header to `public`, telling the receiving client that this response can be cached in any way. Along with this directive you need to use other directives as below:
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header Cache-Control public;
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 1M
+        }
+    }
+}
+```
+
+The `Pragma` header is just the older version of `Cache-Control` header. The `Vary` header says that the contents of this response can vary based on the value of the _request_ header `Accept-Encoding`. Finally the `expires` header with a value based on nginx time notation, will set the time during which the cache is considered valid client-side. Capital `M` in nginx time notations translates to month.
+
+> Note that the `expires` literal name that you use as nginx directive will then appear in the actual response headers as `Expires`. This directive also inserts another response header as `Cache-Control: max-age=[duration-in-seconds]`.
+
+In order to enable caching for some specific resources you can use a regular expression case-insensitive match in the location URI:
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location ~* \.(css|js|jpg|png)$ {
+            access_log off;
+            add_header Cache-Control public;
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 1M;
+        }
+    }
+}
+```
+
+> Note that you can turn access logs off on such location contexts.
+
+## Compressed responses with `gzip`
+
+You can improve static resource delivery from your nginx server by configuring compressed (gzipped) responses. If a request arrives from a client, in which the request header `Accept-Encoding` is set to `gzip`, you can configure your nginx server to respond with the corresponding encoding which will compress the response on the server and therefore reduce the time it takes for the response to arrive back at the client. The browser would then have to decompress the response before rendering it.
+
+Step one to active this feature on the server, is to enable the `gzip` compression. To to this, within the `html` context, you would have to set `gzip on;` directive. Note that this is a standard directive type, meaning that while enabling it in the `http` context, every child context of the `http` context will be able to override it.
+
+> `gzip` comes with the nginx core.
+
+Next, you have to configure the compression. The directive to use here is `gzip_comp_level` determining the level of compression, as the name says. Lower levels of compression will result is larger file, but requiring less server resource, and higher levels will result in smaller files, but requiring more server resource. It is important to know that in levels higher then `5` the reduction in file size is not very significant, so generally a value between `3` and `4` would be nice.
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+You then need to set the file types or mime types to apply this compression to. For this, you need to use the `gzip_types` directive and setting any number of mime types as arguments.
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+> `gzip_types` is an array directive. So alternatively, you can write the mime types in separate lines if you need to in any case.
+
+Again, keep in mind that setting these directives on your nginx server is not enough to make the compression happen on your server responses. The client that is sending requests to your server should indicate that they are willing to accept compressed responses. This is where this heading that we set previously in our location context:
+
+```
+add_header Vary Accept-Encoding;
+```
 
 Now to test this you can use a curl like this to try uncompressed responses:
 
@@ -1115,7 +1285,7 @@ curl -H "Accpet-Encoding: gzip, deflate" http://167.99.93.26/style.css > style.m
 
 You can now compare the file sizes you downloaded and see that the compressed response is half the size of the normal response.
 
-## FastCGI cachc
+## FastCGI cache
 
 An nginx micro cache is a simple server-side cache that allows you to store dynamic language responses in order to avoid, or at least minimize, server-side language processing.
 
@@ -1146,13 +1316,6 @@ http {
 }
 ```
 
-Now accessing this path through a curl request with `I` flag will return the response headers:
-
-```
-curl -I http://167.99.93.26/thumb.png
-```
-
-We can now configure this location as a typical static resource by setting the `Cache-Control` header to `public`, telling the receiving client that this response can be cached in any way. Along with this directive you need to use other directives as below:
 The `fastcgi_cache_path` directive accepts a path as first parameter, leading to the directory where the cache should be stored on disk. It is conventionally better to use the `/tmp` directory as it gets emptied on boot for most linux distributions.
 
 The second paramter is the `levels` paramter which is poorly documented. This paramter determines the depth of directories to split the cache entries into. leaving this paramter out, nginx will simply store all entries in the path you mentioned as a flat list. Using a `1:2` ratio however will organize the entries into folders named by the ending characters of the hashed entry name.
@@ -1192,11 +1355,6 @@ http {
 }
 ```
 
-The `Pragma` header is just the older version of `Cache-Control` header. The `Vary` header says that the contents of this response can vary based on the value of the _request_ header `Accept-Encoding`. Finally the `expires` header with a value based on nginx time notation, will set the time during which the cache is considered valid client-side. Capital `M` in nginx time notations translates to month.
-
-> Note that the `expires` literal name that you use as nginx directive will then appear in the actual response headers as `Expires`. This directive also inserts another response header as `Cache-Control: max-age=[duration-in-seconds]`.
-
-In order to enable caching for some specific resources you can use a regular expression case-insensitive match in the location URI:
 The string format we used here translates `$scheme` to `http` or `https` from which the request will come from, `$request_method` to `GET`, `POST`, etc., `$host` to domain name or IP address, and `$request_uri` to request path. Remember that this string will be hashed using _MD5_ algorithm to generate the cache entry name.
 
 > If your website is accessible over both `http` and `https`, including `$scheme` in the string format applied to `fastcgi_cache_key` will generate a cache entry for two requests of the same kind but with different schemes, which is not really necessary. So in this specific case, leaving out `$scheme` from the string format could possibly be a wise decision.
@@ -1208,25 +1366,19 @@ events {}
 
 
 http {
-
     include mime.types;
 
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
     fastcgi_cache_key "$scheme$request_method$host$request_uri"
 
+
     server{
-        listen 80;
+        listen 443 ssl http2;
         server_name 167.99.93.26;
 
         root /site/demo;
 
-        location ~* \.(css|js|jpg|png)$ {
-            access_log off;
-            add_header my_header "Hello world!";
-            add_header Pragma public;
-            add_header Vary Accept-Encoding;
-            expires 1M
-        path ~\.php$ {
+        location ~\.php$ {
             fastcgi_cache ZONE_1;
             fastcgi_cache_valid 200 404 60m;
         }
@@ -1234,15 +1386,6 @@ http {
 }
 ```
 
-> Note that you can turn access logs off on such location contexts.
-
-## Compressed responses with `gzip`
-
-You can improve static resource delivery from your nginx server by configuring compressed (gzipped) responses. If a request arrives from a client, in which the request header `Accept-Encoding` is set to `gzip`, you can configure your nginx server to respond with the corresponding encoding which will compress the response on the server and therefore reduce the time it takes for the response to arrive back at the client. The browser would then have to decompress the response before rendering it.
-
-Step one to active this feature on the server, is to enable the `gzip` compression. To to this, within the `html` context, you would have to set `gzip on;` directive. Note that this is a standard directive type, meaning that while enabling it in the `http` context, every child context of the `http` context will be able to override it.
-
-> `gzip` comes with the nginx core.
 > The `fastcgi_cache` receives the cache name defined by the `keys_zone=ZONE_1:100m` directive. You then need to use `fastcgi_cache_valid` directive to specify how long a cache response should be valid for, based on the response status code.
 
 > The `fastcgi_cache_valid` directive is an array directive, meaning that you can use it multiple times to define valid time for different status codes separately.
@@ -1304,34 +1447,26 @@ Caching exceptions are implemented for many reasons. To test a scenario, you can
 ```
 events {}
 
-
 http {
-
     include mime.types;
 
-    gzip on;
     fastcgi_cache_path /tmp/nginx_cache levels=1:2; keys_zone=ZONE_1:100m inactive=60m;
-    fastcgi_cache_key "$scheme$request_method$host$request_uri";
+    fastcgi_cache_key "$scheme$request_method$host$request_uri"
 
-    add_header X-Chache $upstream_cache_status;
-
-    set $no_cache 0;
-
-    if($request_method = POST) {
-        set no_cache 1;
-    }
 
     server{
-        listen 80;
+        listen 443 ssl http2;
         server_name 167.99.93.26;
 
         root /site/demo;
 
-        location = /thumb.png {
-            add_header my_header "Hello world!";
-            add_header Pragma public;
-            add_header Vary Accept-Encoding;
-            expires 60m
+        set $noi_cache 0;
+
+        if($request_method = POST) {
+            set no_cache 1;
+        }
+
+
         location ~\.php$ {
             fastcgi_cache ZONE_1;
             fastcgi_cache_valid 200 404 60m;
@@ -1341,72 +1476,6 @@ http {
         }
     }
 }
-```
-
-Next, you have to configure the compression. The directive to use here is `gzip_comp_level` determining the level of compression, as the name says. Lower levels of compression will result is larger file, but requiring less server resource, and higher levels will result in smaller files, but requiring more server resource. It is important to know that in levels higher then `5` the reduction in file size is not very significant, so generally a value between `3` and `4` would be nice.
-
-```
-events {}
-
-
-http {
-
-    include mime.types;
-
-    gzip on;
-    gzip_comp_level 3
-    server{
-        listen 80;
-        server_name 167.99.93.26;
-
-        root /site/demo;
-
-        location = /thumb.png {
-            add_header my_header "Hello world!";
-            add_header Pragma public;
-            add_header Vary Accept-Encoding;
-            expires 60m
-        }
-    }
-}
-```
-
-You then need to set the file types or mime types to apply this compression to. For this, you need to use the `gzip_types` directive and setting any number of mime types as arguments.
-
-```
-events {}
-
-
-http {
-
-    include mime.types;
-
-    gzip on;
-    gzip_comp_level 3;
-    gzip-types text/css text/javascript;
-
-    server{
-        listen 80;
-        server_name 167.99.93.26;
-
-        root /site/demo;
-
-        location = /thumb.png {
-            add_header my_header "Hello world!";
-            add_header Pragma public;
-            add_header Vary Accept-Encoding;
-            expires 60m
-        }
-    }
-}
-```
-
-> `gzip_types` is an array directive. So alternatively, you can write the mime types in separate lines if you need to in any case.
-
-Again, keep in mind that setting these directives on your nginx server is not enough to make the compression happen on your server responses. The client that is sending requests to your server should indicate that they are willing to accept compressed responses. This is where this heading that we set previously in our location context:
-
-```
-add_header Vary Accept-Encoding;
 ```
 
 As clear as it is, we first set a variable `$no_cache` to `0` and make it `1` for any request with request method `POST`. Then, in the location where we want the cache to be disabled, we can use 2 directives `fastcgi_cache_bypass` (bypass serving this response from cache) and `fastcgi_no_cache` (don't cache the response) with their value connected to the value of the variable we set.
@@ -1421,11 +1490,13 @@ You will see `X-Cache: BYPASS` in the response headers, meaning that the server 
 
 ## HTTP2
 
-- HTTP2 is a binary protocol, where HTTP1 is a textual one. Binary form is a far more compact way of transferring data, and it significantly reduces the chance of errors during data transfer.
-- HTTP2 compresses response headers, which again reduced transfer time.
-- The singlemost important feature for performance, is the fact that HTTP2 uses persistent connections. Opening a connection is a time-consuming process. It requires a handshake between the client and the server, and for this to happen, headers need to be passed on both ends each time. There is also a limit to how many concurrent connections a browser to a particular domain at once, making these connections even more valuable when trying to maximize client-side performance.
-- These persistent connections are also multiplexed, meaning that multiple assets such as HTML, CSS and JavaScript files can be combined into a single stream of binary data and transmitted over a single connection. HTTP1 requires a dedicated connections for each resource (simplexed connections).
-- HTTP2 can perform a server push. This means that the client can be informed of assets such as scripts, images and stylesheets along with the initial request for the page.
+Let's right at the beginning go over a brief comparison between HTTP1 and HTTP2:
+
+- HTTP2 is a **binary protocol**, where HTTP1 is a textual one. Binary form is a far more compact way of transferring data, and it significantly reduces the chance of errors during data transfer.
+- HTTP2 **compresses response headers**, which again reduced transfer time.
+- The singlemost important feature for performance, is the fact that HTTP2 uses **persistent connections**. Opening a connection is a time-consuming process. It requires a handshake between the client and the server, and for this to happen, headers need to be passed on both ends each time. There is also a limit to how many concurrent connections a browser to a particular domain at once, making these connections even more valuable when trying to maximize client-side performance.
+- These persistent connections are also **multiplexed**, meaning that multiple assets such as HTML, CSS and JavaScript files can be combined into a single stream of binary data and transmitted over a single connection. HTTP1 requires a dedicated connections for each resource (simplexed connections).
+- HTTP2 can perform a **server push**. This means that the client can be informed of assets such as scripts, images and stylesheets along with the initial request for the page.
 
 Let's now see how to enable and configure HTTP2 in nginx. A requirement of HTTP2 is SSL or HTTPS. So before being able to use HTTP2, you need to enable at least the most basic configuration for SSL. So the first step is to add the HTTP2 module to our install.
 
@@ -1449,4 +1520,318 @@ systemctl restart nginx
 
 Now to enable SSL on your nginx, you need an SSL certificate. For a production website you will need some legitimate SSL certificate from a vendor, but for the purpose of testing, we can use a self-signed certificate and private key.
 
-You can store the SSL key and certificate in `/etc/nginx` directory, in a specific folder you may call `ssl`.
+### Generate self-signed SSL certificate and key
+
+You can store the SSL key and certificate in `/etc/nginx` directory, in a specific folder you may call `ssl`. We are now going to create our self-signed certificate with the `openssl` tools.
+
+```
+openssl req -x509 -days 10 -nodes -newkey rsa:2048 -keyout /etc/nginx/ssl/self.key -out /etc/nginx/ssl/self.crt
+```
+
+Let's break this command down to understand it better:
+
+- `req`: to request a new certification signing
+- `-x509`: certificate standard that is being requested
+- `-days`: determining how long the certificate will be valid for
+- `-nodes`: allows you to leave out a passphrase or password for the keyfile
+- `-newkey`: generate a new private key for this signing request at the same time
+- `rsa:2048`: type of the private key with a length of 2048 bytes
+- `-keyout`: where to write the key to
+- `-out`: where to write the certificate to
+
+This command will ask you a few questions - not that important given that it is going to be a test certificate. You should then be able to list your certificate files using:
+
+```
+ls -l /etc/nginx/ssl/
+```
+
+You can now go on to your nginx configuration file and update the `listen` directive to `443` which is the standard HTTP port for SSL-encrypted connections, followed by `ssl` which refers to the SSL module being used for this directive. Then, to configure the location to the certificate files we generated, you can use the `ssl_certificate` directive in the `http` context:
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 443 ssl;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt
+        ssl_certificate_key /etc/nginx/ssl/self.key
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+This is all we need for basic SSL. You now need to reload the nginx configuration. You can now approach your server address using `https`. Up to this point, inspecting the network tab of the browser dev tools, you will see that your request-response cycles or performed over HTTP/1.1. Let's now enable HTTP2 in the `listen` directive.
+
+```
+listen 443 ssl http2;
+```
+
+Remember that for HTTP2 to get activated, the browser must support the technology. Should the request client not support HTTP2, your server will automatically fall back to HTTP/1.1.
+
+# Security
+
+## HTTPS
+
+Our previous implementation of SSL for HTTPS was as basic as it could be. We are now going to discuss some key SSL-specific configuration directives and see how to optimize HTTPS connections.
+
+Step 1 when dealing with HTTPS request is providing some fallback or handler for insecure HTTP connections. Currently, with this configuration:
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt
+        ssl_certificate_key /etc/nginx/ssl/self.key
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+If you send a request to the server using HTTP, you will not get any response. This is because your request is hitting your server on port `80`, and since your server is not configured to listen on this port, there will be a connection error.
+
+To prevent this from happening, we have 2 options:
+
+1. Also listen on port 80, making your server also available over an insecure connection. This is not a fine choice anymore. HTTPS has become a standard these days, and on top of security and SEO reasons, you will also sacrifice the added performance of HTTP2 as it is only available over SSL.
+2. Redirect all HTTP requests to the equivalent HTTPS request. There are a few ways of acheving this, but the easiest one is to create a dedicated virtual host, or `server` context.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt
+        ssl_certificate_key /etc/nginx/ssl/self.key
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+### Improve SSL encryption
+
+Let's now see how to improve upon the SSL encryption and make your server more secure. In the `server` context, go on and disable SSL protocol. Although we still refer to and write it as `ssl` in the `listen` directive, the SSL protocol (Secure Sockets Layer) has been outdated and replaced by TLS (Transport Layer Security). You can enable TLS in the server context using the `ssl_protocols` directive as:
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+Now your HTTP connections will be encrypted using TLS only, rather than the older SSL protocol. Next, you can determine which **cypher suits** should be used by the TLS protocol to encrypt our connection. To do this, you should first set the `ssl_perfer_server_ciphers` directive to `on`. Then use the `ssl_ciphers` directive to insert a string of ciphers to use and ciphers that should not be used, each suit being separated from the other by a `:`. The ones that should not be used are prefixed with `!`.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+> The suite selection used above is not a definite selection, and you'll find a number of these combinations on the internet. This one is very solid, but might also become outdated. A quick search will give you some up-to-date combinations. Just make sure you get your combination from a reputable source.
+
+As for the next step, you need to enable Diffy-Helman key exchange, or in short, DH parameters. Having DH params enabled allows your server to perform key exchanges between the client and server with perfect secrecy. This is a very good addition to an HTTPS server. To do this, you can use `ssl_dhpararm` directive in the `server` context. The directive receives a path to a `.pem` file.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+You now need to generate the DH param file, again using the `openssl` command line tools.
+
+```
+openssl dhparam 2048 -out /etc/nginx/ssl/dgparam.pem
+```
+
+> Note that `2048` is in compliance with the `2048` we mentioned in the SSL certificate generating command.
+
+This process can take a few minutes to complete. You can now reload your nginx configuration without any errors.
+
+The next configuration for an SSL-enabled site is to enable HSTS (Strict Transport Security). This is a header that tells the browser not to load anything over HTTP, meaning we can minimize redirects from port `80` to port `443`.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+Next, you can enable a simple cache for your SSL sessions.
