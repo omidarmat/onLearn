@@ -1437,4 +1437,16 @@ To see the list of available configuration flags in your current source code dow
 ./configure -help | grep http_v2
 ```
 
-You can see the `--with-http_v2_module` flag available. So add this to the current configuration flags of your nginx.
+You can see the `--with-http_v2_module` flag available. So add this to the current configuration flags of your nginx. Then to compile you source code with the new configuration use `make`, and then to install use `make install`.
+
+Then restart the server using:
+
+```
+systemctl restart nginx
+```
+
+> Note that after rebuilding nginx, it is preferred to perform a restart instead of a reload.
+
+Now to enable SSL on your nginx, you need an SSL certificate. For a production website you will need some legitimate SSL certificate from a vendor, but for the purpose of testing, we can use a self-signed certificate and private key.
+
+You can store the SSL key and certificate in `/etc/nginx` directory, in a specific folder you may call `ssl`.
