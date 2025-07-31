@@ -1060,8 +1060,204 @@ You should now be able to validate the configuration file using `nginx -t` comma
 
 To use the dynamic module we added to the nginx configuration, go on and create a new location context in the configuration file:
 
-```
+```nginx
 location = /thumb.png {
             image_filter rotate 180;
         }
+```
+
+# Performance
+
+## Headers and expires
+
+We are now going to cover some useful modules and directives outside of the nginx fundamental configuration. Let's now understand how to configure `expires` headers.
+
+The `expires` response header informs the client how long it can cache that response for. As an example, imagine a piece of content on your website that does not change often. In this case, you can tell the browser to cache a copy of that content for a relatively long time. Doing so will avoid any future request to the server for that specific content, until its cache is expired. So requests to our server will be reduced and the website load time on the client-side will reduce drastically.
+
+Let's now see how to set a generic response header in the nginx configuration file:
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!"
+        }
+    }
+}
+```
+
+Now accessing this path through a curl request with `I` flag will return the response headers:
+
+```
+curl -I http://167.99.93.26/thumb.png
+```
+
+We can now configure this location as a typical static resource by setting the `Cache-Control` header to `public`, telling the receiving client that this response can be cached in any way. Along with this directive you need to use other directives as below:
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 1M
+        }
+    }
+}
+```
+
+The `Pragma` header is just the older version of `Cache-Control` header. The `Vary` header says that the contents of this response can vary based on the value of the _request_ header `Accept-Encoding`. Finally the `expires` header with a value based on nginx time notation, will set the time during which the cache is considered valid client-side. Capital `M` in nginx time notations translates to month.
+
+> Note that the `expires` literal name that you use as nginx directive will then appear in the actual response headers as `Expires`. This directive also inserts another response header as `Cache-Control: max-age=[duration-in-seconds]`.
+
+In order to enable caching for some specific resources you can use a regular expression case-insensitive match in the location URI:
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location ~* \.(css|js|jpg|png)$ {
+            access_log off;
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 1M
+        }
+    }
+}
+```
+
+> Note that you can turn access logs off on such location contexts.
+
+## Compressed responses with `gzip`
+
+You can improve static resource delivery from your nginx server by configuring compressed (gzipped) responses. If a request arrives from a client, in which the request header `Accept-Encoding` is set to `gzip`, you can configure your nginx server to respond with the corresponding encoding which will compress the response on the server and therefore reduce the time it takes for the response to arrive back at the client. The browser would then have to decompress the response before rendering it.
+
+Step one to active this feature on the server, is to enable the `gzip` compression. To to this, within the `html` context, you would have to set `gzip on;` directive. Note that this is a standard directive type, meaning that while enabling it in the `http` context, every child context of the `http` context will be able to override it.
+
+> `gzip` comes with the nginx core.
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    gzip on;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+Next, you have to configure the compression. The directive to use here is `gzip_comp_level` determining the level of compression, as the name says. Lower levels of compression will result is larger file, but requiring less server resource, and higher levels will result in smaller files, but requiring more server resource. It is important to know that in levels higher then `5` the reduction in file size is not very significant, so generally a value between `3` and `4` would be nice.
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+You then need to set the file types or mime types to apply this compression to. For this, you need to use the `gzip_types` directive and setting any number of mime types as arguments.
+
+```
+events {}
+
+
+http {
+
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server{
+        listen 80;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        location = /thumb.png {
+            add_header my_header "Hello world!";
+            add_header Pragma public;
+            add_header Vary Accept-Encoding;
+            expires 60m
+        }
+    }
+}
+```
+
+> `gzip_types` is an array directive. So alternatively, you can write the mime types in separate lines if you need to in any case.
+
+Again, keep in mind that setting these directives on your nginx server is not enough to make the compression happen on your server responses. The client that is sending requests to your server should indicate that they are willing to accept compressed responses. This is where this heading that we set previously in our location context:
+
+```
+add_header Vary Accept-Encoding;
 ```
