@@ -1834,4 +1834,98 @@ http {
 }
 ```
 
-Next, you can enable a simple cache for your SSL sessions.
+> `31536000` is the duration of 1 year in seconds.
+
+Next, you can enable a simple cache for your SSL sessions. We mentioned that an SSL connection involves a handshake between the client and the server. This session cache allows the server to cache those handshakes for a given amount of time, thus improving SSL connection times. To configure a session cache zone use the `ssl_session_cache` directive. The default cache type for this directive is `builtin`, which is limited to a worker process and therefore it is not very useful. Instead then, we set this to `shared`, meaning the session cache is kept in memory and can be accessed in any worker process. Make sure you also give the cache a name and a size, separated by `:`.
+
+```
+events {}
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+You also have to set the `ssl_session_timeout` to determine how long to keep a session cached for. `4h` could be nice setting.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m;
+        ssl_session_timeout 4h;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+Finally, in order to use this session cache without actually having the server access the cache, you can enable `ssl_session_tickets`. This means to provide the browser with a ticket, which validates the SSL session. This ticket is issued by the server, so it will be trusted, and allows us to bypass reading from the session cache.
