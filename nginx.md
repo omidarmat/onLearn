@@ -1076,6 +1076,8 @@ The `expires` response header informs the client how long it can cache that resp
 
 Let's now see how to set a generic response header in the nginx configuration file:
 
+[MISSING NOTES]
+
 Now to test this you can use a curl like this to try uncompressed responses:
 
 ```
