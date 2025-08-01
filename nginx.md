@@ -2047,3 +2047,314 @@ The final modification you can make on the limit zone is the `nodelay` paramter.
 ```
 limit_request zone=MYZONE burst=5 nodelay;
 ```
+
+## Basic Auth
+
+Let's say you have an area of your website not intended for your users to have access to, like an `/admin` path. This would somewhere you would want to completely deny unauthorized requests. This would be a situation where you would want to apply some basic authentication.
+
+Basic authentication requires a basic username and password layer in order to grant access to a specific part of your website. To be able to implement such authentication, you first need to generate a password file with `.htpasswd` format. To do this, you will again need to use the Apache Bench tools. The command to use is:
+
+```
+htpasswd -c /etc/nginx/.htpasswd user1
+```
+
+Let's break down the command:
+
+- `-c`: indicates that you want the password to be generated in a file. It accepts a path to the `.htpasswd`.
+- `[username]`: a given username for which the password will be generated.
+
+This command will prompt you for a new password and confirmation. The generated file will include a string in this format:
+
+```
+[username]:[hashed-password]
+```
+
+You can then implement basic authentication for a specific location context in your nginx server, using `auth_basic` directive. You also need to use `auth_basic_user_file` directive to tell nginx where to find the user password file.
+
+```
+events {}
+
+http {
+    include mime.types;
+
+    limit_request_zone $request_uri zone=MYZONE:10m rate=60r/m;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m;
+        ssl_session_timeout 4h;
+        ssl_session_tickets on;
+
+        location / {
+            auth_basic "Secure Area";
+            auth_basic_user_file /etc/nginx/.htpasswd;
+
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+## Hardening nginx
+
+Let's now further secure your nginx server. An obvious, but often overlooked, action in this regarg is to keep all nginx supporting software up-to-date. This is very simple. You first need to update all APT repos and sources.
+
+```
+sudo apt-get update
+```
+
+And then upgrade all packages:
+
+```
+sudo apt-get upgrade
+```
+
+The next thing to keep an eye for, is the version of your nginx and check it against the official nginx change log to see if there is any critical updates worth recompiling nginx for. Someone can remotely get the version of your nginx server using this curl:
+
+```
+curl -Ik https://167.99.93.26/
+```
+
+In the headers, you can see:
+
+```
+Server: nginx/1.13.10
+```
+
+So it would be a nice safty measure to hide this version number. To do this, you can set the `server_tokens` directive to `off` in the `http` context of your nginx configuration file. Now curling for response headers of your server will return:
+
+```
+Server: nginx
+```
+
+As another useful safty measure, you can remove unused or dangerous nginx default built-in modules. You might never use some of them. As with adding modules, you can also remove modules from nginx. To do this, you should navigate to the nginx source code directory in your terminal, and then type `./configure --help`. In the returned list, you can see some of the modules prefixed with `--without`. These are modules that will be added to nginx by default, and you can prevent them by using their repective flags in the configuration command. You can also see a filtered list of these modules using:
+
+```
+./configure --help | grep without
+```
+
+Be careful not to remove important modules however. A prime candidate to remove is `http_autoindex_module`. This allows nginx to respond to a directory request with the content of that directory. This is not something we want for public-facing website. So you can add `--without-http_autoindex_module` flag to the rest of your nginx configuration flags. Then compile your source code use `make`, and then `make install` to re-install nginx with the new configuration.
+
+### `X-frame` options
+
+This will prevent malicious users embedding your site into their own for what is known as click jacking. To test this, you can simply create an HTML file on your local machine, and put an `<iframe>` tag in the `<body>`, with the `src` attribute set to the IP address of the target server. Opening this file in the browser, will simply display the server response within your file, on a totally different domain. While you may sometime want this to be available as a feature for your website, it is certainly not a good idea if your website contains user-specific pages, such as logged in pages, etc. To prevent this, you should tell the browser not to allow this. This is done by adding a specific header to your server responses: `X-Frame-Options`
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    server_tokens off;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        add_header X-Frame-Options "SAMEORIGIN";
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m;
+        ssl_session_timeout 4h;
+        ssl_session_tickets on;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+Setting `X-Frame-Options` header to `SAMEORIGIN` will tell the browser will tell the browser that only if the domain embedding the content matches that of the content itself allow this. Now any malicious site trying to embed your website into theirs will receive an blank iframe window.
+
+### `X-XSS-Protection` header
+
+`X-XSS-Protection` is the header to prevent cross-site scripting attacks. Setting this to `1; mode=block` will tell the browser that if it detects corss-site scripting, disable loading the page.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    server_tokens off;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-XSS-Protection "1";
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m;
+        ssl_session_timeout 4h;
+        ssl_session_tickets on;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+## LetsEncrypt SSL certificates
+
+LetsEncrypt is a relatively new provider of free, automated SSL certificates. Using LetsEncrypt is one thing, but in order to generate certificates and automate their renewal, we will use a tool called `certbot`.
+
+> LetsEncrypt does not issue SSL certificates for IP addresses. You need to configure a domain name for your server.
+
+To make your server reachable, install nginx on your server using `apt-get install nginx`. Then you can check the service status using `ps aux | grep nginx`. You can now reach your server with a curl to your domain. Then go on and edit the nginx configuration file like this:
+
+```
+events {}
+
+
+http {
+    server {
+        listen 80;
+
+        location / {
+            return 200 "Hello form nginx."
+        }
+    }
+}
+```
+
+Then reload nginx on your server using `nginx -s reload`. Now your server is responding based on your new configuratin file. Notice that currently, your server is only reachable via `http`. We want to enable HTTPS. Let's now generate some SSL certificates and get it to working with the help of `certbot` and LetsEncrypt.
+
+Let's first install `certbot`. Navigate to `certbot.eff.org`. Select the relevant server software on their website, which would be nginx, and the system as the operating system of your server. Start and proceed with the certbot install commands. You would then have the certbot tools available. Running `certbot --help` will give you a list of available commands.
+
+Let's now generate the SSL certificates via the LetsEncrypt servers. It is important to asses the specific needs of your web server before continuing with generating certificates. Certbot allows you to generate certificates without installing them, or, by default, installs them, meaning your nginx configuration file will be modified with all the necessary directives to listen for HTTPS connections, which is pretty useful since certbot will also configure the right cypher suits and a host of other SSL parameters. But this might not be ideal on an existing server configuration where edits could cause troubles. For this example though, we will let certbot install the certificates.
+
+To generate and install certificates for our nginx server, you can run:
+
+```
+certbot --nginx
+```
+
+but before that, there is another step to go through. If you want to opt for `certonly` command, you would also have to provide a domain name using the `d` flag. The reason you don't need to add a `-d` flag with the default command above is that certbot will inspect the configuration file and detect the domain name you mentioned in it. It will also figure out where to insert the configuration directives for SSL. So since we are going to use the default certbot command to generate and install certificates, let's go into the configuration file and define the server name.
+
+```
+events {}
+
+
+http {
+    server {
+        listen 80;
+        server_name mydomain.ir;
+
+        location / {
+            return 200 "Hello form nginx.";
+        }
+    }
+}
+```
+
+Save and reload nginx with `nginx -s reload`, and then run the default certbot command mentioned above. This will ask you some questions, and finally, it will generate a directory on your server at `/etc/letsencrypt/live/mydomain.ir/` and place generated certificates in there.
+
+> Notice that certbot reloads your nginx after generating and installing the certificates.
+
+You can now reach your server over HTTPS. You can also inspect your nginx configuration file to see what modifications are made by certbot.
+
+The next point is the certificate renewal. Unlike traditional certificates, that was valid for one or two years at a time, LetsEncrypt certificates are valid for 90 days only. So renewing process would have to be performed frequently. We can automate the renewal process, so you won't have to worry about the process again.
+
+To renew the certificate manually, run:
+
+```
+certbot renew
+```
+
+Certbot will decide whether or not the certificate is due for renewal and if not, skip your command. You can however, try to test the renewal process to make sure it is effective when needed:
+
+```
+certbot renew --dry-run
+```
+
+For certificates to be renewed, they don't have to be expired, but only close to expiring. So it is a good practice to run renewal command daily. If it is the proper time to renew, certbot will do, if it is not, it will skip. To run the renewal command daily, you can use `cronjob`. To do this, run:
+
+```
+crontab -e
+```
+
+Where `-e` is for editing cronjob entries, choose to edit with an editor (nano preferably), and add a cronjob right at the bottom of this file:
+
+```
+@daily certbot renew
+```
+
+This will run the command everyday at midnight. Write the command with `Ctrl + o` and exit. You can now list your cronjob entries using:
+
+```
+crontab -l
+```
+
+Now renewing your SSL certificate will be handled automatically.
+
+# Reverse Proxy and load balancing
