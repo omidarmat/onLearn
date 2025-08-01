@@ -1957,4 +1957,93 @@ Let's break down the command:
 
 So the command above will run 10 requests in total. Results show the number of transactions as "10 hits", and successful transactions as 10. So no limiting is implemented clearly.
 
-Now to implement rate limiting to the configuration file, like the fastcgi cache and ssl session cache, you can define a new memory zone to track connection limits. To do this use `limit_req_zone` directive in the `http` context. This directive accepts first a key with which to identify how rate limiting is applied. For instance, if you insert `$server_name`, rate limiting will be applied based on server name, so essentially, all requests to our server will be limited. You can also opt to use `$binary_remote_addr` rate limiting will be applied per user, as each client will have a unique address. This is perfect for rate limiting a login form, and therefore stop or slow down a brute force attack. You can also use `$request_uri`,
+Now to implement rate limiting to the configuration file, like the fastcgi cache and ssl session cache, you can define a new memory zone to track connection limits. To do this use `limit_req_zone` directive in the `http` context. This directive accepts first a key with which to identify how rate limiting is applied. For instance, if you insert `$server_name`, rate limiting will be applied based on server name, so essentially, all requests to our server will be limited. You can also opt to use `$binary_remote_addr` rate limiting will be applied per user, as each client will have a unique address. This is perfect for rate limiting a login form, and therefore stop or slow down a brute force attack. You can also use `$request_uri`, which will limit connections per request URI, regardless of the client IP or anything else. If a certain URI, for instance `/thumb.png`, receives more connection requests than the zone allows, rate limiting will be applied.
+
+The second paramter you should give to this directive is the zone name in addition to the zone's memory size, applied by `zone`.
+
+Finally, the last parameter for this directive tells the numeric value about the rate. This paramter takes a unique format of number of requests per an nginx time format.
+
+```
+events {}
+
+
+http {
+    include mime.types;
+
+    limit_request_zone $request_uri zone=MYZONE:10m rate=60r/m;
+
+    gzip on;
+    gzip_comp_level 3;
+    gzip-types text/css text/javascript;
+
+    server {
+        listen 80;
+        server_name 167.99.93.26;
+        return 301 https://$host$request_uri;
+    }
+
+    server{
+        listen 443 ssl http2;
+        server_name 167.99.93.26;
+
+        root /site/demo;
+
+        ssl_certificate /etc/nginx/ssl/self.crt;
+        ssl_certificate_key /etc/nginx/ssl/self.key;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        ssl_prefer_server_ciphers on;
+        ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+        ssl_dhparam /etc/nginx/ssl/dhparam.pem;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        ssl_session_cache shared:SSL:40m;
+        ssl_session_timeout 4h;
+        ssl_session_tickets on;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}
+```
+
+> Note that the rate number applied in the directive does not mean that the server can accept 60 requests at once, and then no more for the remainder of that minute. Rather, it sets a frequency of requests for this time frame. In other words, 60r/m is the same as 1r/s or 3600r/h. So nginx will apply rate limits evenly, thus preventing traffic spikes.
+
+Now with the rate limit zone created, you can add it to your server context if you want it to be applied to all your requests. You can also add it in a location context to apply it to certain requests. To do this, use `limit_request` directive.
+
+```
+location / {
+            limit_request zone=MYZONE;
+            try_files $uri $uri/ =404;
+        }
+```
+
+Running the previous test with nginx reloaded, you will now see that only the very first request will be successful as `200`, and the remaining 9 requests are responded with `503` (service unavailable) status code. So again, as long as you don't exceed 1 request per second, your requests will be responded with `200` with no rate limiting applied.
+
+### Burst
+
+The previous configuration resulted in the default behavior of rate limiting in nginx. You can alter this using another parameter in the `lmit_req_zone` directive: `burst=[number]`
+
+```
+limit_request_zone $request_uri zone=MYZONE:10m rate=60r/m burst=5;
+```
+
+This will allow a burst of requests to all implementation of this zone. To take on a more granular control over burst allowance, you can apply `burst` in the `limit_req` directive in rate implementations.
+
+```
+limit_request zone=MYZONE burst=5;
+```
+
+Setting a burst changes the rate limiting default behavior (immediately blocking all requests exceeding the limit) to allow a burst of requests to also be fulfilled. So the server will now accept `1r/s` plus `5` burst of requests within the second. It does not however mean that the burst will be responded to immediately. Instead, the burst would have to adhere to the specified limit, and that they have to wait and won't be rejected with 503 error. This provides a bit of a buffer and rather than creating hard limits, allows us to _shape_ the traffic. You can now test the limiting again. Notice the elapsed time on the test results.
+
+### No delay
+
+The final modification you can make on the limit zone is the `nodelay` paramter. This is only applicable to a zone that defines a burst value. Essentially, the `nodelay` parameter says serve the allowed burst requests as quickly as possible (not adhering to the applied rate limit), but still maintain the applicable time limit for any new requests.
+
+```
+limit_request zone=MYZONE burst=5 nodelay;
+```
