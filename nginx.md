@@ -1929,3 +1929,32 @@ http {
 ```
 
 Finally, in order to use this session cache without actually having the server access the cache, you can enable `ssl_session_tickets`. This means to provide the browser with a ticket, which validates the SSL session. This ticket is issued by the server, so it will be trusted, and allows us to bypass reading from the session cache.
+
+## Rate limiting
+
+Rate limiting acts as a traffic light for connections. Common reasons to rate limit a server can be:
+
+1. Add a layer of security against brute force attacks
+2. Preventing traffic spikes to maintain a more reliable server
+
+To test rate limiting on a server you can use `siege` which is more focued on load testing a server rather benchmarking it. To install siege:
+
+```
+sudo apt-get install siege
+```
+
+To run a test with siege:
+
+```
+siege -v -r 2 -c 5 https://167.99.93.26/thumb.png
+```
+
+Let's break down the command:
+
+- `-v`: verbose logging the results
+- `-r`: the number of tests to run
+- `-c`: the number of concurrent connections
+
+So the command above will run 10 requests in total. Results show the number of transactions as "10 hits", and successful transactions as 10. So no limiting is implemented clearly.
+
+Now to implement rate limiting to the configuration file, like the fastcgi cache and ssl session cache, you can define a new memory zone to track connection limits. To do this use `limit_req_zone` directive in the `http` context. This directive accepts first a key with which to identify how rate limiting is applied. For instance, if you insert `$server_name`, rate limiting will be applied based on server name, so essentially, all requests to our server will be limited. You can also opt to use `$binary_remote_addr` rate limiting will be applied per user, as each client will have a unique address. This is perfect for rate limiting a login form, and therefore stop or slow down a brute force attack. You can also use `$request_uri`,
