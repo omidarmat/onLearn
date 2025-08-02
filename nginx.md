@@ -2358,3 +2358,358 @@ crontab -l
 Now renewing your SSL certificate will be handled automatically.
 
 # Reverse Proxy and load balancing
+
+## Prerequisites
+
+In this section, we are not actually going to use nginx as a web server. However, reverse proxying and load balancing are two key concepts in working with nginx.
+
+To start working with reverse proxying and load balancing, you can run nginx on your local machine and test it. You can also create a new `nginx.conf` file in your local `/nginx` directory, and start nginx with this new configuration file specified.
+
+As usual, you should start your configuration file with an `events` block, and then an `http` block within which you would then insert a `server` block. You can use the `listen` directive in the server context and set it to `8888`, and then leave out the `server_name` directive, since it will automatically default to `localhost`. Then insert a basic location block:
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            return 200 "Hello from nginx.\n"
+        }
+    }
+}
+```
+
+You can now run nginx with this configuration file, by providing the absolute path to it:
+
+```
+nginx -c /Users/omidarmat/nginx/nginx.conf
+```
+
+You nginx server must be up and running. You can test it by curl:
+
+```
+curl http://localhost:8888
+```
+
+You should receive the specified return result.
+
+To be able to test load balancing and reverse proxying, we will be using simple PHP servers. This is built into PHP and can be fired up from the command line without any configuration files. To run a simple PHP server you can:
+
+```
+php -S localhost:9999
+```
+
+PHP's default server behavior is configured to server the directory it is running from. If you now try to navigate to `localhost:9999` in your browser you will get `404` since you didn't specify a path or have an index file in your root (nginx) directory. An alternative to run the PHP server in a directory is to simply pass it some file, the result of that file being returned. To do this, you can create a text file:
+
+```
+touch response.txt
+```
+
+And in it:
+
+```
+Hello from PHP server.
+```
+
+Now if you run the PHP server and give it the text file:
+
+```
+php -S localhost:9999 response.txt
+```
+
+And then try to approach the PHP server with curl:
+
+```
+curl http://localhost:9999
+```
+
+You will see the content of the text file in response.
+
+## Reverse proxy
+
+A reverse proxy acts as an intermediary between a client and a resource itself. So in our specific case in this lesson, nginx will be acting as an intermediary between a client (browser) and a PHP backend service. This way the client would think that all requests are sent to and received from nginx itself, while nginx is only in the middle, reverse proxying.
+
+To demonstrate the most basic reverse proxy with nginx, you must have the nginx server running (we had it running on `localhost:8888`), and then a PHP server:
+
+```
+php -S localhost:9999 response.txt
+```
+
+We are now going to access our php server via our nginx server. We want to do so by accessing:
+
+```
+curl http://localhost:8888/php
+```
+
+So we are asking the nginx server for the `/php` path. Let's go to the nginx configuration file we started editing recently:
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            return 200 "Hello from nginx.\n"
+        }
+
+        location /php {
+            proxy_pass "http://localhost:9999/";
+        }
+    }
+}
+```
+
+> Note that we need the `/` trailing slash at the end of the `proxy_pass` directive value. The reason is how nginx handles proxy paths. Using the trailing slash will make it so that when you access `localhost:8888/php`, the PHP server itself will see the request URI as `/`, so somehow the root path. If you omit the trailing slash however, accessing the same path `localhost:8888/php` will result in PHP server taking the request URI as `/php` which is not what we want.
+
+You can now reload nginx, and try to access php via nginx.
+
+```
+curl http://localhost:8888/php
+```
+
+You will get `Hello from PHP server`. If you curl for `http://localhost:8888/` you will get `Hello from nginx server`. There is no limit to what you can do. You can reverse proxy a real website in the world from your nginx server:
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            return 200 "Hello from nginx.\n"
+        }
+
+        location /php {
+            proxy_pass "http://localhost:9999/";
+        }
+
+        location /nginxorg {
+            proxy_pass "http://nginx.org/";
+        }
+    }
+}
+```
+
+Try to curl for `http://localhost:8888/nginxorg` and you'll get the official nginx website on your domain :O
+
+Another important aspect of using nginx as reverse proxy as passing custom headers to either the proxied server (the PHP server), or to the client (on the reverse part of the proxy). You can pass headers to client by using the standard `add_header` directive.
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            return 200 "Hello from nginx.\n"
+        }
+
+        location /php {
+            add_header proxied nginx;
+            proxy_pass "http://localhost:9999/";
+        }
+
+        location /nginxorg {
+            proxy_pass "http://nginx.org/";
+        }
+    }
+}
+```
+
+Now if you curl the `/php` path again with the `I` flag, you will see the header you added. Now to add a header that gets sent to the proxied server:
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            return 200 "Hello from nginx.\n"
+        }
+
+        location /php {
+            add_header proxied nginx;
+            proxy_set_header proxied nginx;
+            proxy_pass "http://localhost:9999/";
+        }
+
+        location /nginxorg {
+            proxy_pass "http://nginx.org/";
+        }
+    }
+}
+```
+
+So the `proxy_set_header` will take care of passing the header in the proxy request toward the proxied server.
+
+## Load balancing
+
+A load balancer should acheive 2 main objectives:
+
+1. Ability to distribute requests to multiple servers, thus reducing the load on one individual server.
+2. Provide redundancy, meaning that one or more of your servers fail for whatever reason, the load balancer needs to recognize that and redirect requests to any of the remaining available servers.
+
+> Note that when we say _redirect_ or _distribute_, we mean _proxy_.
+
+So the first requirement to test is going be having multiple servers and being able to distribute requests between them using the nginx server. To do this, let's run some php servers. To make the test results easily understandable for us, we will make these servers return a simple identifying text response. So let's put some identifying text in some files.
+
+```
+echo "PHP server 1" > s1
+echo "PHP server 2" > s2
+echo "PHP server 3" > s3
+```
+
+> A php server does not care about the file formats that we are going to feed it.
+
+Let's now start the php servers in separate terminals:
+
+```
+php -S localhost:10001 s1
+php -S localhost:10002 s2
+php -S localhost:10003 s3
+```
+
+> Note that in a real-wold scenario these three servers would most likely serve the same content.
+
+You can now access each separately. Let's now configure load balancing. Let's create a new nginx configuration file called `load-balancer.conf`, and in it:
+
+```
+events {}
+
+
+http {
+
+    server {
+        listen 8888;
+
+        location / {
+            proxy_pass "http://localhost:10001/";
+        }
+    }
+
+}
+```
+
+Let's now create a while loop using the terminal and curl the server repeatedly:
+
+```
+while sleep 0.5; do curl http://localhostL8888; done
+```
+
+You will see now the response from the first PHP server since we are proxying requests to only that server. Let's now implement the actual load balancing. To do this, you first have to create an `upstream`. It is a context in nginx that group servers with the ability to add some options to the upstream. Think of it as a named collection of servers that share some commonality, in most cases being that they serve the same content.
+
+The `upstream` block should be defined in the `http` context.
+
+```
+events {}
+
+
+http {
+
+    upstream php_servers {
+        server localhost:10001;
+        server localhost:10002;
+        server localhost:10003;
+    }
+
+    server {
+        listen 8888;
+
+        location / {
+            proxy_pass "http://localhost:10001/";
+        }
+    }
+
+}
+```
+
+Now to proxy the requests to the upstream, update the `proxy_pass` directive as:
+
+```
+events {}
+
+
+http {
+
+    upstream php_servers {
+        server localhost:10001;
+        server localhost:10002;
+        server localhost:10003;
+    }
+
+    server {
+        listen 8888;
+
+        location / {
+            proxy_pass http://php_servers;
+        }
+    }
+
+}
+```
+
+Reload nginx, and then run that while again:
+
+```
+while sleep 0.5; do curl http://localhostL8888; done
+```
+
+You will now see that each request is responded by a different php server among the 3 php servers, creating a perfect _round robin_ cycle.
+
+Let's now go for the second objective of a load balancer, providing with some redundancy. You can test this by killing one or two of your PHP servers.
+
+### Load balancer options
+
+Besides load balancing with the round robin cycle, you can implement load balancing based on other criteria. The first that we are going to try is _sticky sessions_, meaning a request is bound to the user's IP address, and always, when possible, proxied to the same server. This allows for maintaining user sessions for something like login state, etc.
+
+#### Sticky sessions
+
+To do this you can add the `ip_hash` option to the upstream:
+
+```
+upstream php_servers {
+        ip_hash;
+        server localhost:10001;
+        server localhost:10002;
+        server localhost:10003;
+    }
+```
+
+This will create and maintain a memory of IP addresses and proxy requests accordingly. Start up the nginx server again and perform the while loop again. You will see that all your requests will be proxied to the first PHP server, as the IP hash is detecting that all requests are coming from the same IP address and therefore proxies requests to the same server. You do of course get the redundancy provided by nginx. So if server 1 goes down, all your requests will be redirected toward the next available server. Starting server 1 back up will cause your requests proxied to the first server again.
+
+#### Active connections or load
+
+The next alternative is to distribute requests based on active connections or load. In this method, instead of simply picking the next server in the upstream queue, nginx will proxy requests to the server with the least amount of active connections.
+
+To test this, we can create a new PHP file to serve it with php server 1. This file will simply delay the server response by a `sleep` function of 20 seconds, and this will maintain an active connection, which we expect to be detected by nginx. Start the server 1 back up.
+
+Now if you perform the while loop again, you will get stuck at server 1 since you are still balancing the load based on the sticky session method, with the `ip_hash` option. To make this happen based on active connections, alter the configuration file using `least_conn` option:
+
+```
+upstream php_servers {
+        least_conn;
+        server localhost:10001;
+        server localhost:10002;
+        server localhost:10003;
+    }
+```
+
+Reload the configuration and start a request loop, which will get stuck at the first server. Then run another while loop. You will see that requests sent by the second loop will be responded to by server 2 and 3, not 1, since it is busy responding to the first loop with its active connection.
