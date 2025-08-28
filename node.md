@@ -47,6 +47,10 @@
       - [**Parse URL parameters**](#parse-url-parameters)
     - [**Slugify module**](#slugify-module)
       - [**Using slugify**](#using-slugify)
+    - [**JWT**](#jwt)
+      - [`jwt.sign`](#jwtsign)
+      - [`jwt.verify`](#jwtverify)
+    - [**JWT verification error**](#jwt-verification-error)
     - [**Nodemon module**](#nodemon-module)
   - [**Streams**](#streams)
     - [**Streams in practice**](#streams-in-practice)
@@ -71,6 +75,17 @@
     - [**Morgan**](#morgan)
   - [**Creating custom middleware**](#creating-custom-middleware)
   - [**Express regular workflow**](#express-regular-workflow)
+- [**Athentication \& Authorization**](#athentication--authorization)
+  - [**JSON Web Token (JWT)**](#json-web-token-jwt)
+    - [**JWT creation**](#jwt-creation)
+    - [**JWT structure**](#jwt-structure)
+    - [**JWT validation**](#jwt-validation)
+      - [**Check if token exists in the request**](#check-if-token-exists-in-the-request)
+      - [**Validate token**](#validate-token)
+      - [**Check if the user still exists in database**](#check-if-the-user-still-exists-in-database)
+      - [**Check if user changed password after JWT was signed**](#check-if-user-changed-password-after-jwt-was-signed)
+      - [**Put fresh user on the request object**](#put-fresh-user-on-the-request-object)
+  - [Authentication in practice](#authentication-in-practice)
 - [**Database**](#database)
   - [**MongoDB**](#mongodb)
     - [**MongoDB key features**](#mongodb-key-features)
@@ -948,6 +963,58 @@ console.log("Fresh Avocados", {
 // fresh-avocados
 ```
 
+### **JWT**
+
+**`3-rd party`**
+
+This library is used to sign and verify JSON web tokens for authentication purposes. Requires NPM installation:
+
+```
+npm install jsonwebtoken
+```
+
+Also needs to be required in a file:
+
+```js
+const jwt = require("jsonwebtoken");
+```
+
+#### `jwt.sign`
+
+used to sign a JWT. This method accepts first, an object containing the **payload**, which is usually the **ID** of the user document. Then the **secret string**, stored on the `config.env` file on the server, should be passed into this method. Afterwards, an object of options can be passed into the sign method.
+
+The secret string should be **unique** string consisting of **at least 32 characters**, allowing us to use **HAS256** encryption. The token’s header will be generated automatically.
+
+Into the object of options, we can specify the JWT **expiration time**. This time is normally stored in the configuration file.
+
+```js
+// config.env
+JWT_SECRET=hot-butter-popcorn-cold-cheese-chips
+JWT_EXPIRES_IN=90d
+```
+
+To generate a token for logging in or signing up a user:
+
+```js
+const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+  expiresIn: process.env.JWT_EXPIRES_IN,
+});
+```
+
+#### `jwt.verify`
+
+This method receives first the token that should be verified, then the secret string stored on the server, then a callback function which will run once the verification process is done. This method performs an asynchronous task and it should be awaited. We may need to promisify this method to follow the `async/await` code style.
+
+```js
+const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+```
+
+The result of the verify method is the decoded payload of the JWT. This payload includes an `iat` property containing a timestamp representing the time when the JWT was signed.
+
+### **JWT verification error**
+
+A JWT might be manipulated or expired. In case the token is manipulated and therefore invalid, an error will be generated with the `name` property of `JsonWebTokenError`. In case the token is expired, the `name` property would be `TokenExpiredError`.
+
 ### **Nodemon module**
 
 **`3rd-party`**
@@ -1491,6 +1558,55 @@ package.json
 package-lock.json
 .prettierrc
 ```
+
+# **Athentication & Authorization**
+
+## **JSON Web Token (JWT)**
+
+This is a stateless solution for performing authentication measures. All the communication through which the authentication process is executing should be performed over HTTPS.
+
+### **JWT creation**
+
+After a user’s login credentials are considered valid, a unique JWT is created using a constant secret string stored on the server. This process is called signing the JWT. This JWT is sent back to the client in a cookie. At this point the user is already logged in.
+
+### **JWT structure**
+
+The JWT structure consists of 3 parts which are used for JWT validation:
+
+- Header: contains metadata about the token. This metadata is encoded, not encrypted.
+- Payload: contains any data we want. This data is encoded, not encrypted.
+- Verify signature: this unique part is created using the header, the payload, and the secret string stored on the server.
+
+### **JWT validation**
+
+From now on, the client will send the JWT back to the server along with each request. Now the server should check if the JWT is valid. If so, the requested data will be sent back to the client. The validation process contains 4 steps.
+
+#### **Check if token exists in the request**
+
+We should first check if the token has been sent by the client, to see if there actually is any token.
+
+#### **Validate token**
+
+If there is a token, this step basically checks:
+
+1. If the token is not manipulated: the ‘verify’ function takes the header and the payload, and attempts to create a test signature with the secret string stored on the server. It this test signature matches the verify signature that already exists within the JWT, then the JWT is considered valid. If anything was modified in the header or the payload, the test signature would not match the verify signature, and an error would be generated.
+2. If the token has not expired: the verify method will automatically check if the token has not expired yet. It uses the expiring option set on the token when it was signed. If the token was expired, an error would be generated.
+
+#### **Check if the user still exists in database**
+
+We should check whether or not the user has been deleted after the token was signed. If the user was deleted, the token would still exist, but we don’t want to let anyone use the token. This would typically use the ID stored in the JWT to find the user document with that ID, and if there is a user with that ID in the database, this step is checked.
+
+#### **Check if user changed password after JWT was signed**
+
+If someone gets access to the account of a user, the user might change their password to protect themselves against that attack. So if this happened after a JWT was signed, we should consider that JWT as invalid. This check is typically performed through an instance method that compares **two timestamps**: one representing the time when the token was signed, accessible at the ‘iat’ property of the decoded payload, and one representing the time when the password was changed, if it was changed ever.
+
+#### **Put fresh user on the request object**
+
+After all steps are successfully verified, then the user document found in the process is inserted into the request object, where it can be found in next middleware, like the authorization middleware, protected by these stages, gathered together as a protection middleware.
+
+## Authentication in practice
+
+To implement authentication, you can use a library called [JWT](#)
 
 # **Database**
 
