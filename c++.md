@@ -313,6 +313,14 @@ Related to this, in C++, we have `l-value` and `r-value`. The `r-value` is the c
 
 # Controlling program flow
 
+There are 3 extremely important basic building blocks of programming:
+
+1. Sequence: Ordering statements sequentially
+2. Selection: Making decisions
+3. Iteration: Looping or repeating
+
+With these 3 building blocks you can implement any algorithm. Learning a new programming language is to just learn the syntax for these 3 programming building blocks in that specific language.
+
 ## Switch statement
 
 The switch statement syntax is pretty similar to that of JavaScript. Keep in mind that it is best practice to include a `break` statement for each `case` except you have a good reason not to. When a `case` control expression evaluates to true, its statements will be executed and the program will _fall through_ and go on to the next `case`s without checking their control expressions and execute the cases until it reaches to a `break` statement. That's why you really need to use `break`s in a switch statement.
@@ -366,5 +374,78 @@ switch (heading) {
     case right:
         cout << "Going right";
         break;
+    default:
+        cout << "Ok" << endl;
 }
 ```
+
+> In the example above, if you don't handle all possible values of `heading` in the switch statement, the compiler will warn you about them. You should either handle them explicitly, or provide a default statement like above.
+
+## Conditional operator
+
+This is the exact same operator as in JavaScript. Best practice is not to nest conditional operators in each other.
+
+```c++
+// conditional_expression ? expression_1 : expression_2
+cout << num << " is " << ((num % 2 == 0) ? "even" : "odd") << endl;
+```
+
+# Looping
+
+Looping is also called iteration or repetition. Every loop is made up of 2 parts:
+
+1. Loop condition
+2. Loop body: the statement or the block of statements that will be repeated.
+
+C++ has 3 main looping structures: `for` loop, `while` loop, and `do-while` loop. The `for` loop has also a `range-based` variant for iteration over a collection of elements in an array, or vector.
+
+1. `for` loop: Iterate a specific number of times
+2. `range-based for` loop: One iteration for each element in a range or collection
+3. `while` loop: Iterate while a condition remains true. Stop when the condition becomes false. Check the condition **at the beginning of every iteration**.
+4. `do-while` loop: Iterate while a condition remains true. Stop when the condition becomes false. Check the condition **at the end of every iteration**.
+
+## `for` loop
+
+The syntax of a `for` loop is as:
+
+```c++
+// With no code block
+for (initialization; condition; increment)
+    statement;
+
+// With code block
+for (initialization; condition; increment) {
+    statement;
+}
+```
+
+> In the increment part of the loop, remember that `++i` or `i++` are not different.
+
+Here are some example to also see different options available. You can initialize the counter variable as:
+
+```c++
+for (int i {1}; i <= 5; ++i) //this initialization is preferred
+    cout << i << endl;
+
+for (int i {1}; i <= 5; ++i)
+    cout << i << endl;
+```
+
+> Note that the value of `i` counter variable is only accessible inside the loop.
+
+You can declare and initialize two variables for the loop and increment them in the loop. Remember that you should separate them with `,`:
+
+```c++
+for (int i {1}, j {5}; i <= 5; ++i, ++j) {
+    cout << i << " * " << j << " : " << (i * j) << endl;
+}
+```
+
+You can have an endless loop by:
+
+```c++
+for (;;)
+    cout << "Endless loop" << endl;
+```
+
+> Best practice is not to write `for` loops with missing expressions and complicated expressions with comma operators.
