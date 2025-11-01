@@ -463,3 +463,286 @@ for(unsigned i{0}; i < nums.size(); ++i) {
 ```
 
 > Note that since `nums.size()` returns an unsigned integer (the size of a vector cannot be negative), we have declared `i` counter as an `unsigned` integer. Ignoring this will result in a compiler warning.
+
+## `range-based for` loop
+
+Range-based for loop was introduced in C++11. With this type of `for` loops, you no longer need to worry about counter variables and incrementing/decrementing them during the loop.
+
+```c++
+// With no code block
+for (var_type var_name: sequence)
+    statement;
+
+// With code block
+for (var_type var_name: sequence) {
+    statement;
+}
+```
+
+Here is an example:
+
+```c++
+int scores [] {100, 90, 97};
+
+for (int score : scores)
+    // score variable is accessible inside the loop
+    cout << score << endl;
+
+// use 'auto' instead of explicit variable type
+for (auto score : scores)
+    cout << score << endl;
+
+// initialize the collection right in the loop
+for (auto temp: {60.2, 80.1, 90.0, 78.2}) {
+    running_sum += temp;
+    ++size; // you will have to calculate the size as you loop if you need to make decisions based on the size
+}
+```
+
+You can also use `range-based for` loop to iterate over a string, which is a collection of characters:
+
+```c++
+for (auto c : "Frank")
+    cout << c << endl;
+```
+
+## `while` loop
+
+The syntax for `while` loop is as:
+
+```c++
+// With no code block
+while (expression)
+    statement;
+
+// With code block
+while (expression) {
+    statement;
+}
+```
+
+You would usually need to change the state of some tracking variable (incrementing a counter variable) within the loop to make the loop stop somewhere.
+
+While loops are commonly used in programming to provide **input validation**.
+
+```c++
+int number {};
+
+cout << "Enter an integer less than 100";
+cin >> number;
+
+while (number >= 100) {
+    cout << "Enter an integer less than 100";
+    cin >> number;
+}
+
+cout << "Thanks" << endl;
+```
+
+> Notice that there are 2 lines of duplicate code in the example above. That is because the process of asking the user for input should be executed at least once so as to be able to receive user's input and getting into the while loop by checking the loop condition. You can see that the loop condition itself is based on the user input. However, this code can be improved by using the `do-while` loop or by providing a separate boolean variable that will be avilable for loop condition evaluation.
+
+## `do-while` loop
+
+The `do-while` loop syntax is as:
+
+```c++
+do {
+    statements;
+} while (expression);
+```
+
+Remember that the loop condition is checked at the end of each iteration, so the loop body will execute at least once. Ths input validation use case can be written now like this:
+
+```c++
+int number {};
+
+do {
+    cout << "Enter an integer between 1 and 5: ";
+    cin >> number;
+} while (number <= 1 || number >= 5);
+
+cout << "Thanks" << endl;
+```
+
+> If you declared the `number` variable in the loop body in the example above, you could not evaluate it in the loop condition check. You would receive a compiler error.
+
+## `continue` and `break` statements
+
+You can use `continue` and `break` statements in all C++ loop constructs to provide more explicit control over the loop behavior.
+
+When `continue` is executed in the loop, no further statements in the body of the loop are exectued and control immediately goes to the beginning of the loop for the next iteration. You can think of it as skipping the current iteration and going on to the next iteration. In the case of `for` and `while` loops, the loop condition will be immediately tested again.
+
+When the `break` statement is executed in the loop, no further statement in the body of the loop are executed and the loop is terminated. So control is transfered to the statement that follows the loop.
+
+> Having lots of `continue`s and `break` in a loop makes it really hard to understand and debug. Don't overuse them.
+
+## Infinite loop
+
+In general, you should avoid creating infinite loops, but there are some use cases where infinite loops are appropriate:
+
+1. Event loop in an event-driven program like those that are usually found on mobile devices or embedded systems (IoT). In these programs, the program loops forever listening for mouse clicks, mouse movements, touches and so forth and reacting to them.
+2. Operating system: an operating system is constantly looping handling input/output, handling resources and so forth. It only shuts down when you shut down your computer.
+
+In an infinite loop that is written intentionally, programmers usually use `break` statements as strategic points in the program to stop the loop.
+
+# Characters and strings
+
+Character values are basically integers that map to a character set like the ASCII character set. We have also seen that strings are sequences of characters define between double quotes `""`.
+
+C++ supports 2 types of strings: C-style strings and C++ strings.
+
+C++ strings are actually C++ objects and they are used using an OO style of programming.
+
+> You should be using C++ strings in modern C++.
+
+## `cctype` library
+
+This is a very simple library but with very useful functions that work with characters. For instance, you can use them to see if a character is uppercase, lowercase, numeric, alphanumeric, punctuation and more. You can also convert characters between upper and lower case.
+
+In order to use the `cctype` library you must include it in your program:
+
+```c++
+#include <cctype>
+```
+
+All of the functions in this library will expect one single character as argument. The testing functions will return boolean values. Conversion functions return converted characters. Here are some of the testing functions this library provides:
+
+- `isalpha(c)`: True if `c` is a letter
+- `isalnum(c)`: True if `c` is a letter or digit
+- `isdigit(c)`: True if `c` is a digit
+- `islower(c)`: True if `c` is lowercase letter
+- `isupper(c)`: True if `c` is uppercase letter
+- `isprint(c)`: True if `c` is a printable character
+- `ispunct(c)`: True if `c` is a punctuation character
+- `isspace(c)`: True if `c` is whitespace
+
+Here are some of the converting functions provided by this library:
+
+- `tolower(c)`: returns lowercase of `c`
+- `toupper(c)`: returns uppercase of `c`
+
+## C-style strings
+
+C-style strings are a sequence of characters, stored contiguously in memory. They are implemented as an array of characters, so you can access individual characters using the array subscripting syntax. But how would you know where the string ends?
+
+C-style strings use a sentinel value that marks the end of the string. The `null` value is used which is equivalent to the integer zero (zero or null-terminated strings).
+
+```c++
+"C++ is fun"
+
+//in memory, c++ allocates one more space for the null character at the end
+C++ is fun\0
+```
+
+You can use C++ strings just as you use them in string outputs using `cout`, but you will always need to declare string variables. To create a C-style string variable:
+
+```c++
+char my_name[] {"Frank"};
+
+// in memory:
+Frank\0
+```
+
+Remember that this is an array and its size is fixed. So if you try to add another character to the end of this string, you won't receive any errors or warnings from the compiler, but you will face problems.
+
+```c++
+my_name[5] = 'y'; //problem
+```
+
+This would cause a problem since this will replace the `\0` character and therefore the string will not be null-terminated anymore. C++ will have no clue where the end of this string will be in memory.
+
+If you initialize a string variable as:
+
+```c++
+char my_name[8] {"Frank"};
+
+// in memory:
+Frank\0\0\0
+```
+
+> you can initialize a string variable using an empty `{}`, just like any other variable.
+
+In this case, adding another character to the end of the string will cause no problem since the string will still be null-terminated.
+
+In another example, if you create a string variable with a determined size but not initialize it:
+
+```c++
+char my_name[8];
+
+// in memory:
+????????
+```
+
+This will cause problems, especially when you want to use string functions, since they all expect to find a `\0` character at the end of the string. Without initializing the string variable, we won't really know what values are in the memory at that location. You might very well find garbage values there and therefore, unexpected behavior will occur.
+
+You cannot initialize un-initialized string variables in the next line like:
+
+```c++
+char my_name[8];
+my_name = "Frank"; //compiler error
+```
+
+Array names and literals evaluate to their **location in memory**, so we are actually assigning one location to another which is illegal. Instead, you can use the `strcpy` function:
+
+```c++
+strcpy(my_name, "Frank"); //fine by compiler, copies "Frank" to my_name array
+```
+
+### `cstring` library
+
+This library brings functions that can work with C-style strings. All of these functions require the input string to be null-terminated. Otherwise, crashes and unexpected behavior will happen. When working with C-style strings you have to make sure your strings are null-terminated. People have solved this issue with **C++ strings**.
+
+Remember to include the `cstring` library in your program when you want to work C-style strings:
+
+```c++
+#include <cstring>
+```
+
+Here are some examples of functions provided by `cstring` library:
+
+```c++
+char str[80];
+
+strcpy(str, "Hello "); // copies "Hello" to 'str'
+strcat(str, "there "); // concatenates 'str' and "there"
+cout << strlen(str); // 11
+strcmp(str, "Another"); // returns 0 if stirngs are equal
+```
+
+> The function `strlen` does not return an integer type. Its type is called `size_t`. It is an unsigned value (since string length cannot be negative), but it is not integer, it could be long or anything else based on your system. So you should be using `size_t`.
+
+> The function `strcmp` returns less than 0 if the first string lexically comes before the second string. It returns higher than 0 if the first string lexically comes after the second string.
+
+### Receiving strings in user input
+
+When prompting the user for strings, you might run into cases where the user inputs a string that includes more some white spaces. This will cause `cin` stop once it sees the space. To go around this limit, you can use the `getline` function of `cin` which can also receive a number that determines the maximum length of the input string.
+
+```c++
+// instead of
+cin >> full_name;
+
+// use getline
+cin.getline(full_name, 50);
+```
+
+> The `getline` function works with C-style strings.
+
+### `cstlib` library
+
+This library includes functions to convert C-style strings to integers, floats, long, etc. For instance, a string of `"12"` can be converted to `12`. Remember that these functions also need the input string to be null-terminated.
+
+## C++ strings
+
+Standard string (`std::string`) is a class in the C++ standard template library (STL). For now, let's learn about the most important elements of the C++ string class.
+
+In order to use C++ stirngs, you must include `<string>` header file in your code:
+
+```c++
+#include <string>
+```
+
+Strings are in the standard namespace. So in order to use them without using namespace standard, you must prefix them with `std` and the scope resolution operator `::`. This is also true for the standard string methods that work with C++ strings.
+
+C++ strings are also stored contiguously in memory. Unlike C-style strings, C++ strings are dynamic, and can grow and shrink during runtime.
+
+C++ stirngs work with the stream insertion and extraction operators.
