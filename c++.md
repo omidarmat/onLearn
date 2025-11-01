@@ -38,6 +38,13 @@ char first_letter {'j'}
 
 > Note that single quotes are used to declare single letter characters. Declaring strings with single quotes is not allowed.
 
+> You can also initialize a variable by simply using an empty `{}` in the declaration:
+
+```c++
+int age {};
+int letter {};
+```
+
 ## Built-in primitive types
 
 Fundamental data types implemented directly by the C++ language are:
@@ -273,4 +280,91 @@ To add an element to a vector you can use the `push_back` method on it:
 
 ```c++
 test_scores.push_back(80);
+```
+
+# Statements and operators
+
+## Operators
+
+C++ has 3 types of operators: unary, binary, ternary.
+
+common operators can be grouped as follows:
+
+1. Assignment
+2. Arithmetic
+3. Increment/decrement
+4. Relational
+5. Logical
+6. Member access
+
+and others...
+
+### Assignment operator
+
+You can use the assignment operator `=` to change the value stored in a variable. There is an important mindset when doing this. When using the assignment operator, there is a left side and a right side:
+
+```
+lhs = rhs
+```
+
+`rhs` is an expression that is evaluated to a value. Then, the value of `rhs` is stored in `lhs`. Also note that the value of `rhs` should be type-compatible with the `lhs`.
+
+Related to this, in C++, we have `l-value` and `r-value`. The `r-value` is the content stored in a variable. The `l-value` is the location of that variable. So when using the assignment operator, we are actually saying that store the `l-value` of the expression on the right side, in the location of the expression on the left side of the operator.
+
+# Controlling program flow
+
+## Switch statement
+
+The switch statement syntax is pretty similar to that of JavaScript. Keep in mind that it is best practice to include a `break` statement for each `case` except you have a good reason not to. When a `case` control expression evaluates to true, its statements will be executed and the program will _fall through_ and go on to the next `case`s without checking their control expressions and execute the cases until it reaches to a `break` statement. That's why you really need to use `break`s in a switch statement.
+
+The switch statement can have a `default` statement at the end, which runs when none of the `case`s are true. It is best practice to include this too.
+
+For each `case` you can have multiple statements without having to use a code block as `{}`. However, if you need to declare a variable in a `case` you need the code block.
+
+This is the typical switch statement syntax:
+
+```c++
+char letter_grade {};
+
+switch (letter_grade) {
+    case 'a':
+    case 'A':
+        cout << "You need a 90 or above, study hard!" << endl;
+        break;
+    case 'b':
+    case 'B':
+        cout << "You need 80-89 for B, go study!:" << endl;
+        break;
+    case 'c':
+    case 'C':
+        cout << "You need 70-79 for an average grade." << endl;
+    case 'd':
+    case 'D':
+        cout << "Hmm, you should strive for a better grade. All you need is 60-69" << endl;
+    case 'f':
+    case 'F':
+        cout << "XXXX" << endl;
+        break;
+    default:
+        cout << "Sorry, not a valid grade." << endl;
+}
+```
+
+You can also use switch statements with enumeration types:
+
+```c++
+enum Direction {
+    left, right, up, down
+}
+
+Direction heading {left};
+
+switch (heading) {
+    case left:
+        cout << "Going left";
+        break;
+    case right:
+        cout << "Going right";
+        break;
+}
 ```
