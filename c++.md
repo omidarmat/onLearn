@@ -410,16 +410,16 @@ The syntax of a `for` loop is as:
 
 ```c++
 // With no code block
-for (initialization; condition; increment)
+for (initialization; condition; increment/decrement)
     statement;
 
 // With code block
-for (initialization; condition; increment) {
+for (initialization; condition; increment/decrement) {
     statement;
 }
 ```
 
-> In the increment part of the loop, remember that `++i` or `i++` are not different.
+> In the increment/decrement part of the loop, remember that `++i`/`--i` or `i++`/`i--` are not different.
 
 Here are some example to also see different options available. You can initialize the counter variable as:
 
@@ -449,3 +449,17 @@ for (;;)
 ```
 
 > Best practice is not to write `for` loops with missing expressions and complicated expressions with comma operators.
+
+You can use the `for` loop to iterate over the elements of a vector:
+
+```c++
+#include <vector>
+
+vector <int> nums {10, 20, 30, 40, 50};
+
+for(unsigned i{0}; i < nums.size(); ++i) {
+    cout << nums[i] << endl;
+}
+```
+
+> Note that since `nums.size()` returns an unsigned integer (the size of a vector cannot be negative), we have declared `i` counter as an `unsigned` integer. Ignoring this will result in a compiler warning.
