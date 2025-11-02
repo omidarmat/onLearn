@@ -746,7 +746,7 @@ In order to use C++ stirngs, you must include `<string>` header file in your cod
 #include <string>
 ```
 
-Strings are in the standard namespace. So in order to use them without using namespace standard, you must prefix them with `std` and the scope resolution operator `::`. This is also true for the standard string methods that work with C++ strings.
+Strings are in the standard namespace. So in order to use them without using namespace standard, you must prefix them with `std` and the scope resolution operator `::`, so it would be `std::string`. This is also true for the standard string methods that work with C++ strings.
 
 C++ strings are also stored contiguously in memory. Unlike C-style strings, C++ strings are dynamic, and can grow and shrink during runtime.
 
@@ -763,7 +763,7 @@ To declare a C++ string you must include the `<string>` header file:
 Then to declare C++ string variables you can do:
 
 ```c++
-using namespace std;
+using namespace std; // for declaring string types
 
 string s1; // auto initialization to empty string
 string s2 {"Frank"};
@@ -912,3 +912,117 @@ getline(cin, s1); //reads entire line until \n
 
 getline(cin , s1, 'x'); //read entire line until detecting 'x' delimiter char - 'x' will not be included in the string
 ```
+
+# Functions
+
+## Function definitions
+
+Function definitions have 4 main parts:
+
+1. Name
+2. Parameter list (with their types)
+3. Return type
+4. Body
+
+It is important for the compiler to know about the function before it is called in your program. For example:
+
+```c++
+int main() {
+    say_hello(); // compiler error
+    return 0;
+}
+
+void say_hello() {
+    cout << "Hello" << endl;
+}
+```
+
+This code will cause a compiler error because at the point where `say_hello` function is called, the compiler still doesn't know about the function. The compiler should know about the function beforehand, so that it can check to see if the number of parameters and their types are correct. You can fix this by either making sure that you define functions before they are used in your code, or by using **function prototypes**.
+
+> When your program's `main` function runs, it _controls_ your program. When the `say_hello` function is called within your `main` function, _control_ is _transfered_ to the `say_hello` function. Notice how the word _control_ and _transfer_ is used. It reminds me of how Robert C. Martin talks about design patterns in his _Clean Code_ and _Clean Architecture_ books.
+
+## Function prototypes
+
+Function prototypes tell the compiler what it needs to know without a full function definition. Functions prototypes are also called _forward declarations_. They should be placed at the beginning of the program if the program is a small one. You can also put prototypes in your own header files (`.h` files) which is absolutely necessary in huge programs.
+
+Let's look at an example:
+
+```c++
+int function_name(int a); // function prototype
+
+int function_name(int a) {
+    statements(s);
+    return 0;
+}
+```
+
+It is not necessary to provide parameter names in the prototype, but you have to provide their types. However, for documentation purposes, it is recommended to include parameter names in the prototype.
+
+```c++
+void function_name(int a, std::string b);
+```
+
+> If a function's return type is `void` you cannot insert its result into output stream `cout`. Compiler will yell at you.
+
+## Function parameters and return statements
+
+In C++ when you pass data into a function, that data is **passed by value**. This means that the value of the data is passed in **by copy**, so the compiler makes a copy of the data. It means that the function will not change the argument that was passed into it. Therefore, the data that we passed to the function will remain unchanged after the function returns. This can be both good and bad. Good, because this prevents you from manipulating the data by mistake. Bad, because sometimes making a copy of a data can be expensive. Also, sometimes you really do want to manipulate the data that was passed into the function.
+
+### Formal vs. actual parameters
+
+Formal paramteres are parameters defined in the function's definition. Actual paramters are parameters used in the function call, which are also called **arguments**. So in C++ actual paramters or arguments are passed by value or copied to the formal parameters. Let's go over an example:
+
+```c++
+void param_test(int formal) {
+    cout << formal << endl; // 59
+    formal = 100; // only changes the local copy
+    cout << formal << endl; // 100
+}
+
+int main() {
+    int actual {50};
+    cout << actual << endl; // 50
+    param_test(actual); // pass 50 to function as copy
+    cout << actual << endl; // 50 - did not change
+    return 0;
+}
+```
+
+### Defaul argument values
+
+You can add default arguments to the function prototype, or the function definition, but not both. It is best practice to do it in the prototype. To define a default value for a function parameter use this syntax:
+
+```c++
+double calc_cost(double base_cost, double tax_rate = 0.06);
+```
+
+### Return statments
+
+It is possible to have more than one `return` statements in the function body, but it is best practice to only have one.
+
+### Overloading functions
+
+In C++ we can have functions that have **different parameter lists** that have the **same name**. This is called overloading functions. For instance, you may have many ways to display information to the screen, depending on what you want to display. So rather than having many functions with different names (such as `display_char`, `display_int`, etc.) you can have a single name `display` and then implement a version of the function for each type of parameter. You would then let the compiler figure out which function to use based on the function call arguments and the defined function parameters.
+
+This is a great use of **abstraction** since you as a developer would only have to think of `display` and passing in the information you need. In software engineering, we have a principle called **polymorphism** which means many forms for the same concept. This was an example of polymorphism.
+
+Let's now see what overloaded functions look like:
+
+```c++
+int add_numbers(int, int);
+double add_numbers(double, double);
+
+int add_numbers(int a, int b) {
+    // implementation
+}
+
+double add_numbers(double a, double b) {
+    // implementaion
+}
+```
+
+C++ has a feature called **function templates** that allow you to just write one generic version of the `add_numbers` function and it will take care of providing the correct version when called. We will learn about this in the **Standard Template Library** section.
+
+> There is one restriction to function overloading. The return type is not considered when the compiler tries to determin which function to call. So if you define two function prototypes with exact same paramters, but with different return types, you will receive a compiler error.
+
+Overloading functions are used extensively in **Object Oriented** design.
