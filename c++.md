@@ -745,4 +745,147 @@ Strings are in the standard namespace. So in order to use them without using nam
 
 C++ strings are also stored contiguously in memory. Unlike C-style strings, C++ strings are dynamic, and can grow and shrink during runtime.
 
-C++ stirngs work with the stream insertion and extraction operators.
+C++ stirngs work with the stream insertion and extraction operators, just like most other types in C++. C++ string class provides a rich set of methods that allow us to manipulate strings easily. C++ strings also work well with many C++ operators.
+
+### Working with C++ stirngs
+
+To declare a C++ string you must include the `<string>` header file:
+
+```c++
+#include <string>
+```
+
+Then to declare C++ string variables you can do:
+
+```c++
+using namespace std;
+
+string s1; // auto initialization to empty string
+string s2 {"Frank"};
+string s3 {s2};
+string s4 {"Frank", 3}; // first 3 chars - Fra
+string s5 {s3, 0, 2}; // starting index 0, length 2 - Fr
+string s6 (3, 'X'); // XXX
+```
+
+#### Assigning
+
+To assign value to C++ strings you can simply use the assignment operator:
+
+```c++
+string s1;
+s1 = "C++ Rocks!";
+```
+
+You can also retrieve or assign characters using the subscripting notation or the `at` method.
+
+```c++
+string s1;
+string s2 {"Frank"};
+
+// retrieveing characters from c++ strings
+cout << s2[0] << endl;
+cout << s2.at(0) << endl; // at provides bounds checking
+
+// assigning characters to c++ strings
+s2[0] = 'f';
+s2.at(0) = 'p';
+```
+
+#### Concatenating
+
+To concatenate two or more C++ strings you can simply work with C++ operators:
+
+```c++
+string part1 {"C++"};
+string part2 {"is a powerful"};
+
+string sentence;
+
+sentence = part1 + " " + part2 + " language";
+```
+
+However, this will not work:
+
+```c++
+sentence = "C++" + " is powerful"; // two c-style strings cannot be concatenated with C++ operators
+```
+
+#### Looping
+
+You can use `range-based for` loops to iterate over a C++ string.
+
+```c++
+string s1 {"Frank"};
+
+for(char c: s1)
+    cout << c << endl;
+// string characters will be printed one by one, including the final null character
+```
+
+> If you declare the loop variable as `int` C++ will print integer values that represent each character of the string;
+
+#### Comparing
+
+You can compare two strings character by character lexically using these operators: `==`, `!=`, `>`, `>=`, `<`, `<=`
+
+> You cannot use these operator to compare two c-style strings.
+
+> Capital letters come before lowercase letters in the ASCII table.
+
+#### C++ string methods
+
+- `substr()`: Extracts a substring from a `std::string`:
+
+```c++
+// object.substr(start_index, length)
+
+string s1 {"This is a test"};
+
+cout << s1.substr(0, 4); //This
+```
+
+- `find()`: Returns the index of a substring in a `std::string`:
+
+```c++
+// object.find(search_string, search_from)
+
+string s1 {"This is a test"};
+
+cout << s1.find("This"); // 0
+cout << s1.find("is", 4); //5
+cout << s1.find("XX"); //string::npos
+```
+
+> There is also a `rfind()` method that starts searching from the end of the string.
+
+- `erase()` and `clear()`: Removes a substring of characters from a `std::string`.
+
+```c++
+// object.erase(start_index, length)
+
+string s1 {"This is a test"};
+
+cout << s1.erase(0, 5); // is a test
+s1.clear(); // empties string s1
+```
+
+- `length()`: returns the length of the string
+
+```c++
+string s1 {"Frank"};
+
+cout << s1.length() << endl; //5
+```
+
+#### Input and output streams
+
+Remember when we learned about the `getline()` method of `cin` to enable us receiving s-style strings with whitespaces in between? We can use the `getline()` function and its 2 variants to receive C++ input strings as:
+
+```c++
+string s1;
+
+getline(cin, s1); //reads entire line until \n
+
+getline(cin , s1, 'x'); //read entire line until detecting 'x' delimiter char - 'x' will not be included in the string
+```
