@@ -1,3 +1,8 @@
+# Input/Output
+
+`<iostream>`
+`<iomanip>`
+
 # Variables
 
 ## Declaring and initializing variables
@@ -835,7 +840,7 @@ You can compare two strings character by character lexically using these operato
 
 #### C++ string methods
 
-- `substr()`: Extracts a substring from a `std::string`:
+- `substr()`: Extracts a substring from a `std::string`. This does not mutate the original variable or string.
 
 ```c++
 // object.substr(start_index, length)
@@ -845,7 +850,7 @@ string s1 {"This is a test"};
 cout << s1.substr(0, 4); //This
 ```
 
-- `find()`: Returns the index of a substring in a `std::string`:
+- `find()`: Returns the index of a substring in a `std::string`. The return type of this function is `size_t`.
 
 ```c++
 // object.find(search_string, search_from)
@@ -855,6 +860,24 @@ string s1 {"This is a test"};
 cout << s1.find("This"); // 0
 cout << s1.find("is", 4); //5
 cout << s1.find("XX"); //string::npos
+```
+
+Another example:
+
+```c++
+string s1 {};
+
+s1 = "The secret word is Boo";
+
+string word {};
+cout << "Enter the word to find: ";
+cin >> word;
+
+size_t position = s1.find(word);
+if(position != string::npos)
+    cout << "Found " << word << " at position: " << position << end;
+else
+    cout << "Sorry, " << word << " not found" << endl;
 ```
 
 > There is also a `rfind()` method that starts searching from the end of the string.
