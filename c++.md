@@ -252,6 +252,7 @@ To declare a vector you must first include the `<vector>` library:
 
 ```c++
 #include <vector>
+using namespace std; //std::vector
 
 // To create empty vectors that contain no elements
 vector <char> vowels;
@@ -763,7 +764,7 @@ To declare a C++ string you must include the `<string>` header file:
 Then to declare C++ string variables you can do:
 
 ```c++
-using namespace std; // for declaring string types
+using namespace std; // std::string
 
 string s1; // auto initialization to empty string
 string s2 {"Frank"};
@@ -1026,3 +1027,160 @@ C++ has a feature called **function templates** that allow you to just write one
 > There is one restriction to function overloading. The return type is not considered when the compiler tries to determin which function to call. So if you define two function prototypes with exact same paramters, but with different return types, you will receive a compiler error.
 
 Overloading functions are used extensively in **Object Oriented** design.
+
+### Passing arrays to functions
+
+In order to declare a function that is able to receive an array as its paramtere, you can do:
+
+```c++
+void print_array(int numbers[])
+```
+
+There is an important difference here. We said before that arguments are passed by value into functions. However, with arrays, things are different. We learned before that the name of an array is actually a reference to the memory address of the first element of the array. So when you call a function and pass an array into it, the argument is not passed by value, but **by reference**. In other words, what is being passed into the function is **not a copy of the entire array**, but **only the address of the first element of the arrray**. Therefore, the function would have no idea how many elements are in the array. This means that whenever you pass arrays into functions, you alse need to pass the size of the array into the function, so you would know how many times to iterate.
+
+So this cannot work:
+
+```c++
+void print_array(int numbers []);
+
+int main() {
+    int my_numbers[] {1, 2, 3, 4, 5};
+    print_array(my_numbers);
+    return 0
+}
+
+void print_array(int numbers []) {
+    // You now only know about the location in memory where the array begins. You cannot know where it ends.
+}
+```
+
+You should do this:
+
+```c++
+void print_array(int numbers [], size_t size);
+
+int main() {
+    int my_numbers[] {1, 2, 3, 4, 5};
+    print_array(my_numbers, 5);
+    return 0
+}
+
+void print_array(int numbers [], size_t size) {
+    for(size_t i {0}; i < size, ++i)
+        cout << numbers[i] << endl;
+}
+```
+
+Another very important thing to keep in mind is that, since you are giving the memory address of the array, the function that the array is passed into can mutate the array elements. This can be both useful and dangerous. You can tell the compiler to prevent you from mutating the array using the `const` keyword in the function defintion:
+
+```c++
+void print_array(const int numbers [], size_t size) {
+    // Any attempt to modify the array will cause a compiler error
+}
+```
+
+### Passing by reference
+
+What happens when passing arrays into functions, can be done for any other variable types, not just arrays, by using reference parameter. Reference paramteres create an alias. This way, the formal parameter in the function would be an alias to the actual parameter, no copy is made. Mutating the paramtere in the function, will mutate the original variable. This is called **pass by reference**. This is easily achieved by using the `&` symbol in the paramtere list.
+
+```c++
+void scale_number(int &num);
+
+int main() {
+    int number {1000};
+    scale_number(number)
+    cout << number << endl;
+    return 0;
+}
+
+void scale_number(int &num) {
+    if(num > 100)
+        num = 100;
+}
+```
+
+You can also pass vectors by reference. You can also make them constant. This is a good thing since you are not using more storage space to copy all the values of a vector, and yet you prevent the original vector from being mutated.
+
+```c++
+void print(const std::vector<int> &v);
+
+int main() {
+    std::vector<int> data {1, 2, 3, 4, 5};
+    print(data);
+    return 0;
+}
+
+void print(const std::vector<int> &v) {
+    for (auto num : v)
+        cout << num << endl;
+}
+```
+
+## Scope rules
+
+C++ uses scope rules to determine where an identifier can be used. It uses **static or lexical scoping**, meaning that the scope is determined the same way you read a program, and is easy to follow.
+
+C++ has 2 main scopes: local or block scope, global scope
+
+### Local or block scope
+
+This refers to the visibility of an identifier that has been declared in a block. Function paramteres also have block scope. They are visible within the block in which they are declared.
+
+When a function is called, you can think of the function as being activated, and the function paramteres are bound to storage. They become alive and their lifetime is while the function is executing. Once the function completes, the function is deactivated, and these variables and paramteres are no longer alive. It does not mean that they are somehow marked as unavailable, but the compiler will not know about them anymore, and the storage to which they were bound to will likely be reused. So the values of local-scoped variables are not preserved between function calls, unless they are `static`. The value of static variables is preserved between function calls. This is a **static local variable**:
+
+```c++
+void function_name() {
+    static int variable {10};
+    variable += 10;
+}
+```
+
+It is a variable whose lifetime is the **lifetime of the program**. But it is only visible to the statements within the function body. These variables can come in very handy when you need to know a **previous value** in a function without having to pass it in all the time. In the example above, the first time you call the function, the `variable` is initialized to `10` and then mutated to `20`. If you call the function for the second time, the `variable` will not be initialized to `10` again, but it will preserve its previous value, which was `20`, so the `variable` value will now become `30`. So static local variables are **only initialized once**. If no initializer is provided, they are set to 0. To summerize in a golden statement you can think: **A static local variable behaves like a global variable, because it retains its value, but its scope is local.**
+
+> Note that you can create a block in your code by simply opening a `{}`. It does not have to be the body of a function or the body of an `if` statement.
+
+```c++
+int main() {
+    // some code
+
+    {
+        // some other code with its own block scope
+    }
+}
+```
+
+### Global scope
+
+Identifiers with global scope are identifiers that are declared outside of any function or class. These identifiers are visible to all parts of the program following their declaration. Best practice with identifiers with global scope is that it is okay to use **global constants**, but **global variables** shold be avoided.
+
+## Mechanics of function calls
+
+Functions use an area in memory called the **function call stack** or the **program stack**. A stack is analogous to a stack of books or a stack of dishes. If you place a book on top of the stack, then you must remove that before removing any others. This is referred to as LIFO (Last In, First Out).
+
+Stacks also use the term **push** when you put an item on top of the stack, and **pop** when you remove an item from the top of the stack. In the case of a C++ program, these items are called **stack frames** or **activation records**. It is a collection of information that represents an active function. This is where parameters are stored, local variables, the return address and more.
+
+Each time a function is called, an activation record is created, and its pushed on to the call stack. When the function terminates, we pop its activation record off the call stack, and now the top of the stack is the function that just called the one we just popped off.
+
+You cannot jump into or out of the middle of the stack, you must follow the LIFO rules. Also remember that the call stack is finite in size. If you activate too many functions in the call stack, then it is possible to run out of stack space. This results in a **stack overflow** error.
+
+## Inline functions
+
+Function calls have a certain amonut of overhead. You need to create an activation record, push it on the stack, deal with parameters, pop off the activation record when the function terminates, and deal with the return addresses and return values. Although these are done fast and efficiently, it is a lot. Sometimes we have a very simple function and the function call overhead might be greater than the time spent executing the function the way just described. In such cases, we can suggest to the compiler that it generate inline code.
+
+Inline code is basically inline assembly code that avoids the function call overhead. Inline code is generally faster, but if you inline a function many times, then you are duplicating function code in many plcaes and it could lead to larger binaries. That said, compilers are so sophisticated now that they will likely inline code even without your suggestion. Let's see what an inline function looks like:
+
+```c++
+inline int add_numbers(int a , int b) {
+    return a + b;
+}
+
+int main() {
+    int result {0};
+    result = add_numbers(100, 200); //call
+    return 0;
+}
+```
+
+Inline functions are usually declared in header or `.h` files since the definition must be available to every source file that uses it. Compilers now are smart enough to make short functions like this inline anyway even if you don't provide the `inline` keyword.
+
+## Recursive functions
