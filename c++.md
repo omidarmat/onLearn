@@ -1234,7 +1234,7 @@ If a pointer points to a variable or a function, can't we just use the variable 
 
 For example, if you have some complex data that is defined outside a function and you want to access that data from within the function, you can't, because the variable name is out of scope. So you can pass the data to the function by value and make a copy of it, or you can use a reference or a **pointer paramter** to access that data from within the function. Also, pointers are often used to **operate on arrays** very efficiently.
 
-You can use pointers to **allocate memory** from the **heap** or to **free storage dynamically at runtime**. That memory does not have a variable name associated with it. So the only way to use it is through a pointer.
+You can use pointers to **allocate memory** from the **heap** or the **free store** at runtime. That memory does not have a variable name associated with it. So the only way to use it is through a pointer.
 
 Finally, if you are working with **embedded systems**, **device drivers** or other types of system software, sometimes you need to gain access to specific memory address or a range of memory addresses, and pointers is the best way to do that.
 
@@ -1301,3 +1301,128 @@ score_pointer = &high_temp; // error - type conflict
 > In C++ you can also have untyped void pointers. They are not much used in C++, they are used in C.
 
 ## Dereferencing a pointer
+
+Let's now learn how to access the data that a pointer is pointing to. This is called dereferencing a pointer.
+
+If `score_pointer` is a pointer and has a valid address, then you can access the data at the address contained in the `score_pointer` using the derefercing operator `*`.
+
+```c++
+int score {100};
+int *score_pointer {&score};
+
+cout << *score_pointer << endl; // 100
+
+*score_pointer = 200;
+cout << *score_pointer << endl; //200
+cout << score << endl; // 200
+```
+
+> When we dereference a pointer on the left hand side of an assignment statement, this results in an `l-value` or the address of what score pointer is pointing to, which in this case is `score`.
+
+If your pointer variable is pointing to a vector, you can use the `at` method on the dereferenced pointer to access a member of the vector. You can do anyting you could do with a regular vector, when you access a vector through a pointer.
+
+```c++
+vector<string> stooges {"Larry", "Moe", "Curly"};
+vector<string> *vector_pointer {nullptr};
+
+cout << "First stooge: " << (*vector_pointer).at(0) << endl;
+
+for (auto stooge: *vector_pointer)
+    cout << stooge << " ";
+```
+
+## Dynamic memory allocation
+
+Dynamic memory allocation is one of the main use cases of pointers in C++. When we are developing a software, we often have no idea about how much storage we are going to need to model our data. For example, if I am going to model my students in my class, how many students do I allocate storage for? Yes you can use vectors, but it is important to know how to dynamically allocate memory for other types, including objects.
+
+All memory allocated dynamically via a pointer comes from the **heap** or the **free store**. Let's now see how to allocate memory at runtime.
+
+In C++ we use the `new` keyword to allocate storage at runtime.
+
+```c++
+int *int_pointer {nullptr};
+
+int_pointer = new int; // allocate an integer on the heap - uninitialized
+cout << int_pointer << endl; // 0x2747f28
+cout << *int_pointer << endl; // 41188048 - garbage
+
+*int_pointer = 100;
+cout << *int_pointer << endl; // 100
+```
+
+A couple of things to remember here:
+
+- When you allocate storage in this manner, the storage is on the heap, the allocated storage contains garbage data until you initialize it.
+- The allocated storage does not have a name. The only way to get to that storage is via the pointer.
+- If you lose the pointer (becaue it goes out of scope or you re-assign it), then you lost your only way to get to that storage, and you have a **memory leak**.
+- When you are done using the storage, you must de-allocate the storage, so that it is again available to the rest of the program.
+
+Let's now see how to de-allocate or free an allocated storage:
+
+```c++
+int *int_pointer {nullptr};
+int_pointer = new int; // allocate an integer on the heap
+// some code
+delete int_pointer; // free the allocated storage
+```
+
+> When using `delete` to free the allocated storage, make sure the address in the pointer is an address of storage that was allocated using `new`.
+
+Let's go over another example where we allocate storage for an entire array of integers on the heap.
+
+```c++
+int *array_pointer {nullptr};
+size_t size {};
+
+cout << "How big do you want the array? ";
+cin >> size;
+
+array_pointer = new int[size]; // allocate array on the heap - if the storage is successfully created, the address of the first integer is stored in the 'array_pointer' variable
+
+// some code
+
+delete [] array_pointer; // brackets must be empty
+```
+
+## Relationship between arrays and pointers
+
+The value of an array name is the location or the address of the first element of the array. The value of a pointer is also an address. So if the pointer points to the same data type as the array elements, then the pointer and array name can be used interchangeably (almost). The only difference is that the array name is not a variable, so you can't change it. But otherwise, all the calculations done to accress array elements can be done with the array name or the pointer name.
+
+```c++
+int scores[] {100, 95, 89};
+
+cout << scores << endl; // 0x61fec8
+cout << *scores << endl; // 100
+
+int *score_pointer {scores};
+
+cout << score_pointer << endl; // 0x61fec8
+cout << *score_pointer << endl; // 100
+
+cout << score_pointer[0] << endl; //100
+cout << score_pointer[1] << endl; //95
+cout << score_pointer[2] << endl; //89
+```
+
+> C++ does not really have true arrays. They just don't exist. It is a concept. An array is nothing more than just the address of the first element in a chunk of memory. So you can add the subscripting offset to the pointer variable to point to any array element.
+
+Let's summerize:
+
+```c++
+int array_name[] {1, 2, 3, 4, 5};
+int *pointer_name {array_name};
+
+// subscripting notation
+array_name[index]
+pointer_name[index]
+
+// offset notation (using pointer aritmatic)
+*(array_name + index)
+*(pointer_name + index)
+```
+
+When you add `1` to the `pointer_name` variable which is pointing to an array, the arithmatic is done differently, compared to a regular addition. So C++ will not actually add one to the address in the `pointer_name` variable, but it will add **1 unit of size related to the type of the array element that the pointer is pointing to**. So if the pointer is pointing to an array of integers, adding 1 means adding 1 unit of size of an integer.
+
+C++ automatically understand which mode of arithmatics it should perform. If you are adding 1 to another number, it will perform a regular addition. If you are adding 1 to a pointer variable, it tries to figure out what is the type of the variable that the pointer is pointing to. Based on that type, it will understand what 1 means in that type context.
+
+Adding numbers to array names is just the same as described above. The name of an array is just a pointer to the first element of the array. So adding 1 to the array name will perform a pointer arithmatic.
