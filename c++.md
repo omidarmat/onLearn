@@ -1184,3 +1184,120 @@ int main() {
 Inline functions are usually declared in header or `.h` files since the definition must be available to every source file that uses it. Compilers now are smart enough to make short functions like this inline anyway even if you don't provide the `inline` keyword.
 
 ## Recursive functions
+
+Recursion is great for certail classes of problems. Here is the main guideline of recursive problem solving:
+
+1. Base case
+2. Divide the rest of the problem into sub-problems and do recursive call
+
+For instance, to calculate the mathematic factorial we can say:
+
+1. Base case: `factorial(0) = 1`
+2. Recursive case: `factorial(n) = n * factorial(n-1)`
+
+Let's implement this in C++:
+
+```c++
+unsigned long long factorial(unsigned long long n) {
+    if(n == 0) // base case
+        return 1;
+    return n * factorial(n-1); // recursive case
+}
+
+int main() {
+    cout << factorial(8) << endl;
+    return 0;
+}
+```
+
+Here are some important tips to remember about recursion:
+
+- If recursion does not eventually stop, you will have **infinite recursion**
+- Recursion can be **resource intensive**
+- Remember the **base case(s)**. It terminates the recursion
+- Only use recursive solutions when it makes sense
+- Anything that can be done recursively can be done **iteratively**
+
+# Pointers and references
+
+A pointer is a variable. Variables have an address in memory where they are bound to. They also have a type. A pointer is a variable that stores the address of another variable or function.
+
+So if you initialize an integer variable named `x` to `10`, then `x` is of type `int` and it is bound to some memory location, and contains the value `10`. This means that you can declare a pointer variable that stores the address of `x`.
+
+Again, a pointer is a variable. This means that the pointer, too, has a memory location where it is bound to. It has a type, it has a value, and the value is an address. A pointer points to a variable or a function.
+
+If you use a pointer, you must know the type of what it points to.
+
+## Why use pointers?
+
+If a pointer points to a variable or a function, can't we just use the variable or the function directly? Sure, and **if you can, you should**. But you can't always do that.
+
+For example, if you have some complex data that is defined outside a function and you want to access that data from within the function, you can't, because the variable name is out of scope. So you can pass the data to the function by value and make a copy of it, or you can use a reference or a **pointer paramter** to access that data from within the function. Also, pointers are often used to **operate on arrays** very efficiently.
+
+You can use pointers to **allocate memory** from the **heap** or to **free storage dynamically at runtime**. That memory does not have a variable name associated with it. So the only way to use it is through a pointer.
+
+Finally, if you are working with **embedded systems**, **device drivers** or other types of system software, sometimes you need to gain access to specific memory address or a range of memory addresses, and pointers is the best way to do that.
+
+## Declaring pointers
+
+We declare pointer variables in exactly the same way as declaring regular variables, except that we add the **asterisk** prior to the variable name.
+
+```c++
+// variable_type *pointer_name
+int *int_pointer // asterisk next to variable name
+char* char_pointer // asterisk next to variable type
+```
+
+> The compiler does not care where you put the asterisk. Let's just go by the first syntax.
+
+Just like any other variable, if you don't initialize pointer variables, they will contain garbage values. It is very important in C++ that you initialize pointer variables before you use them. An uninitialized pointer can point anywhere.
+
+```c++
+// variable_type *pointer_name {nullptr}
+int *int_pointer {}; // init to 0 - pointing nowhere
+double *double_pointer {nullptr} // init to 0 - pointing nowhere
+```
+
+## Accessing pointer address
+
+Let's learn how to access the address or location in memory of any variable. We will also learn how to initialize a pointer variable to point to another variable.
+
+In C++ we can use the **address operator `&`** to the left side of an operand. When the address operator is used in an **expression**, it evaluates to the address ot its operand. Of course, the operand must have an `l-value`, so it cannot be a constant or an expression that evaluates to temprary values. Let's go over an example:
+
+```c++
+int num {10};
+cout << "Value of num is: " << num << endl; // 10 - value
+cout << "sizeof of num is: " << sizeof num << endl; // 4 - storage amount in bytes
+cout << "Address of num is: " << &num << endl; // 0x61ff1c - memory address (base-16)
+```
+
+And now let's see another example:
+
+```c++
+int *p;
+cout << "Value of p is: " << p << endl; // 0x61ff60 - garbage that points anywhere
+cout << "Address of p is: " << &p << endl; // 0x61ff18
+cout << "sizeof of p is: " << sizeof p << endl; // 4
+p = nullptr;
+cout << "Value of p is: " << p << endl; // 0
+```
+
+> It is important not to confuse the size of a pointer and the size of what it points to. All pointers in a program have the same size, but they may be pointing to very large or very small types.
+
+## Storing address in pointer
+
+The compiler will make sure that the address stored in a pointer variable is of the correct type:
+
+```c++
+int score {10};
+double high_temp {100.7};
+
+int *score_pointer {nullptr};
+
+score_pointer = &score; // ok
+score_pointer = &high_temp; // error - type conflict
+```
+
+> In C++ you can also have untyped void pointers. They are not much used in C++, they are used in C.
+
+## Dereferencing a pointer
