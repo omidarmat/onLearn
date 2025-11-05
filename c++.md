@@ -3,6 +3,13 @@
 `<iostream>`
 `<iomanip>`
 
+> By default, the output stream shows false value as `0`, and true value as `1`. You can manipulate the output stream to show literals `false` and `true` instead of respective numbers using `boolalpha`. From the point where you appy it, all boolean values will be displayed with their respective literals.
+
+```c++
+cout << boolalpha;
+cout << (p1 == p2) << endl; // false or true - not 0 or 1
+```
+
 # Variables
 
 ## Declaring and initializing variables
@@ -1426,3 +1433,192 @@ When you add `1` to the `pointer_name` variable which is pointing to an array, t
 C++ automatically understand which mode of arithmatics it should perform. If you are adding 1 to another number, it will perform a regular addition. If you are adding 1 to a pointer variable, it tries to figure out what is the type of the variable that the pointer is pointing to. Based on that type, it will understand what 1 means in that type context.
 
 Adding numbers to array names is just the same as described above. The name of an array is just a pointer to the first element of the array. So adding 1 to the array name will perform a pointer arithmatic.
+
+## Pointer arithmetic
+
+In C++ pointers can be used in:
+
+- Assignment expressions
+- Arithmetic expressions
+- Comparison expressions
+
+C++ allows a subset of the arithmetic operators to work with pointer variables.
+
+> Pointer arithmetic only makes sense with raw arrays, but they are a very powerful way to manipulate them.
+
+Here are some arithmetic operations you can use with pointers:
+
+- `++`: Increments a pointer to point to the next array element.
+- `--`: Decrements a pointer to point to the previous array element.
+
+```c++
+int_pointer++;
+int_pointer--;
+```
+
+- `+`: Increments pointer by `n * sizeof(type)`
+- `-`: Decrements pointer by `n * sizeof(type)`
+
+```c++
+int_pointer = int_pointer + n;
+int_pointer = int_pointer - n;
+```
+
+> Subtracting two pointers will determine the number of elements between the pointers. Of couse, this is possible only if the two pointers point to the same data type.
+
+```
+int n = int_pointer2 - int_pointer1;
+```
+
+- `==` and `!=`: Comparing two pointers will determine if two pointers point to the same location or not. Remember that this does not compare the data where they point.
+
+```c++
+string s1 {"Frank"};
+string s2 {"Frank"};
+
+string *p1 {&s1};
+string *p2 {&s2};
+string *p3 {&s1};
+
+cout << (p1 == p2) << endl; // false
+cout << (p1 == p3) << endl; // true
+
+cout << (*p1 == *p2) << endl; // true
+cout << (*p1 == *p3) << endl; // true
+```
+
+Let's take a look at a rather special example:
+
+```c++
+int scores[] {100, 95, 89, 68, -1};
+int *score_pointer {scores};
+
+while (*score_pointer != -1)
+    cout << *score_pointer++ << endl // this will deference the pointer, get its value, output it to screen, and then increment it
+```
+
+## `const` and pointers
+
+Let's see how `const` qualifiers affects pointers. You have seen that the use of `const` with function reference paramteres essentially makes them read-only. In C++ we can qualify a pointer in several ways.
+
+First, you don't have to use `const` at all. In this case, we have a pointer just as we have been using up to this point. We can change the data the pointer is pointing to, and we can change the pointer itself and make it point to somewhere else.
+
+The `const` qualifier gives us more fine-grained control of what we allow to be changed. We can have:
+
+1. Pointers to constants: The data pointed to by the pointers is constant and cannot be changed. The pointer itself can change and point to somewhere else.
+
+```c++
+int high_score {100};
+int low_score {65};
+const int *score_pointer {&high_score};
+
+*score_pointer = 86; // error
+score_pointer = &low_score; // ok
+```
+
+2. Constant pointers: The data pointed to by the pointers can be changed. The pointer itself cannot change and point somewhere else.
+
+```c++
+int high_score {100};
+int low_score {65};
+int *const score_pointer {&high_score};
+
+*score_pointer = 86; //ok
+score_pointer = &low_score; // error
+```
+
+3. Constant pointers to constants: The data pointed to by the pointer is constant and cannot be changed. The pointer itself cannot change and point to somewhere else.
+
+```c++
+int high_score {100};
+int low_score {65};
+const int *const score_pointer {&high_score};
+
+*score_pointer = 86; // error
+score_pointer = &low_score; // error
+```
+
+Using `const` and pointers is pretty useful when we want to pass pointers to functions.
+
+## Passing pointers to functions
+
+In C++ we can use pointers and the dereference operator to achieve pass-by-reference. In this case, the function paramtere is a pointer. The actual parameter can be a pointer variable or the address of a variable. Let's take a look at its syntax.
+
+To define a function that can receive pointer paramter:
+
+```c++
+void double_data(int *int_pointer); // expecting a pointer to integer
+
+void double_data(int *int_pointer) {
+    *int_pointer *= 2; // doubles the contents of the data the pointer points to
+}
+```
+
+Then to call the function:
+
+```c++
+int main() {
+    int value {10};
+
+    cout << value << endl; // 10
+
+    double_data(&value);
+
+    cout << value << endl; // 20
+}
+```
+
+> > Notice that the return type of the `double_data` function is `void`. So you won't receive any value if you assign the result of calling it to a variable. But it can mutate the value of a variable.
+
+When declaring a function that its job is to only display some data, we usually want to prevent it from being able to modify its input data. To do this you can declare the function as:
+
+```c++
+void display(const vector<string> *const v) {
+    (*v).at(0) = "Funny"; // This will cause compiler error because of the first const
+    for(auto str: *v)
+        cout << str << " ";
+
+    v = nullptr; // this will cause compiler error because of the second const
+}
+
+int main() {
+    vector<string> stooges {"Larry", "Moe", "Curly"};
+    display(&stooges);
+}
+```
+
+> Notice that the first `const` in the `display` function declaration makes the data that is being pointed to a constant, and the second one makes the pointer a constant.
+
+## Returning pointer from functions
+
+In C++ functions can return pointers, which is a super powerful feature.
+
+```c++
+type *function();
+```
+
+This means that the function will return an address of whatever type we specified in the function declaration or prototype. In this example, we are returning a pointer to an integer:
+
+```c++
+int *largest_int(int *int_pointer1, int *int_pointer2) {
+    if(*int_pointer1 > *int_pointer2)
+        return int_pointer1;
+    else
+        return int_pointer2;
+}
+```
+
+To call this function:
+
+```c++
+int main() {
+    int a {100};
+    int b {200};
+
+    int largest_pointer {nullptr};
+    largest_pointer = largest_int(&a, &b);
+    cout << *largest_pointer << endl; // 200
+    return 0;
+
+}
+```
