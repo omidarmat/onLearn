@@ -2111,3 +2111,127 @@ class Player {
 ```
 
 This is how C++ implements **information hiding**. If you try to access a `private` class member, you get a compiler error.
+
+## Implementing member methods
+
+Member methods have access to the class member attributes, so you don't need to pass so many arguments around.
+
+C++ provides many options regarding where to write code for member methods:
+
+- You can define member methods right inside the class declaration. Doing this will make methods implicitly inline. While this is okay for small and relatively simple methods, we tend to implement larger, more complex methods outside of the class declaration.
+- You can define member methods outside the class. You would have to inform the compiler that you're writing a method that belongs to a specific class. This is done by `Class_name::method_name`.
+- It is very common to separate a class specification from its implementation. This makes the class much easier to manage. We usually create a `header` or `include` file that has `.h` or `.hpp` extension for the class specification, and then a `.cpp` file for the class implementation.
+
+You know how to impelement member methods inside the class, so let's skip that and see how to implement them outside class.
+
+### Implementing outside class
+
+```c++
+class Account {
+    private:
+        double balance;
+    public:
+        // provide prototypes here
+        void set_balance(double bal);
+        double get_balance();
+}
+
+// implementations out here
+void Account::set_balance(double bal) {
+    balance = bal;
+}
+
+void Account::get_balance() {
+    return balance;
+}
+```
+
+### Implementing in separate files
+
+As our program gets larger, we really need to separate class specifications from its implementations. To do this, you should create a header `.h` file for the class specification. This is an includer header file that will `#include` in out `.cpp` files, whenever we need to use the `Account` class.
+
+```c++
+// Account.h
+// class specification
+
+class Account {
+    private:
+        double balance;
+    public:
+        void set_balance(double bal);
+        double get_balance();
+}
+```
+
+Before using this header file, you need to take care of a potential problem. If this file is included by more than one `.cpp` file, then the compiler will see the declaration for the `Account` class more than once and give us an error about duplicate declarations. To solve this, you can use an **include guard** that ensures that the compiler will process this file only once, no matter how many times it is included. An include guard is just a series of pre-processor directives. The way it works is that we wrap up our entire class declaration in this include guard:
+
+```c++
+#ifndef _ACCOUNT_H_ // any name is fine here as long as it is unique in the program
+#define _ACCOUNT_H_
+
+    // Account class declaration
+
+#endif
+```
+
+So this is how a typical `.h` file look:
+
+```c++
+#ifndef _ACCOUNT_H_
+#define _ACCOUNT_H_
+
+class Account {
+    private:
+        double balance;
+    public:
+        void set_balance(double bal);
+        double get_balance();
+}
+
+#endif
+```
+
+Some pre-processors can also understand the `#pragma once` directive as:
+
+```c++
+// Account.h
+#pragma once
+
+    // Account class declaration
+```
+
+Then you define the class in a `.cpp` file:
+
+```c++
+// Account.cpp
+
+#include "Account.h" // remember to use double quotes
+
+void Account::set_balance(double bal) {
+    balance = bal;
+}
+
+double Account::get_balance() {
+    return balance;
+}
+```
+
+> Directive `include` with `<>` as in `#include <iostream>` is used to include system header files, and the compiler knows where these are located. `include` with `""` tells the compiler to include header files that are local to this project.
+
+Now our `Account` class is complete. Let's now use an account in our main `.cpp` file.
+
+```c++
+// main.cpp
+
+#include <iostream>
+#include "Account.h" // always include ".h" files, not ".cpp" files
+
+int main() {
+    Account frank_account;
+    frank_account.set_balance(1000.00);
+    double bal = frank_account.get_balance();
+
+    std::cout << bal << std::endl; // 1000
+    return 0;
+}
+```
