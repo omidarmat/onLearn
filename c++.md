@@ -1947,8 +1947,8 @@ Let's go over a real-world example:
 ```c++
 class Player {
     // attributes
-    std::string name;
-    int health;
+    std::string name {"Frank"};
+    int health {100};
     int xp;
 
     // methods
@@ -1956,6 +1956,8 @@ class Player {
     bool is_dead();
 }
 ```
+
+> Notice that you can initialize the attributes like in the example above, though it might seem a bit strange that you can do that, since it is just a class, not a real object here.
 
 You can now create objects as instances of the class you defined:
 
@@ -1972,7 +1974,7 @@ Let's go over another class declaration example:
 ```c++
 class Acccount {
     // attributes
-    std:string name;
+    std::string name;
     double balance;
 
     // methods
@@ -2006,3 +2008,106 @@ accounts1.push_back(jim_account);
 ```
 
 > It is important to keep in mind that class declarations should usually be accessible from anywhere in your application. So don't declare them in your `main` function. Put them in your global scope.
+
+## Accessing class members
+
+There are 2 ways to access class members:
+
+1. Dot operator
+
+```c++
+Account frank_account;
+
+frank_account.balance;
+frank_account.deposite(1000.00);
+```
+
+1. Member of pointer operator (arrow operator): If you have a pointer to an object, there are 2 ways to access class members. To emphasize again, remember that in these examples `frank_account` is not an object, but a pointer to an object, dynamically allocated on the heap.
+
+- Dereference the pointer, then use the dot operator:
+
+```c++
+Account *frank_account = new Account();
+
+(*frank_account).balance;
+(*frank_account).deposite(1000.00);
+```
+
+- Or use the member of pointer operator (arrow operator):
+
+```c++
+Account *frank_account = new Account();
+
+frank_account->balance;
+frank_account->deposite(1000.00);
+```
+
+Now before being able to access class members, you should know that all class members are private and unaccessible by default. So you would have to put the `public` statement where you want to be public:
+
+```c++
+class Acccount {
+public:
+    // attributes
+    std::string name;
+    double balance;
+
+    // methods
+    bool withdraw(double amount);
+    bool deposite(double amount);
+}
+```
+
+## `public` and `private`
+
+C++ has three basic class member access modifiers:
+
+- `public`: accessible everywhere
+- `private`: accessible only by members of _friends_ of the class
+- `protected`: used with _inheritance_
+
+To use the `public` access modifier:
+
+```c++
+class Class_Name {
+    public:
+    // declarations;
+};
+```
+
+To use the `private` access modifier:
+
+```c++
+class Class_Name {
+    private:
+    // declarations;
+};
+```
+
+> Note that by default, everything in the class will be private if no access modifier is specified.
+
+To use the `protected` access modifier:
+
+```c++
+class Class_Name {
+    protected:
+    // declarations;
+};
+```
+
+The difference between `protected` and `private` comes in when using **inheritance**.
+
+In real-world class declarations we almost always use the 3 access modifiers at the same time. For instance:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        void talk(std::string text_to_say);
+        bool is_dead();
+}
+```
+
+This is how C++ implements **information hiding**. If you try to access a `private` class member, you get a compiler error.
