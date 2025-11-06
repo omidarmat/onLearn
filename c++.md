@@ -1589,6 +1589,17 @@ int main() {
 
 > Notice that the first `const` in the `display` function declaration makes the data that is being pointed to a constant, and the second one makes the pointer a constant.
 
+Let's go over another example. In this example, while you can, and probably should, declare the data that the pointer is pointing to as constant, you cannot declare the pointer itself to be a constant:
+
+```c++
+void display(int *array, int sentinel) {
+    while (*array !== sentinel)
+        cout << *array++ << " ";
+}
+```
+
+This function is using the pointer to iterate over an array. So the pointer needs to be updated after each iteration. If you declare a constant pointer, you won't be able to perform `*array++`, since you would not be allowed to change the pointer.
+
 ## Returning pointer from functions
 
 In C++ functions can return pointers, which is a super powerful feature.
@@ -1622,3 +1633,276 @@ int main() {
 
 }
 ```
+
+Let's now go over another example. In this example, we allocate memory dynamically inside a function and return the address of that memory. In a sense, I think it is actually necessary to return the address of the memory that was dynamically allocated inside a function, because after the function returns, you should be able to free that memory at some point somehow, otherwise you would have a memory leak. This actually is a very common use case for returning a pointer from a function. So when you allocate memory dynamically inside a function, you should return the pointer to that address from the function.
+
+```c++
+int *create_array(size_t size, int init_value = 0) {
+    int *new_storage {nullptr};
+
+    new_storage = new int[size];
+    for(size_t i {0}; i < size; ++i)
+        *(new_storage + i) = init_value;
+
+    return new_storage;
+}
+```
+
+To use this function you can do:
+
+```c++
+int main() {
+    int *my_array; // will be allocated by the function
+
+    my_array = create_array(100, 20);
+
+    // some code that uses 'my_array'
+
+    delete [] my_array; // make sure you free the storage after you are done with it
+
+    return 0;
+}
+```
+
+### Don't do this when returning pointers from functions
+
+**Never ever** return a pointer that is pointing to a local variable.
+
+```c++
+int *dont_do_this () {
+    int size {};
+    // some code
+    return &size;
+}
+
+int *or_this () {
+    int size {};
+    int *int_pointer {&size};
+    // some code
+    return int_pointer;
+}
+```
+
+In the `dont_do_this` function you are declaring a local variable (which its storage is allocated from **stack**) and then returnin a pointer to that location in stack. As you know, when a function returns, the area in the stack that was used by the function is released and can be reused by other function calls. So after the `dont_do_this` function has returned, the local `size` variable will is past its lifetime, and the returned pointer will be pointing to something else, related to newer function calls. Then if you try to do something with that location in memory, you would actually be messing around with something totally different than what you would expect. Hopefully, you will get an error or see some strange behavior and you will fix it. But many times, you you're application will keep working and the strange behavior will happen some time later. This is one of the most difficult bugs to track down. So never ever return pointers that point to local variables.
+
+## Potential pointer pitfalls
+
+Here are the main things you should beware of:
+
+- Uninitialized pointers
+- Dangling pointers
+- Not checking if `new` failed to allocate memory
+- Leaking memory
+
+### Uninitialized pointers
+
+Take look at this piece of code:
+
+```c++
+int *int_pointer; // uninitialized - can point to anything garbage
+*int_pointer = 100; // let's hope your app will crash
+```
+
+> In the old days of computing, it wasn't uncommon to corrupt data on storage devices by using uninitialized pointers.
+
+### Dangling pointers
+
+These are pointers that are pointing to memory that is no longer valid. If you try these pointers to access that data, you don't know what the result will be. The main reason for dangling pointers are:
+
+1. Returning addresses of function local variables on the stack that are no longer valid since the function is terminated.
+2. Allocate memory dynamically and assign it to a pointer variable, then you assign another pointer variable to point to that same storage. Now you have two pointers pointing to the same area on the heap. Everything is ok up to this point. We do this nearly always. The problem occurs when one of the pointers release the memory, but the other pointer is still referencing to it, and you use it; Unexpected results can happen.
+
+### Not checking if `new` has failed
+
+If `new` fails to allocate storage, an **exception** is thrown and your program terminates. We can use exception handling to get more fine-grained control over these exceptional situations. If you try to dereference a pointer which is pointing to `null`, your program would crash. This is good in testing, but not good in production.
+
+### Leaking memory
+
+Memory leaks are easy to understand. When you allocate storage dynamically on the heap, this storage has no name. It is simply an area of memory that is returned to you and you store the value in a pointer. The only way to get to this memory is through the pointer. What if you lose the pointer? Say you allocated the memory in a function, and the pointer was declared in the function and the function terminates. Now you just lost your pointer. There is no way you can reference that allocated memory on the heap, while this memory is still considered in use by C++. So this is called a _memory leak_.
+
+If you leak enough memory, you could run out of storage on the heap for future allocations. Memory leaks was much more problematic when memory was limited, but there is still an error in a sign of bad code.
+
+C++ has introduced **smart pointers**, that take care of many of these problems and are still very efficient.
+
+## References
+
+Although a reference may sound similar to a pointer, they are actually very different. A reference is an **alias** for a variable. So when you use the reference, you are actually using the variable it refers to. References myst always be initialized to a variable when you declare them, and they can never be `null`. Once you initialize a reference you can't change it so it becomes an alias for a different variable.
+
+References are great to use as function paramteres. You might find it useful to think of a reference as a constant pointer that is automatically dereferenced when you use it.
+
+In order clear thing up about references, let's go over some simple examples:
+
+```c++
+int main() {
+    int num {100};
+    int &ref {num};
+
+    cout << num << endl; // 100
+    cout << ref << endl; // 100
+
+    num = 200;
+    cout << num << endl; // 200
+    cout << ref << endl; // 200
+
+    ref = 300;
+    cout << num << endl; // 300
+    cout << ref << endl; // 300
+}
+```
+
+Let's now see some more real-world uses of references. References are often used in `range-based for` loops to access collection elements inside each iteration. This is an example of this, not using references:
+
+```c++
+vector<string> stooges {"Larry", "Moe", "Curly"};
+
+for (auto str : stooges)
+    str = "Funny"; // changes the copy of stooges, since 'str' in this loop is a copy of each element of the vector
+
+for (auto str : stooges)
+    cout << str << endl; // Larry, Moe, Curly
+```
+
+Here is the same example, using references:
+
+```c++
+vector<string> stooges {"Larry", "Moe", "Curly"};
+
+for (auto &str : stooges)
+    str = "Funny"; // changes the actual element of vector, since 'str' in this loop is now a reference to the actual element
+
+for (auto &str : stooges)
+    cout << str << endl; // Funny, Funny, Funny
+```
+
+Note that by using a reference, we are not incurring the cost of copying each vector element in each loop iteration. This is good and efficient, but there is a problem now. In the second loop which is responsible for just displaying the vector elements, when you provide reference to the actual element, you are effectively enabling the risk of modifying the actual elements. You don't want that in a loop that its job is to display the data. However, we still want to use references to avoid making copies and use unnecessary storage. So let's now use `const` to make the reference a constant, so the compiler will prevent us from modifying the elements:
+
+```c++
+vector<string> stooges {"Larry", "Moe", "Curly"};
+
+for (auto &str : stooges)
+    str = "Funny";
+
+for (auto const &str : stooges) {
+    str =  "Funny"; // compiler error
+    cout << str << endl;
+}
+```
+
+> Unless you have a specific reason to copy elements in `range-based for` loops, you should use reference variables to make your code more efficient. And, if you are not going to modify the collection elements, make the reference `const`.
+
+### Back to `l-value` and `r-value`
+
+As you learn more advanced features of the languge, these 2 concepts become much more important than before.
+
+An `l-value` is an object that occupies a location in memory and is addressable since we can use them on the left-hand side of an assignment statement. Take a look at the code below:
+
+```c++
+int x {100}; // x is an l-value
+x = 1000;
+x = 1000 + 20;
+
+string name; // name is an l-value
+name = "Frank";
+```
+
+`l-value`s are modifiable if they are not constants. What is not an `l-value`?
+
+```c++
+100 = x; // 100 is NOT an l-value, it is not addressable - compiler error
+(1000 + 20) = x; // (1000 + 20) is NOT an l-value - compiler error
+
+string name;
+name = "Frank";
+"Frank" = name; // "Frank" is NOT an l-value - compiler error
+```
+
+An `r-value` is anything that is not an `l-value`. Usually, `r-value`s are on the right-hand side of an assignment expression. `r-value`s can also be termporary values that C++ compiler creates. It can also be a literal.
+
+```c++
+int x {100}; // is an r-value
+int y = x = 200; // (x + 200) is an r-value
+
+string name;
+name = "Frank"; // "Frank" is an r-value
+
+int max_num = max(20, 30); // max(20, 30) is an r-value
+```
+
+`r-value`s can be assigned to `l-value`s explicitly. So `l-value`s can appear both on the left or right-hand side of the assignment statement.
+
+```c++
+int x {100};
+int y {0};
+
+y = 100; // r-value 100 assigned to l-value y
+x = x + y; // r-value (x+y) assigned to l-value x
+```
+
+Let's now look at references from the perspective of `l-value`s and `r-value`s. The references we have used so far are `l-value` references, because we are referencing `l-value`s.
+
+```c++
+int x {100};
+
+int &ref1 = x; // ref1 is reference to l-value
+ref1 = 1000;
+
+int &ref2 = 100; // compiler error - 100 is an r-value
+```
+
+The same thing is true when we pass-by-reference to functions:
+
+```c++
+int square(int &n) { // avoiding making a copy of the integer parameter
+    // but remember that you can manipulate the integer parameter.
+    return n*n;
+}
+
+int num {10};
+
+square(num); // ok
+square(5) ; // compiler error - can't reference r-value 5
+```
+
+## Recap
+
+Let's learn about when to use pointers vs. references parameters.
+
+**Pass by value**: When the function does not modify the actual parameter, and the parameter is small and efficient to copy like simple types (`int`, `char`, `double`, etc.). Pass-by-value is what C++ does by default.
+
+> Collection types, like strings and vectors and others have a certain amount of overhead involved when they are copied.
+
+**Pass by reference using a pointer**: In the case of pass-by-reference with a regular pointer, we do want to modify the actual paramtere from within the function and that the parameter is expensive to copy. Then the last criteria is that it is okay for the pointer to contain a `null` value. This matters because a lot of data structures rely on pointers becoming `null` at the end of lists or the end of trees. In these cases, you really want to **pass pointers** and **not references**, becasue references cannot be `null`.
+
+**Pass by reference using a pointer to `const`**: In this case, this is suitable when the function does not modify the actual paramtere, but the actual parameter is expensive to copy (like a display function). Also remember that pointers can contain `null` values, and this is very useful in data structures. In this case, the pointer is allowed to contain a `null` value.
+
+**Pass by reference using a `const` pointer to `const`:** In this case it is very useful when the function does not modify the actual paramtere, and the parameter is expensive to copy, it is ok to have `null` pointer, and also the function never modifies the pointer itself. This is a good example where you would pass something in, and you are guaranteed that the pointer is not moving and the data it is pointing to is not going to change.
+
+**Pass by reference using a reference:** This is used when the function does modify the actual paramtere and the parameter is expensive to copy. Of course, you can never have `null` values in the reference. So if you are working with data structures that depend on `null` values, you really should be using pointers and not references.
+
+**Pass by reference using `const` reference:** This is useful when the function does not modify the actual parameter, but the paramtere is expensive to copy. Again, you cannot have `null` references. So if you need `null` values, go with the pointers.
+
+# OOP
+
+To understand OOP better, let's first review procedural programming and its limitations. Procedural programming is pretty much what we have been doing up to this point. The focus of procedural programming is the function. We modularize our programs by creating many functions that each specify a **process** or **action** in the program. So procedural programs are basically a collection of functions.
+
+In procedural programming, we declare our data separate from the functions. Then, whenever we need the function to process or use our data, we pass in the data to the function. There is nothing wrong with procedural programming. After all, some languages don't support OOP features. Procedural programming is very easy to use since it is all about breaking a problem into smaller sub-problems. However, procedural programming has some limitations.
+
+One problem of procedural programming is that functions need to know the structure of the data. If the structure of the data changes, many functions must be changed. Suppose we have a program with hundreds of functions, and many of them expect a specific data structure as an argument. If the structure or format of the data that is being passed around changes, then this would affect many functions. This could have a ripple effect in the program and the amount of effort needed to change and then test all of the updated functions could be substantial.
+
+The real limitations of procedural programming really begin to show as programs become larget and more complex. As procedural programs get larger and larger, they become more difficult to understand since the number of connections in the program becomes very hard to trace by hand. Also, reusing functions and data structures that we wrote for one program in another program becomes much more difficult since after time, we end up with code whose behavior is not that easy to visualize. Finally, the code becomes more fragile and easier to break. This means when we add new functionality or fix a bug, the chances of introducing another bug is high.
+
+Let's now talk about some principle features of OOP. **OO is all about modeling your software in terms of classes and objects**. These classes and objects model real-world entities in your problem domain. So if you are writing an application that allow users to store, edit, and manipulate images, then your classes might be `album`, `photo`, `slideshow`, `location` and so forth. If you are modeling a student enrollment system, you classes might be `student`, `course`, `professor` and so on. How will this make it different from procedural programming?
+
+It is all about **abstraction**. As your program grows more complex, we need ways to deal with complexity. Classes and objects are one way to do just that. With OOP, rather than thinking in terms of `first_name`, `last_name`, `student_id` and so on, you can think in terms of `student` and all that detail comes along with it. Not only this, but operations like `register`, `drop_course`, `add_course` and so forth, also come along with it. So for example, if Frank is an object, and it was created from the `student` class, I can ask Frank if he has registered this term. This is very different from procedural programming, where I would have a function that would tell me if the student is registered and then I would have to pass a student to that function. This function would have to know how to determine whether a student is registered or not. If, some time later, the **business logic** changes, then you need to figure out everywhere in the program that knows this so we can update the code. In the OOP solution, only the class `student` know this, so a precise change is all that is necessary.
+
+The fact that objects contain data and operations that work on that data is called **encapsulation**. And it is an extension of the abstract data type in computer science. So the data and the operations that should work on them are all in a class, not spread across many functions, each passing and receiving data.
+
+We can take the idea of **encapsulation** even further with **information hiding**. OOP allows us to hide implementation-specific logic in a class so that it is available only within the class. This allows us to provide a public interface to the class and hide everything else. This way, we can make sure that the user of the calss cannot mess with the implementation specific code since they never knew about it in the first place. This makes the code easier to maintain, debug and extend.
+
+OOP is also all about **reusability**. Reusability is defined in terms of using something from this program in another program. Since classes are pretty much encapsulated units of data and operations, reusing them in other applications is much easier. Since the class has already been tested, we get that benefit as well. This leads to faster development and better quality software.
+
+Finally comes **inheritance**. Inheritance allows us to create a new class based on an existing class by only adding or modifying the elements that we need to be able to create our new class. Suppose we have an `account` class that models a basic bank account. So it has a `ballance` and the regular `withdraw` and `deposite` methods. Now suppose we have the need for a special `trust_account` class, and our business logic says that this type of account is limited to 3 withdrawals per year and each withdrawal can't exceed 10% of the current account ballance. We could add this logic to the `account` class that we already have, but what if we expect lots of variations to that `account` class, and each one of them has its own business logic, not only for withdrawal, but also for deposit. This could quickly make that simple `account` class a beast that no programmer wants to deal with. In this case, we can derive our new class from existing `account` class, and add the appropriate behavior in the new class without modifying the original class at all. This leads to reusability as well as **polymorphic** classes, since all the derived classes we created are, in fact, still `account`s.
+
+While OOP can certainly help us develop large programs that are easier to maintain, test, debug, and reuse components from, it is not a penecea (e.g. a solution or remedy for all difficulties or diseases - definition by Oxford). OO won't make bad code better; it will likely make it worse. Also, OO is **not suitable for every application**, and **not everything decomposes into a class**. There are sometimes non-functional requirements that horizontally cross-cut a system, and these tend to add tangled code within existing classes. If you have a small program that won't be around for any significant amount of time, maybe it is an internal program that you are using to automate something, then OOP might be overkill. A simple procedural or scripting program may be perfectly appropriate. It usually takes more upfront design time in order to write an OO program. Large OO programs sometimes go through significant upfront design. Finally, OO programs tend to be larger in size than non-OO programs, and can sometimes be slower and more complex since there is so much more going on behind the scenes.
+
+> Two of the main strengths of object-orientation are **encapsulation** and **information hiding**. We'll see how C++'s `private` and `public` access modifiers, allow us to prevent accress to parts of our code while still allowing access to the interface that will be used by other programmers.
