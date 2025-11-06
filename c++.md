@@ -1905,4 +1905,104 @@ Finally comes **inheritance**. Inheritance allows us to create a new class based
 
 While OOP can certainly help us develop large programs that are easier to maintain, test, debug, and reuse components from, it is not a penecea (e.g. a solution or remedy for all difficulties or diseases - definition by Oxford). OO won't make bad code better; it will likely make it worse. Also, OO is **not suitable for every application**, and **not everything decomposes into a class**. There are sometimes non-functional requirements that horizontally cross-cut a system, and these tend to add tangled code within existing classes. If you have a small program that won't be around for any significant amount of time, maybe it is an internal program that you are using to automate something, then OOP might be overkill. A simple procedural or scripting program may be perfectly appropriate. It usually takes more upfront design time in order to write an OO program. Large OO programs sometimes go through significant upfront design. Finally, OO programs tend to be larger in size than non-OO programs, and can sometimes be slower and more complex since there is so much more going on behind the scenes.
 
-> Two of the main strengths of object-orientation are **encapsulation** and **information hiding**. We'll see how C++'s `private` and `public` access modifiers, allow us to prevent accress to parts of our code while still allowing access to the interface that will be used by other programmers.
+## Classes and objects
+
+You can think of classes as blueprints form which obejcts are created. Classes are user-defined types. One of the goals in OOP is to make the user-defined types feel like they are part of the programming language.
+
+Classes have **attributes** which are data. They also have **methods** which are functions. Classes can hide data and methods that are only used internally by the class. This is done using the `private` and `public` access modifiers. The goal of the class is to provide a well-defined **public interface** that the user of the class can easily use to solve their problems.
+
+Here are some example classes:
+
+1. `Account`
+2. `Employee`
+3. `Image`
+4. `std::vector`
+5. `std:string`
+
+Objects are created from classes and represent a specific instance of the class they are created from. So if I have an `account` class, I can create a Frank's `account` object as well as hundreds of other classes for other users. Each object has its own identity, and each can use the methods defined in the class. Let\_'s see some examples:
+
+```c++
+int high_score; // primitive types - not class or object
+int low_score;
+
+Account frank_account; // instances of Account class
+Account jim_account;
+
+std::vector<int> scores; // instance of vector class
+std::string name; // instance of string class
+```
+
+## Declaring classes
+
+The syntax is very simple to declare classes:
+
+```c++
+class Class_Name { // best practice to capitalize class names
+    // declarations of data and behavior
+};
+```
+
+Let's go over a real-world example:
+
+```c++
+class Player {
+    // attributes
+    std::string name;
+    int health;
+    int xp;
+
+    // methods
+    void talk(std::string text_to_say);
+    bool is_dead();
+}
+```
+
+You can now create objects as instances of the class you defined:
+
+```c++
+Player frank;
+Player hero;
+
+Player *enemy = new Player(); // pointer to dynamically created object on the heap
+delete enemy;
+```
+
+Let's go over another class declaration example:
+
+```c++
+class Acccount {
+    // attributes
+    std:string name;
+    double balance;
+
+    // methods
+    bool withdraw(double amount);
+    bool deposite(double amount);
+}
+```
+
+> Notice that we have written function prototypes in class declarations in these examples.
+
+Let's now create objects as instances of the `Account` class:
+
+```c++
+Account frank_account;
+Account jim_account;
+
+Account *mary_account = new Account();
+delete mary_account;
+```
+
+Once you have objects, you can use them like any other variable in C++. For example, you can create an array of account objects.
+
+```c++
+Account frank_account;
+Account jim_account;
+
+Account accounts[] {frank_account, jim_account};
+
+std::vector<Account> accounts1 {frank_account};
+accounts1.push_back(jim_account);
+```
+
+> It is important to keep in mind that class declarations should usually be accessible from anywhere in your application. So don't declare them in your `main` function. Put them in your global scope.
