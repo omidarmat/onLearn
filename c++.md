@@ -2235,3 +2235,146 @@ int main() {
     return 0;
 }
 ```
+
+## Constructors and destructors
+
+Here is a list to define what constructors are:
+
+1. Constructors are special member methods that are invoked during object creation. They are commonly used for initialization.
+2. Constructors are easy to recognize since they have the same name as the class.
+3. Constructors do not specify a return type and like other methods, they can be overloaded.
+
+Let's now see an example for the `Player` class:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        // overloaded constructors
+        Player();
+        Player(std::string name);
+        Player(std::string name, int health, int xp);
+}
+```
+
+Now here is a list to define what a destructor is:
+
+1. Also a special member method that has the same name as the class, but they have a `~` character preceding their name.
+2. They are invoked automatically by C++ when an object is destroyed. It is a great place to release memory, close files and free up any other resources. **Desctructor is called when a local object goes out of scope or when we delete a pointer to the object**.
+3. It makes no sense to allow overloaded destructors since the destructor is automatically called by C++.
+4. Destructors have no return type and no paramteres.
+
+Let's see an example for the `Player` class:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        // overloaded constructors
+        Player() {
+            // some logid
+        }
+        Player(std::string name) {
+            // some logic
+        }
+        Player(std::string name, int health, int xp);
+
+        // destructor
+        ~Player();
+}
+```
+
+> Make sure you always initialize class member attributes to avoid garbage values.
+
+Let's see how constructors and desctructors are involved in a real-world example:
+
+```c++
+{
+    Player slayer; // this triggers the constructor with no args
+    Player frank {"Frank", 100, 4};
+    Player hero {"Hero"};
+    Player villain {"Villain"};
+
+    // code to use the objects
+} // when code reaches out of the code block, descturctors of the 4 objects are called
+
+Player *enemy = new Player("Enemy", 1000, 0);
+delete enemey; // desctructor called
+```
+
+### Default constructor
+
+A default constructor does not expect any arguments. It is also called the _no-args contructor_. If you don't provide C++ with any initialization information (e.g. constructors), it will automatically generate a default constructor. It does nothing, but it is still generated. Since the compiler-generated default constructor does nothing, the class member attributes of the class could contain garbage since they have not been initialized.
+
+It is best practice to never leave the class declaration with no constructor. Here is an example in which we initialize class member attributes to avoid involving garbage values.
+
+```c++
+class Account {
+    private:
+        std::string name;
+        double balance;
+    public:
+        Account() {
+            name = "None";
+            balance = 0.0;
+        }
+        bool withdraw(double amount);
+        bool deposit(double amount);
+}
+```
+
+> Notice that if you define a constructor for your class, C++ will not generate the default no-args constructor anymore. So if you define a constructor, for example, with 1 argument, you will no longer be able to make instances of your class without providing the required argument. Also, if you have code in some parts of your application that is currently creating an instance of the class with no args, it will not work anymore.
+
+### Constructor Initialization list
+
+Constructor initialization list is very useful for efficiently initializing object's data members. So far we have written our codes so that we initialize our data member values in the constructor body by assigning values to them. While this works, it technically is not considered _initialization_, because by the time the constructor body is executed, these member attributes have already been created. So we are actually assigning values to already created attributes.
+
+What we really want is to have the member data values initialized to our values before the constructor body executes. This would be much more efficient. In C++ this is done using constructor initialization lists, which is basically just a list of initializers, immediately following the parameter list.
+
+```c++
+Player::Player()
+    : name {"None"}, health {0}, xp {0} {
+        // constructor body
+    }
+
+Player::Player(std::string name_value)
+    : name {name_value}, health {0}, xp {0} {
+        // constructor body
+    }
+```
+
+### Delegating constructors
+
+You will often notice that the code used to initialize objects in your class constructors is very similar. Many times, only the initialization values of the data members is what changes. As you know, one common source of program error is duplicate code. To do this for constructors, C++ allows us to use delegating constructors. The idea is that you can now call another constructor of the same class, in the initialization list of constructor. The syntax is pretty simple:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        Player(std:string name, int health, int xp)
+            : name {name}, health {health}, xp {xp} {
+                // code written here will be executed when each of the constructors below delegate to this constructor
+            }
+
+        Player()
+            : Player {"None", 0, 0} {
+                // code written here will be executed after the body of the 3-args constructor
+            }
+
+        Player(std::string name)
+            : Player {name, 0, 0} {
+                // code written here will be executed after the body of the 3-args constructor
+            }
+}
+```
+
+> When a constructor A delagates to constructor B, it is not just the initialization process that is executed by constructor B; the body of constructor B will also be executed, then the compiler goes back to constructor A and executes its body also.
