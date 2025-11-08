@@ -2378,3 +2378,170 @@ class Player {
 ```
 
 > When a constructor A delagates to constructor B, it is not just the initialization process that is executed by constructor B; the body of constructor B will also be executed, then the compiler goes back to constructor A and executes its body also.
+
+### Constructor parameteres and default values
+
+In many cases, we can reduce the number of overloaded constructor by providing default constructor parameters. In this example, we can do everything we did with the three previous constructors:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        // Constructor with default paramtere values
+        Player(std::string name = "None", int health = 0, int xp = 0);
+}
+
+Player::Player(std::string name, int health, int xp) : name {name}, health {health}, xp {xp} {
+    // constructor implementation
+}
+
+// usage:
+Player empty; // None, 0, 0
+Player frank {"Frank"}; // Frank, 0, 0
+Player villain {"Villain", 100, 55}; // Villain, 100, 55
+Player hero {"Hero", 100}; // Hero, 100, 0
+```
+
+> Notice that in the example above, if you provide another constructor with no arguements, `Player empty` will cause compiler error since it would face ambiguous constructors. It would not know which constructor it should call.
+
+Previously, we provided one no-arg constructor, a one-arg constructor, a two-arg constructor, and also a three-arg constructor. Now with default values, we can simply use a three-arg constructor and get rid of the rest.
+
+### Copy constructor
+
+When objects are copied, C++ must create a new object from an existing object. In order to do this, C++ uses a **copy constructor**. There are several use cases where a copy constructor is used:
+
+1. If we pass an object by value to a function or method as a parameter
+2. When we return an object by value from a function or method
+3. When we want to construct a new object based on an existing object of the same class.
+
+In these cases C++ uses a copy constructor. We can define our own copy constructor, and we can define exactly the semantics we need for object copying. If we don't provide a copy constructor, C++ compiler will provide a compiler-generated copy constructor.
+
+Let's see an example of the 1st use case:
+
+```c++
+Player hero {"Hero", 100, 20};
+
+void display_player(Player p) {
+    // p is a copy of hero in this example
+    // some code that users p
+    // destructor for p will be called when function returns
+}
+
+display_player(hero);
+```
+
+Let's now see an example of the 2nd use case:
+
+```c++
+Player enemy;
+
+Player create_super_enemy() {
+    Player an_enemy {"Super Enemy", 1000, 1000};
+    return an_enemy; // a copy of an_enemy is returned
+}
+
+enemy = create_super_enemy();
+```
+
+Let's see an example of the 3rd use case:
+
+```c++
+Player hero {"Hero", 100, 100};
+Player another_hero {hero}; // a copy of hero is made
+```
+
+In all these 3 cases, C++ uses its compiler-generated copy constructor, because we didn't define our copy constructor.
+
+If you don't provide your own way of copying objects by value, then the compiler provides a default way of copying objects. The default copy constructor will do a **member-wise copy**. This means that it will go through the class attributes and copy them from the source object to the target object. For attributes that are objects, then their copy constructor will be called. In many cases this is fine, but if you are using **raw pointers**, then only the pointer will be copied, not the data that it is pointing to. This is referred to as a **shallow copy** rather than a **deep copy**.
+
+Therefore, best practice with copy constructors are:
+
+- Provide a copy constructor when your class has raw pointer members.
+- Provide the copy constructor with a **const reference** parameter.
+- Use STL (Standard Template Library) classes as they already provide copy constructors.
+- Avoid using raw pointer data members if possible, or use smart pointers.
+
+#### Declaring copy constructor
+
+This is how the method signature of copy constructor looks like:
+
+```c++
+// Type::Type(const Type &source)
+Player::Player(const Player &source);
+Account::Account(const Account &source);
+```
+
+Since the copy constructor is a constrcutor, it should have the name of the class. In its paramtere list, we have a single object passed in of the same type. We pass that object in as a **reference** and a **constant**.
+
+> Why pass the object by reference? If passed by value, than C++ would have to make a copy of it, which defeats the purpose of copy constructor and you will end up in a never-ending recursive calls.
+
+> Why constant? Because we are going to copy the source, not modify it.
+
+#### Implementing copy constructor
+
+In the body of a copy constructor, you implement whatever you need to initialize your new object. Remember that you have access to `source` so you can reference any attributes you want from source. But rather than write assignment statements in the constructor body, we can use a **constrcutor initialization list** as you have done before.
+
+Here is an example:
+
+```c++
+class Player {
+    private:
+        std::string name;
+        int health;
+        int xp;
+    public:
+        std::string get_name() {
+            return name;
+        }
+
+        int get_health() {
+            return health;
+        }
+
+        int get_xp() {
+            return xp;
+        }
+
+        Player(std::string name = "None", int health = 0, int xp = 0);
+
+        // copy constructor
+        Player(const Player &source);
+
+        // destructor
+        ~Player() {
+            cout << "Desctructor is being called for: " << name << endl;
+        }
+}
+
+Player::Player(std::string name, int health, int xp)
+    : name{name}, health {health}, xp {xp} {
+        cout << "Three-args constructor for: " << name << endl;
+    }
+
+Player::Player(const Player &source)
+// can also use delegation
+    : name(source.name), health(source.health), xp(source.xp) {
+        cout << "Copy constructor - made a copy of: " << source.name << endl;
+    }
+```
+
+Let's now implement a function which receives an object as parameter, passed by value:
+
+```c++
+void display_player(Player p) {
+    cout << "Name: " << p.get_name() << endl;
+    cout << "Health: " << p.get_health() << endl;
+    cout << "XP: " << p.get_xp() << endl;
+    // at this point the desctructor you defined in the class definition will be called to delete the p object, but the 'empty' player in 'main' will continue to exist
+}
+
+int main() {
+    Player empty;
+    display_player(empty); // calls the copy constructor
+
+    Player new_player {empty}; // calls the copy constructor
+}
+```
