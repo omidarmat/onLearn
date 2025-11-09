@@ -2535,7 +2535,7 @@ void display_player(Player p) {
     cout << "Name: " << p.get_name() << endl;
     cout << "Health: " << p.get_health() << endl;
     cout << "XP: " << p.get_xp() << endl;
-    // at this point the desctructor you defined in the class definition will be called to delete the p object, but the 'empty' player in 'main' will continue to exist
+    // at this point the desctructor you defined in the class definition will be called to delete the 'p' object, but the 'empty' player in 'main' will continue to exist
 }
 
 int main() {
@@ -2544,4 +2544,267 @@ int main() {
 
     Player new_player {empty}; // calls the copy constructor
 }
+```
+
+#### Shallow copying
+
+Let's assume that the object that you are copying has a raw pointer as a data member. When the copy object is constructed, we'll likely allocate storage for the data that the pointer is pointing to, and then when we're done with the copy, we'll release the memory as per best practices. But what happens in the copy constructor?
+
+We can do a **shallow copy** or a **deep copy**.
+
+**Shallow copy:** This is the default behavior provided by the compiler-generated copy constructor. It basically does member-wise copying of all the object attributes. So you end up with the newly created object, and the object being copied, both pointing to the **same area** of storage in the heap. The problem comes into play when one of these objects are destroyed and its destructor is called. When this happens, the object's destructor releases the memory allocated on the heap, but the other object is still pointing to this released area of heap and thinks it is still valid. Hopefully, you would get a crash in your application, and try to fix it. But you should learn how to make a deep copy to avoid this problem completely.
+
+Let's first go over an example that has a class with a pointer attribute that does a shallow copy so we can really understand the problem.
+
+```c++
+class Shallow {
+    private:
+        int *data;
+    public:
+        Shallow(int d); // constructor
+        Shallow(const Shallow &source); // copy constructor
+        ~Shallow(); // destructor
+}
+
+Shallow::Shallow(int d) {
+    data = new int; // allocate storage
+    *data = d;
+}
+
+Shallow::~Shallow() {
+    delete data; // free storage
+    cout << "Destructor freeing data" << endl;
+}
+
+Shallow:Shallow(const Shallow &source)
+    : data(source.data) {
+        cout << "Copy constructor - shallow" << endl;
+    }
+```
+
+> Notice that in the copy constructor, we are doing a member-wise copy or shallow copy with `data(source.data)`. So only the pointer is copied, not the actual data that it is pointing to. The problem is that now `source` and the newly created object both point to the same `data` area in memory. With deep copy, the newly created object will point to a its own location on the heap with that data that is pointed to.
+
+```c++
+int main() {
+    Shallow obj1 {100};
+    display_shallow(obj1); // makes a copy of the object - passed by value
+    // at this point, obj1 data has been released.
+
+    obj1.set_data_value(1000);
+    Shallow obj2 {obj1};
+    cout << "Hello world" << endl;
+    return 0;
+}
+```
+
+#### Deep copying
+
+In deep copy, you don't just copy the pointer. You create a copy of the pointed-to data. This usually means that we have to allocate storage for the copied data and then perform the copy. This way, each object will have a pointer to unique storage in the heap and both areas will contain the same data. YOu always want to use a copy constructor that does a deep copy when you have raw C++ pointers. Let's now go over an example:
+
+```c++
+class Deep {
+    private:
+        int *data;
+    public:
+        Deep(int d); // constructor
+        Deep(const Deep &source); // copy constructor
+        ~Deep(); // destructor
+}
+
+Deep::Deep (int d) {
+    data = new int; // allocate storage
+    *data = d;
+}
+
+Deep::Deep () {
+    delete data; // free storage
+    cout << "Destructor freeing data" < endl;
+}
+
+// two options for copy constructor:
+Deep::Deep (const Deep &source) {
+    data = new int; // allocate storage
+    *data = *source.data;
+    cout << "Copy constructor - deep" << endl;
+}
+
+// also possible to use delegation for copy constructor:
+Deep::Deep (const Deep &source)
+    : Deep {*source.data} {
+        cout << "Copy constructor - deep" << endl;
+    }
+```
+
+> With this copy constructor in place, all copies of the object will be a deep copy.
+
+With this deep copy in place, there is now nothing wrong with this function:
+
+```c++
+
+void display_deep(Deep s) {
+    cout << s.get_data_value() << endl;
+    // Now when 's' goes out of scope the destructor is called and releases 'data'. The storage being released is unique to 's'.
+}
+```
+
+### Move constructors
+
+To understand move constructor and semantics, you need to really understand `l-value` and `r-value` concepts. As a rule of thumb is that when you can refer to an object by name or you can follow a pointer to get to an object, then that object is addressable and it is an `l-value`. `r-value`s are everything else. In the context of move semantics, `r-value`s refer to temporary objects that are **created by the compiler**, and objects **returned from methods**.
+
+```c++
+int total {0};
+total = 100 + 200;
+```
+
+In the code example above, `100 + 200` is evaluated and `300` is stored in an unnamed temporary value. This value is not addressable, so it is an `r-value`. The `r-value` is then assigned to `total` which is `l-value`. The same happens with objects. However, with objects it can be a great amount of overhead if copy constructors are called over and over and over again, making copies of these temporary objects. When we have raw pointers and we have to do deep copies, then the overhead is even greater. This is where move semantics and the move constructor comes into the picture.
+
+`r-value` objects are the objects that move semantics addresses. Ok, but when is it useful?
+
+We know that copy constructors are called whenever the compiler needs to make a copy of an object. We also know that if our class contains a raw pointer, then we must implement deep copy. But this can be computationally expensive since we have to allocate space for the copy and then copy the data over. The C++ move constructor, moves the object rather than copying it. This can be extremely efficient.
+
+Move constructors are optional. If you don't provide them, then the copy constructor will be called. But it is a good idea to use move constructors for efficiency.
+
+> When you run your code and step through it in the debugger, you might not see move constructors being called. In fact, you may not even see the copy constructors being called. If you experience this, it is probably due to something called **copy illusion**, which is a compiler optimization technique that eliminates unnecessary copying. Compilers are really smart with their optimizations now. One of the common techniques is called **return value optimization**. That is when the compiler generates code that does not create a copy every return value from a function, making the code much more efficient.
+
+Let's now talk about `r-value` references. We have already seen `l-value` references which are references to `l-value`s. In the context of move semantics, think of `r-value` refernces as references to those temporary objects that we were talking about.
+
+`l-value` references are declared using a single `&` like we have done. But `r-value` references are declared using `&&`. Let's see some examples:
+
+```c++
+int x {100};
+int &l_ref = x; // l-value reference
+l_ref = 10 // change x to 10
+
+int &&r_ref = 200; // r-value ref
+r_ref = 300; // change r_ref to 300
+
+int &&x_ref = x; // compiler error
+```
+
+Let's look at `l-value` references in the context of function paramteres:
+
+```c++
+int x {100}; // x is an l-value
+
+void func(int &num); // expects an l-value as parameter
+
+func(x); // x is an l-value
+func(200); // Error - 200 is an r-value
+```
+
+Now let's defint `func` in a way that it expects an `r-value` as paramter:
+
+```c++
+int x {100};
+
+void func(int &&num);
+
+func(200); // 200 is an r-value
+func(x); // Error - x is an l-value
+```
+
+You can overload these functions:
+
+```c++
+int x {100};
+
+void func(int &num);
+void func(int &&num);
+
+func(x);
+func(200);
+```
+
+Let's now see how this works with a move constructor in a class:
+
+```c++
+class Move {
+    private:
+        int *data;
+    public:
+        void set_data_value(int d) {
+            *data = d;
+        }
+
+        int get_data_value() {
+            return *data;
+        }
+
+        Move(int d); // constructor
+        Move(const Move &source); // copy constructor
+        ~Move(); // destructor
+}
+
+// copy constructor
+Move::Move(const Move &source) {
+    data = new int;
+    *data = *source.data;
+}
+```
+
+Now to use this:
+
+```c++
+vector<Move> vec;
+
+// copy constructors will be called to copy the temps
+vec.push_back(Move{10}); // Move{10} creates a temporary object - so r-value
+vec.push_back(Move{20}); // Move{20} creates a temporary object - so r-value
+```
+
+What happens here is that the compiler is going to use the copy constructor to make copies of the `r-value`s, `Move{10}` and `Move{20}`. This is pretty inefficient. Let's add the move constructor to the class. But what does it do really? Instead of making a deep copy like the copy constructor does, it simply moves the resource that is on the heap. The way we do that is just to assign the pointer from the source object to the current object.
+
+But isn't this what default member-wise copy is? Yes, but now we null out the pointer in the source object. So now we have an object that owns the data on the heap and then the original object with a null pointer to that data. This is efficient since we are not copying, but moving.
+
+Let's now look at the syntax of a move constructor:
+
+```c++
+// Type::Type(Type &&source)
+Player::Player(Player &&source);
+Move::Move(Move &&source);
+```
+
+> Note that there is no `const` qualifer for the `source`. There can't be, because we need to modify it. Also note that its paramtere is an `r-value` reference.
+
+Let's now add it to our example class:
+
+```c++
+class Move {
+    private:
+        int *data;
+    public:
+        void set_data_value(int d) {
+            *data = d;
+        }
+
+        int get_data_value() {
+            return *data;
+        }
+
+        Move(int d); // constructor
+        Move(const Move &source); // copy constructor
+        Move(Move &&source); // move constructor
+        ~Move(); // destructor
+}
+
+// copy constructor
+Move::Move(const Move &source) {
+    data = new int;
+    *data = *source.data;
+}
+
+// move constructor
+Move::Move(Move &&source)
+    : data{source.data} { // Copying a pointer data member, not copying the data it is pointing to
+        source.data = nullptr; // This step is important. If ignored, we will end up with a shallow copy.
+    }
+```
+
+Now back to our simple program:
+
+```c++
+vector<Move> vec;
+
+vec.push_back(Move{10}); // move constructors will be called
+vec.push_back(Move{20}); // move constructors will be called
 ```
