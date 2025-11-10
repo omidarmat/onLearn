@@ -2808,3 +2808,249 @@ vector<Move> vec;
 vec.push_back(Move{10}); // move constructors will be called
 vec.push_back(Move{20}); // move constructors will be called
 ```
+
+## The `this` pointer
+
+Keyword `this` contains the address of the current object that is being used by the class member method, so it is basically a pointer to the object. The keyword can only be used in the scope of the class. In some other languages, we use `self` instead of `this`. However, C++ allows you to use member names directly, and behind the scenes it is actually using the `this` keyword.
+
+There are many cases that you really need to use the keyword:
+
+1. To explicitly access data members and methods.
+2. To determine if two objects are the same.
+3. To overload the assignment operator to determine if we are assigning to ourselves.
+
+Since `this` is a pointer, if you dereference it you will reach the current object.
+
+As an example of using `this`:
+
+```c++
+void Account::set_balance(double bal) {
+    balance = bal; // this->balance is implied
+}
+
+// If you define the function parameter name as 'balance':
+void Account::set_balance(double balance) {
+    balance = balance; // compiler would not know which balance is parameter and which is class member.
+
+    this->balance = balance; // unambiguous
+}
+```
+
+As another example:
+
+```c++
+int Account::compare_ballance(const Account &other) {
+    // first compare if the two objects are the same, and if they are, return from the function
+    if(this == &other)
+        std::cout << "The same objects" << std::endl;
+
+    // if they are not the same, then more complicated comparison logics...
+}
+
+frank_account.compare_balance(frank_account);
+```
+
+## Using `const` with classes
+
+We know that we can create `const` variables which can't be changed. We have also seen that we can pass references and pointers into functions as `const` and they can't be modified while in the function. Now we can create `const` objects.
+
+Using `const` correctly in parameters as well as method declarations is the basis for `const` correctness in a program.
+
+Let's see an example:
+
+```c++
+const Player villain {"Villain", 100, 55};
+// object is defined as const and you can't change any of its attributes.
+
+villain.set_name("Nice guy"); // error
+std::cout << villain.get_name() << std::endl; // error - compiler assumes that the get_name function could potentially change the object.
+```
+
+Another example:
+
+```c++
+const Player villain {"Villain", 1};
+
+void display_player_name(const Player &p) {
+    cout << p.get_name() << endl; // compiler uses 'this' for 'get_name', but 'this' does not expect a const object. so 'get_name' could potentially change the player object
+}
+
+display_player_name(villain); // error
+```
+
+The solution to these problems is that we tell the compiler explicitly that some methods do not modify the object:
+
+```c++
+class Player {
+    private:
+        // some private members and methods
+    public:
+        // prototype
+        std::string get_name() const; // compiler allows you to call this method on a 'const' object, and it will throw an error if you try to modify the object in this method
+
+        //declaration
+        std::string get_name() const {
+            // you are no longer allowed to modify any object attributes here because of 'const'
+        }
+}
+```
+
+> The idea of class methods having `const` qualifiers is part of what is referred to as **const correctness.** Const correctness can get pretty complicated.
+
+Now with `const` qualifier for `get_name`:
+
+```c++
+villain.set_name("Nice guy"); // error
+std::cout << villain.get_name() << std::endl; // fine by compiler
+```
+
+The rule of thumb for const correctness is that all your getters should be `const`. Any other method in your class that does not modify the object, should be declared as `const`.
+
+## Static class members
+
+In a C++ class we can have both static data and function members. When we declare class data members as `static`, we are actually telling the C++ compiler that these data members belong to the **class**, not to any specific object. So `static` is pretty useful to create class-wide information.
+
+For example, suppose we wanted to know how many player objects we have active in our application at any point in time. We could create a global variable and then increment and decrement it in the code when objects are created or deleted. This is hard to do though, since we can't be sure when constructors are called and when destructors are called. So a **better solution** is to create a `static` variable that is part of the `Player` class. Then we can manipulate that variable directly within the class. Now whenever you need to know how many active players you have, you can simply ask the class itself. To do this, you don't even need any objects.
+
+```c++
+// Player.h
+class Player {
+    private:
+        static int num_players; // can't initialize here. do it in .cpp declaration file
+    public:
+        static int get_num_players();
+}
+
+// Player.cpp
+#include "Player.h"
+
+int Player::num_players {0}; // initialized
+
+// Since this function is static, it only has access to static data members. no access to non-static class data members:
+int Player::get_num_players() {
+    return num_players;
+}
+
+// Best place to increment the player count is in the constructor
+Player::Player(std::string name, int health, int xp)
+    : name {name}, health {health}, xp {xp} {
+        ++num_players // if you have many constructor overloads, you need to increment in many places. if you use delegation, you can do it in one place
+    }
+
+// Best place to decrement the player count is in the destructor
+Player::~Player() {
+    --num_players;
+}
+```
+
+Now to use this class:
+
+```c++
+void display_active_players() {
+    cout << "Active players: " << Player::get_num_players() << endl;
+}
+
+int main() {
+    display_active_players();
+
+    Player obj1 {"Frank"};
+    display_active_players();
+}
+```
+
+## Structs vs. classes
+
+In C++ we can also create objects using the `struct` keyword. We create `struct`s as a container for data; much like `record` in other programming languages. C++ adds the ability to treat structs very much like classes (C doesn't). Everything you can do with classes, you can do with structs. The only difference is that the members of the `struct`s are public by default, whereas the members of a class are private by default.
+
+```c++
+struct Person {
+    std::string name;
+    std::string get_name();
+}
+```
+
+There are a few guidelines that can help you decide whether you need a `struct` or a `class`.
+
+`struct`:
+
+- Use `struct` fro passive objects with public access
+- Don't declare methods in `struct`
+
+`class`:
+
+- Use class fro active objects with private access
+- Implement getters/setters as needed
+- Implement member methods as needed
+
+## Friends of a class
+
+The controversy around the concept of friends is about encapsulation, and whether friends violate enxapsulation or enhance it.
+
+A friend of a class is a function or another class that has access to private class members, and that other function or class is not a member of the class that is accessing. In the case of friend functions, these can be standalone functions or member methods of another class. And in the case of another class, the entire class will have access to the private information of the class granting friendship. So friends have access to both public and private data members of a class, but they are not members of the class.
+
+There are couple of things to remember:
+
+1. Friendship must be granted, not taken. A class must explicitly declare its friends in its class declaration using the `friend` keyword.
+2. Friendship is not symmetric. So if `A` is a friend of `B`, it does not mean that `B` is a friend of `A`.
+3. Friendship is not transitive.
+4. Friendship is not inherited.
+
+```c++
+class Player {
+    friend void display_player(Player &p);
+    std::string name;
+    int health;
+    int xp;
+
+    public:
+        // declarations
+}
+
+void display_player(Player &p) {
+    std::cout << p.name << std::endl;
+    std::cout << p.health << std::endl;
+    std::cout << p.xp << std::endl;
+    // you don't need to go through setters and getters in this function since it is a friend of the Player class
+}
+```
+
+Another example to define another class's method as a friend:
+
+```c++
+class Player {
+    friend void Other_class::display_player(Player &p);
+
+    std::string name;
+    int health;
+    int xp;
+
+    public:
+        // declarations
+}
+
+class Other_class {
+    // some declarations
+
+    public:
+        void display_player(Player &p) {
+            std::cout << p.name << std::endl;
+            std::cout << p.health << std::endl;
+            std::cout << p.xp << std::endl;
+        }
+}
+```
+
+Another example where an entire other class is declared as a friend:
+
+```c++
+class Player {
+    friend class Other_class; // all methods of the Other_class will have access to the Player class's private attirbutes
+
+    std::string name;
+    int health;
+    int xp;
+
+    public:
+        // declarations
+}
+```
