@@ -3054,3 +3054,110 @@ class Player {
         // declarations
 }
 ```
+
+# Operator overloading
+
+C++ allows the programmer to overload most operators to work with user-defined classes. This is intended to make code more readable and writable, by allowing the use of familiar operators in a familiar manner, but with our own classes and objects.
+
+For example, C++ provides a default way of doing object assignment, much as it did with the copy constructor. However, many times we want to be in control of what happens during object assignment, and we can overload the object assignment operator to do exactly that. For example, when we use raw pointer in our classes, we must provide our own version of the assigment operator. Additionally, we can overload the assignment operator to handle both copy and move semantics as we did with the copy constructors.
+
+C++ operators are defined to work with the primitive or built-in C++ types. In fact, we have also seen that C++ operators are overloaded to work with different types. For instance, the `+` operators can add two integeres, doubles, etc. Additionatilly, C++ allows us to overload operators for our own user-defined types. This allows our types to behave and feel similar to the built-in types.
+
+The only operator that the compiler provides a default implementation for, is the assignment operator `=`. That is because the compiler must be able to assign one object to another. All other operators that can be overloaded must be explicitly defined by the programmer.
+
+To see exactly what we would miss without overloading operators, let's see an example. Suppose we have created our own `Number` class. In this class, to multiply, divide or add two numbers we would have to do:
+
+```c++
+// using functions
+Number result = multiply(add(a, b), divide(c, d));
+
+// using member methods
+Number result = (a.add(b)).multiply(c.divide(d));
+```
+
+This code can be written in a much more clear way using operator overloading:
+
+```c++
+Number result = ( a + b ) * ( c / d );
+```
+
+So operator overloading is actually syntactic sugar. Let's see what operators can be overloaded. First, let's see which operators cannot be overloaded:
+
+- `::`
+- `:?`
+- `.*`
+- `.`
+- `sizeof`
+
+Other than these, the majority of C++ operators can be overloaded.
+
+There are some basic rules around overloading operators:
+
+- Precedence and associativity cannot be changed
+- `arity` cannot be changed (i.e. can't make the division operator unary)
+- Can't overload operators for primitive types
+- Can't create new operators
+- `[]`, `()`, `->` and the assignment operator `=` must be declared as member methods.
+- Other operators can be declared as member methods or global functions.
+
+This is the class that we are going to use as example:
+
+```c++
+//Mystirng.h
+class Mystring {
+    private:
+        char *str; // C-style string
+
+    public:
+        Mystring();
+        Mystring(const char *s);
+        Mystring(const Mystring &srouce);
+        ~Mystring();
+        void display() const;
+        int get_length() const;
+        const char *get_str() const;
+}
+
+// Mystring.cpp
+#include <cstring>
+#include <iostream>
+#include "Mystring.h"
+
+Mystring::Mystring() : str{nullptr} {
+    str = new char[1];
+    *str = '\0';
+}
+
+Mystring::Mystring(const char *s) : str {nullptr} {
+    if(s == nullptr) {
+        str = new char[1];
+        *str = '\0';
+    } else {
+        str = new char[std::strlen(s) + 1];
+        std::strcpy(str, s);
+    }
+}
+
+Mystirng::Mystring(const Mystring &source)
+    : str(nullptr) {
+        str = new char[std::strlen(source.str) + 1];
+        std::strcpy(str, source.str);
+    }
+
+Mystring::~Mystring() {
+    delete [] str;
+}
+
+void Mystring::display() const {
+    std::cout << str << ":" << get_length() << std::endl;
+}
+
+int Mystring::get_length() const {
+    return std::strlen(str);
+}
+
+const char *Mystring::get_str() const {
+    return str;
+}
+
+```
