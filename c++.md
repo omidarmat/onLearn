@@ -3109,10 +3109,10 @@ class Mystring {
         char *str; // C-style string
 
     public:
-        Mystring();
-        Mystring(const char *s);
-        Mystring(const Mystring &srouce);
-        ~Mystring();
+        Mystring(); // no-args constructor
+        Mystring(const char *s); //overloaded constructor
+        Mystring(const Mystring &srouce); // copy constructor
+        ~Mystring(); // destructor
         void display() const;
         int get_length() const;
         const char *get_str() const;
@@ -3149,7 +3149,7 @@ Mystring::~Mystring() {
 }
 
 void Mystring::display() const {
-    std::cout << str << ":" << get_length() << std::endl;
+    std::cout << str << " : " << get_length() << std::endl;
 }
 
 int Mystring::get_length() const {
@@ -3159,5 +3159,51 @@ int Mystring::get_length() const {
 const char *Mystring::get_str() const {
     return str;
 }
-
 ```
+
+## Overloading assignment operator (copy)
+
+Assignment operator is used by C++ when it assigns one object to another. Don't confuse assinment with initialization. Initialization is done by constructors when new objects are created.
+
+```c++
+Mystring s1 {"Frank"};
+Mystring s2 = s1; // not assignment - same as previous line
+
+s2 = s1; // this is assignment - s2 was created before (2 lines above)
+```
+
+> An assigment occurs when an object has already been initialized, and you want to assign another object to it.
+
+C++ provides a default way of assigning one object to another, and if you don't provide your own overloded assignment operator, then C++ will provide a compiler-generated one for you. This is very similar to what it did with the default copy constructor.
+
+The behavior for the default assignment is member-wise assignment, which means shallow copying. If you'r class does not have raw pointers, then the default assignment operator will probably be just fine. However, in the `Mystring` example class, we have a raw pointer. So we'll overload the assignment operator, so that it deep copies the pointed-to data on the heap.
+
+To overload the copy assignment operator, this would be the prototype:
+
+```c++
+// Type &Type::operator=(const Type &rhs);
+Mystring &Mystring::operator=(const Mystring &rhs);
+
+// You write this:
+s2 = s1;
+
+// "operator=" method is called
+s2.operator=(s1);
+```
+
+And this is the implementation:
+
+```c++
+Mystring &Mystring::operator=(const Mystring &rhs) {
+    if(this == &rhs) // check for self assignment p1=p1
+        return *this; // return current object
+
+    delete [] str; // deallocate storage for "this.str" since we are overwriting it
+    str = new char[std::strlen(rhs.str) + 1]; // allocate storage for the deep copy
+    std::strcpy(str, rhs.str); // perform the copy
+
+    return *this; // return the current object by reference to allow chain assignment (s1 = s2 = s3)
+}
+```
+
+Remember that the object on the left side of an assignment operator (`s2` in `s2 = s1`) is referred to by the `this` pointer, and the object on the right-hand side (`rhs`) is being passed into the method.
