@@ -3207,3 +3207,49 @@ Mystring &Mystring::operator=(const Mystring &rhs) {
 ```
 
 Remember that the object on the left side of an assignment operator (`s2` in `s2 = s1`) is referred to by the `this` pointer, and the object on the right-hand side (`rhs`) is being passed into the method.
+
+## Overloading assignment operator (move)
+
+The copy assignment operator that we just overloaded in the previous section works with `l-value` references. The move operator that will overload now works with `r-value` references.
+
+> Again, think temorary unnamed objects. You don't have to provide a move assignment operator, and if you don't, C++ will use the copy constructor by default. However, move semantics can be much more efficient, and it is not a lot of extra work to provide a move constructor and a move assignment operator.
+
+Let's now see when a move assignment operator will be used.
+
+```c++
+Mystring s1;
+
+s1 = Mystring {"Frank"}; // move assignment
+```
+
+Notice that the `Mystring {"Frank"}` object is a temporary object with no name, so it is an `r-value`. When assigning it to `s1` the move assignment will be called since we are providing an `r-value`.
+
+Let's see how to declare:
+
+```c++
+// Type &Type::operator=(Type &&rhs)
+Mystring &Mystring::operator=(Mystring &&rhs); // the double && tells the function that the right-hand side object will be r-value
+
+s1 = Mystring {"Joe"}; // move operator will be called
+s1 = "Frank"; // move operator will be called
+```
+
+Notice that the right-hand side object reference cannot be `const` since we will be modifying that object when we move the data.
+
+So the declaration for the `Mystring` class returns a `Mystring` object by reference and expects an `r-value` reference to a `Mystring` object.
+
+Let's now see how to implement:
+
+```c++
+Mystring &Mystring::operator=(Mystring &&rhs) {
+    if (this == &rhs) // check self assignment
+        return *this; // return current object
+
+    delete [] str; // deallocate current storage
+    str = rhs.str; // steal the pointer
+
+    rhs.str = nullptr; // null out the rhs object
+
+    return *this;
+}
+```
