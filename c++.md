@@ -3253,3 +3253,5 @@ Mystring &Mystring::operator=(Mystring &&rhs) {
     return *this;
 }
 ```
+
+## Overloading operators as member functions
