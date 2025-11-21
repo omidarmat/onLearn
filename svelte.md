@@ -1107,6 +1107,592 @@ Instead of the `transition` directive, an element can have an `in` or an `out` d
 
 ### Custom CSS transitions
 
+The `svelte/transition` module has a handful of built-in transitions, but it’s very easy to create your own. By way of example, this is the source of the `fade` transition:
+
+```js
+function fade(node, { delay = 0, duration = 400 }) {
+  const o = +getComputedStyle(node).opacity;
+
+  return {
+    delay,
+    duration,
+    css: (t) => `opacity: ${t * o}`,
+  };
+}
+```
+
+The function takes two arguments — the node to which the transition is applied, and any parameters that were passed in — and returns a **transition object** which can have the following properties:
+
+- `delay` — milliseconds before the transition begins
+- `duration` — length of the transition in milliseconds
+- `easing` — a `p => t` easing function (see the chapter on tweening)
+- `css` — a `(t, u) => css` function, where `u === 1 - t`
+- `tick` — a `(t, u) => {...}` function that has some effect on the node
+
+The `t` value is `0` at the **beginning of an intro** or the **end of an outro**, and `1` at the end of an intro or beginning of an outro.
+
+> Most of the time you should return the `css` property and not the `tick` property, as CSS animations run **off the main thread** to prevent jank where possible. Svelte ‘simulates’ the transition and constructs a CSS animation, then lets it run.
+
+You can take a look at another more complex example here: https://svelte.dev/tutorial/svelte/custom-css-transitions
+
+### Custom JS transitions
+
+While you should generally use CSS for transitions as much as possible, there are some effects that can’t be achieved without JavaScript, such as a typewriter effect:
+
+```js
+function typewriter(node, { speed = 1 }) {
+  const valid =
+    node.childNodes.length === 1 &&
+    node.childNodes[0].nodeType === Node.TEXT_NODE;
+
+  if (!valid) {
+    throw new Error(
+      `This transition only works on elements with a single text node child`
+    );
+  }
+
+  const text = node.textContent;
+  const duration = text.length / (speed * 0.01);
+
+  return {
+    duration,
+    tick: (t) => {
+      const i = Math.trunc(text.length * t);
+      node.textContent = text.slice(0, i);
+    },
+  };
+}
+```
+
+As a real example:
+
+```html
+<script>
+  let visible = $state(false);
+
+  function typewriter(node, { speed = 1 }) {
+    const valid =
+      node.childNodes.length === 1 &&
+      node.childNodes[0].nodeType === Node.TEXT_NODE;
+
+    if (!valid) {
+      throw new Error(
+        `This transition only works on elements with a single text node child`
+      );
+    }
+
+    const text = node.textContent;
+    const duration = text.length / (speed * 0.01);
+
+    return {
+      duration,
+      tick: (t) => {
+        const i = Math.trunc(text.length * t);
+        node.textContent = text.slice(0, i);
+      },
+    };
+
+    return {};
+  }
+</script>
+
+<label>
+  <input type="checkbox" bind:checked="{visible}" />
+  visible
+</label>
+
+{#if visible}
+<p transition:typewriter>The quick brown fox jumps over the lazy dog</p>
+{/if}
+```
+
+### Transition events
+
+It can be useful to know when transitions are beginning and ending. Svelte dispatches events that you can listen to like any other DOM event:
+
+```html
+<p
+	transition:fly={{ y: 200, duration: 2000 }}
+	onintrostart={() => status = 'intro started'}
+	onoutrostart={() => status = 'outro started'}
+	onintroend={() => status = 'intro ended'}
+	onoutroend={() => status = 'outro ended'}
+>
+	Flies in and out
+</p>
+```
+
+### Global transitions
+
+Ordinarily, transitions will only play on elements when their direct containing block is added or destroyed. In the example here, toggling the visibility of the entire list does not apply transitions to individual list elements:
+
+```html
+<script>
+  import { slide } from "svelte/transition";
+
+  let items = [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+  ];
+
+  let showItems = $state(true);
+  let i = $state(5);
+</script>
+
+<label>
+  <input type="checkbox" bind:checked="{showItems}" />
+  show list
+</label>
+
+<label>
+  <input type="range" bind:value="{i}" max="10" />
+</label>
+
+{#if showItems} {#each items.slice(0, i) as item}
+<div transition:slide>{item}</div>
+{/each} {/if}
+
+<style>
+  div {
+    padding: 0.5em 0;
+    border-top: 1px solid #eee;
+  }
+</style>
+```
+
+Instead, we’d like transitions to not only play when individual items are added and removed with the slider but also when we toggle the checkbox.
+
+We can achieve this with a `global` transition modifier, which plays when any block containing the transitions is added or removed:
+
+```jsx
+{#each items.slice(0, i) as item}
+		<div transition:slide|global>
+			{item}
+		</div>
+{/each}
+```
+
+### Key blocks
+
+Key blocks destroy and recreate their contents when the value of an expression changes. This is useful if you want an element to play its transition whenever a value changes instead of only when the element enters or leaves the DOM.
+
+Here, for example, we’d like to play the typewriter transition from `transition.js` whenever the loading message, i.e. `i` changes. Wrap the <p> element in a key block:
+
+```jsx
+{#key i}
+	<p in:typewriter={{ speed: 10 }}>
+		{messages[i] || ''}
+	</p>
+{/key}
+```
+
+Look at this example to understand it better:
+
+```html
+<script>
+	import { typewriter } from './transition.js';
+	import { messages } from './loading-messages.js';
+
+	let i = $state(-1);
+
+	$effect(() => {
+		const interval = setInterval(() => {
+			i += 1;
+			i %= messages.length;
+		}, 2500);
+
+		return () => {
+			clearInterval(interval);
+		};
+	});
+</script>
+
+<h1>loading...</h1>
+
+{#key i}
+<p in:typewriter={{ speed: 10 }}>
+	{messages[i] || ''}
+</p>
+{/key}
+```
+
+# Advanced Svelte
+
+## Advanced Reactivity
+
+### Raw state
+
+In previous examples, we learned that state is deeply reactive — if you (for example) change a property of an object, or push to an array, it will cause the UI to update. This works by creating a proxy that intercepts reads and writes.
+
+Occasionally, that’s not what you want. If you’re not changing individual properties, or if it’s important to maintain referential equality, then you can use _raw state_ instead.
+
+In this example, we have a chart of Svelte’s steadily increasing stock price. We want the chart to update when new data comes in, which we could achieve by turning `data` into state
+
+```js
+let data = $state(poll());
+```
+
+but there’s no need to make it **deeply reactive** when it will be discarded a few milliseconds later. Instead, use `$state.raw`:
+
+```js
+let data = $state.raw(poll());
+```
+
+> Mutating raw state will have no direct effect. In general, mutating non-reactive state is strongly discouraged.
+
+Take a look at the example here to understand it better and also get to know some interesting techniques: https://svelte.dev/tutorial/svelte/raw-state
+
+### Reactive Javascript classes
+
+It’s not just variables that can be made reactive — in Svelte, we can also make properties of classes reactive.
+
+Let’s make the width and height properties of our `Box` class reactive:
+
+```js
+class Box {
+  width = $state(0);
+  height = $state(0);
+  area = 0;
+
+  // ...
+}
+```
+
+> In addition to `$state` and `$derived`, you can use `$state.raw` and `$derived.by` to define reactive fields.
+
+#### Getters and setters
+
+Classes are particularly useful when you need to validate data. You can setup getters and setters and implement your validations in them:
+
+```js
+class Box {
+  #width = $state(0);
+  #height = $state(0);
+  area = $derived(this.#width * this.#height);
+
+  constructor(width, height) {
+    this.#width = width;
+    this.#height = height;
+  }
+
+  get width() {
+    return this.#width;
+  }
+
+  get height() {
+    return this.#height;
+  }
+
+  set width(value) {
+    this.#width = Math.max(0, Math.min(MAX_SIZE, value));
+  }
+
+  set height(value) {
+    this.#height = Math.max(0, Math.min(MAX_SIZE, value));
+  }
+
+  embiggen(amount) {
+    this.width += amount;
+    this.height += amount;
+  }
+}
+```
+
+#### Reactive built-ins
+
+Svelte ships with several reactive classes that you can use in place of JavaScript built-in objects: `Map`, `Set`, `Date`, `URL` and `URLSearchParams`.
+
+For instance, instead of using `$state(new Date())` to make the regular JavaScript date object reactive, you can use `new SvelteDate()` from `svelte/reactivity` which is reactive by nature.
+
+### Stores
+
+Prior to the introduction of runes in Svelte 5, stores were the idiomatic way to handle reactive state outside components. That’s no longer the case, but you’ll still encounter stores when using Svelte (including in SvelteKit, for now).
+
+Remember the example we created in the _Universal reactivity_ section? We are now going to do that again, but this time the shared state is implemented using a store.
+
+In `shared.js` we’re currently exporting count, which is a number. Turn it into a writable store:
+
+```js
+import { writable } from "svelte/store";
+
+export const count = writable(0);
+```
+
+To reference the value of the store, we prefix it with a $ symbol. Remember that whenever you want to refer to the `count` variable in a component, you need to use the $ prefix. In `Counter.svelte`:
+
+```html
+<!-- Counter.svelte -->
+ <script>
+	import { count } from './shared.js';
+</script>
+
+<button onclick={() => $count += 1}>
+	clicks: {$count}
+</button>
+```
+
+Finally, you can add the event handler. Because this is a writable store, we can update the value programmatically using its `set` or `update` method...
+
+```js
+count.update((n) => n + 1);
+```
+
+## Reusing content
+
+Snippets allow you to reuse content within a component, without extracting it out into a separate file.
+
+This could be a snippet for the table row representing some unicode data related to monkey:
+
+```js
+{#snippet monkey()}
+	<tr>
+		<td>{emoji}</td>
+		<td>{description}</td>
+		<td>\u{emoji.charCodeAt(0).toString(16)}\u{emoji.charCodeAt(1).toString(16)}</td>
+		<td>&amp#{emoji.codePointAt(0)}</td>
+	</tr>
+{/snippet}
+```
+
+Then whenever you want this snipper to be rendered:
+
+```js
+{@render monkey()}
+```
+
+You can also make your snippet accept parameters:
+
+```js
+{#snippet monkey(emoji, description)}
+	<tr>
+		<td>{emoji}</td>
+		<td>{description}</td>
+		<td>\u{emoji.charCodeAt(0).toString(16)}\u{emoji.charCodeAt(1).toString(16)}</td>
+		<td>&amp#{emoji.codePointAt(0)}</td>
+	</tr>
+{/snippet}
+```
+
+And then when you use it:
+
+```js
+{@render monkey('🐵', 'see no evil')}
+```
+
+### Passing snippets to components
+
+Since snippets — like functions — are just values, they can be passed to components as props.
+
+Take this `<FilteredList>` component as an example. Its job is to filter the data that gets passed into it, but it has no opinions about how that data should be rendered — that’s the responsibility of the parent component.
+
+These are the snippets:
+
+```js
+{#snippet header()}
+	<header>
+		<span class="color"></span>
+		<span class="name">name</span>
+		<span class="hex">hex</span>
+		<span class="rgb">rgb</span>
+		<span class="hsl">hsl</span>
+	</header>
+{/snippet}
+
+{#snippet row(d)}
+	<div class="row">
+		<span class="color" style="background-color: {d.hex}"></span>
+		<span class="name">{d.name}</span>
+		<span class="hex">{d.hex}</span>
+		<span class="rgb">{d.rgb}</span>
+		<span class="hsl">{d.hsl}</span>
+	</div>
+{/snippet}
+```
+
+We are now going to make the `<FilteredList>` component accept them:
+
+```html
+<!-- FilteredList.svelte -->
+<script>
+  let { data, field, header, row } = $props();
+
+  let search = $state("");
+
+  let filtered = $derived.by(() => {
+    if (search === "") return data;
+
+    const regex = new RegExp(search, "i");
+    return data.filter((d) => regex.test(d[field]));
+  });
+</script>
+
+<div class="list">
+  <label> Filter: <input bind:value="{search}" /> </label>
+
+  <div class="header">{@render header()}</div>
+
+  <div class="content">{#each filtered as d} {@render row(d)} {/each}</div>
+</div>
+```
+
+Then pass those snippets to the `FilteresList` component:
+
+```html
+<FilteredList data="{colors}" field="name" {header} {row}></FilteredList>
+```
+
+### Implicit snippet props
+
+As an authoring convenience, snippets declared directly inside components become props on those components. Take the `header` and `row` snippets from previous example and move them inside `<FilteredList>`, then you will no longer need to pass the snippets as explicit props:
+
+```js
+<FilteredList
+	data={colors}
+	field="name"
+>
+	{#snippet header()}
+	<header>
+		<span class="color"></span>
+		<span class="name">name</span>
+		<span class="hex">hex</span>
+		<span class="rgb">rgb</span>
+		<span class="hsl">hsl</span>
+	</header>
+  {/snippet}
+
+  {#snippet row(d)}
+	<div class="row">
+		<span class="color" style="background-color: {d.hex}"></span>
+		<span class="name">{d.name}</span>
+		<span class="hex">{d.hex}</span>
+		<span class="rgb">{d.rgb}</span>
+		<span class="hsl">{d.hsl}</span>
+	</div>
+  {/snippet}
+</FilteredList>
+```
+
+Any content inside a component that is not part of a declared snippet becomes a special `children` snippet. Since `header` has no parameters, we can turn it into children by removing the block tags...
+
+```js
+<FilteredList
+	data={colors}
+	field="name"
+>
+	<header>
+		<span class="color"></span>
+		<span class="name">name</span>
+		<span class="hex">hex</span>
+		<span class="rgb">rgb</span>
+		<span class="hsl">hsl</span>
+	</header>
+
+  {#snippet row(d)}
+	<div class="row">
+		<span class="color" style="background-color: {d.hex}"></span>
+		<span class="name">{d.name}</span>
+		<span class="hex">{d.hex}</span>
+		<span class="rgb">{d.rgb}</span>
+		<span class="hsl">{d.hsl}</span>
+	</div>
+  {/snippet}
+</FilteredList>
+```
+
+Now the `header` parameter that is expected by the `FilteredList.svelte` component is no longer available, instead it will receive it as a `children` prop:
+
+```html
+<script>
+  let { data, field, children, row } = $props();
+
+  let search = $state("");
+
+  let filtered = $derived.by(() => {
+    if (search === "") return data;
+
+    const regex = new RegExp(search, "i");
+    return data.filter((d) => regex.test(d[field]));
+  });
+</script>
+
+<div class="list">
+  <label> Filter: <input bind:value="{search}" /> </label>
+
+  <div class="header">{@render children()}</div>
+
+  <div class="content">{#each filtered as d} {@render row(d)} {/each}</div>
+</div>
+```
+
+## Motion
+
+Often, a good way to communicate that a value is changing is to use motion. Svelte ships classes for adding motion to your user interfaces.
+
+### Tweened values
+
+Import the `Tween` class from `svelte/motion` and turn `progress` into an instance of `Tween`:
+
+```html
+<!-- App.svelte -->
+<script>
+  import { Tween } from "svelte/motion";
+  let progress = new Tween(0);
+</script>
+```
+
+The `Tween` class has a **writable** `target` property and a **readonly** `current` property — update the `<progress>` element:
+
+```html
+<progress value="{progress.current}"></progress>
+
+<button onclick={() => (progress.target = 0)}>
+	0%
+</button>
+
+<button onclick={() => (progress.target = 0.25)}>
+	25%
+</button>
+
+<button onclick={() => (progress.target = 0.5)}>
+	50%
+</button>
+
+<!-- more buttons -->
+```
+
+However, at this point, the progress animation might seem a bit robatic. To make it smoother you can add an easing function by importing `cubicOut` from `svelte/easing` and then passing it as the second argument of `Tween` contstructor:
+
+```html
+<script lang="ts">
+  import { Tween } from "svelte/motion";
+  import { cubicOut } from "svelte/easing";
+
+  let progress = new Tween(0, {
+    duration: 400,
+    easing: cubicOut,
+  });
+</script>
+```
+
+The full set of options available to `Tween` are:
+
+- `delay` — milliseconds before the tween starts
+- `duration` — either the duration of the tween in milliseconds, or a `(from, to) => milliseconds` function allowing you to (e.g.) specify longer tweens for larger changes in value
+- `easing` — a `p => t` function
+- `interpolate` — a custom `(from, to) => t => value` function for interpolating between arbitrary values. By default, Svelte will interpolate between numbers, dates, and identically-shaped arrays and objects (as long as they only contain numbers and dates or other valid arrays and objects). If you want to interpolate (for example) colour strings or transformation matrices, supply a custom interpolator.
+
+You can also call `progress.set(value, options)` instead of assigning directly to `progress.target`, in which case options will **override the defaults**. The `set` method returns a **promise** that resolves when the **tween completes**.
+
+### Springs
+
 # Side notes
 
 ## Rendering HTML text
