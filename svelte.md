@@ -2228,5 +2228,44 @@ A page that only has a single action is, in practice, quite rare. Most of the ti
 Take the actions object from the previous example and replace our default action with named `create` and `delete` actions:
 
 ```js
+export const actions = {
+  create: async ({ cookies, request }) => {
+    const data = await request.formData();
+    db.createTodo(cookies.get("userid"), data.get("description"));
+  },
 
+  delete: async ({ cookies, request }) => {
+    const data = await request.formData();
+    db.deleteTodo(cookies.get("userid"), data.get("id"));
+  },
+};
+```
+
+> Default actions cannot coexist with named actions.
+
+A `<form>` element has an `action` attribute which you can use to make the form point to a specific action. The `action` attribute of a form is similar to the `href` attribute of an `<a>` element.
+
+```html
+<form method="POST" action="?/create">
+  <label>
+    add a todo:
+    <input name="description" autocomplete="off" />
+  </label>
+</form>
+```
+
+> The `action` attribute can be any URL — if the action was defined on another page, you might have something like `/todos?/create`. Since the action is on this page, we can omit the pathname altogether, hence the leading `?` character.
+
+As another example, this could be a list of forms, each designed to invoke a server action to delete a specific element:
+
+```html
+{#each data.todos as todo (todo.id)}
+<li>
+  <form method="POST" action="?/delete">
+    <input type="hidden" name="id" value="{todo.id}" />
+    <span>{todo.description}</span>
+    <button aria-label="Mark as complete"></button>
+  </form>
+</li>
+{/each}
 ```
