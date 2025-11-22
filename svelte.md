@@ -2111,4 +2111,122 @@ Instead, let’s rename `src/routes/blog/+page.server.js` to `src/routes/blog/+l
 
 The layout (and any page below it) inherits `data.summaries` from the parent `+layout.server.js`.
 
-When we navigate from one post to another, we only need to load the data for the post itself — the layout data is still valid. See the documentation on invalidation here: .
+When we navigate from one post to another, we only need to load the data for the post itself — the layout data is still valid. See the documentation on invalidation here: https://svelte.dev/docs/kit/load#Rerunning-load-functions
+
+## Headers and cookies
+
+### Setting headers
+
+Inside a `load` function (as well as in form actions, hooks and API routes, which we’ll learn about later) you have access to a `setHeaders` function, which — unsurprisingly — can be used to set headers on the response.
+
+Most commonly, you’d use it to customise caching behaviour with the `Cache-Control` response header, but for the sake of this tutorial we’ll do something less advisable and more dramatic:
+
+```js
+export function load({ setHeaders }) {
+  setHeaders({
+    "Content-Type": "text/plain",
+  });
+}
+```
+
+### Reading and writing cookies
+
+The `setHeaders` function can’t be used with the `Set-Cookie` header. Instead, you should use the `cookies` API.
+
+In your `load` functions, you can read a cookie with `cookies.get(name, options)`:
+
+```js
+export function load({ cookies }) {
+  const visited = cookies.get("visited");
+
+  return {
+    visited: visited === "true",
+  };
+}
+```
+
+To set a cookie, use `cookies.set(name, value, options)`. It’s strongly recommended that you explicitly configure the `path` when setting a cookie, since browsers’ default behaviour — somewhat uselessly — is to set the cookie on the parent of the current path. So do this as a better practice:
+
+```js
+export function load({ cookies }) {
+  const visited = cookies.get("visited");
+
+  cookies.set("visited", "true", { path: "/" });
+
+  return {
+    visited: visited === "true",
+  };
+}
+```
+
+Calling `cookies.set(name, ...)` causes a `Set-Cookie` header to be written, but it also updates the internal map of cookies, meaning any subsequent calls to `cookies.get(name)` during the same request will return the updated value. Under the hood, the `cookies` API uses the popular `cookie` package — the options passed to `cookies.get` and `cookies.set` correspond to the `parse` and `serialize` options from the `cookie` documentation. SvelteKit sets the following defaults to make your cookies more secure:
+
+```js
+{
+	httpOnly: true,
+	secure: true,
+	sameSite: 'lax'
+}
+```
+
+## Shared modules
+
+Because SvelteKit uses directory-based routing, it’s easy to place modules and components alongside the routes that use them. A good rule of thumb is ‘put code close to where it’s used’.
+
+Sometimes, code is used in multiple places. When this happens, it’s useful to have a place to put them that can be accessed by all routes without needing to prefix imports with `../../../../`. In SvelteKit, that place is the `src/lib` directory. Anything inside this directory can be accessed by any module in src via the `$lib` alias.
+
+```js
+// .js file located in src/lib
+export const message = "hello from $lib/message";
+```
+
+```html
+<!-- component file located in 'routes' folder in 'src' -->
+<script>
+  import { message } from "$lib/message.js";
+</script>
+```
+
+## Forms
+
+In the chapter on loading data, we saw how to get data from the server to the browser. Sometimes you need to send data in the opposite direction, and that’s where `<form>` — the web platform’s way of submitting data — comes in.
+
+Imagine you have this form:
+
+```html
+<!-- src/routes/+page.svelte -->
+<form method="POST">
+  <label>
+    Add a todo:
+    <input name="description" autocomplete="off" />
+  </label>
+</form>
+```
+
+If you fill in the form and hit Enter, the form will be submitted through a `POST` request. You need to define an appropriate server-side action to handle this `POST` request:
+
+```js
+// src/routes/+page.server.js
+import * as db from "$lib/server/database.js";
+
+export const actions = {
+  default: async ({ cookies, request }) => {
+    const data = await request.formData();
+    db.createTodo(cookies.get("userId"), data.get("description"));
+  },
+};
+```
+
+The `request` is a standard Request object; `await request.formData()` returns a `FormData` instance.
+
+Notice that we haven’t had to write any `fetch` code or anything like that — data updates automatically. And because we’re using a `<form>` element, this app would work even if JavaScript was disabled or unavailable.
+
+### Named form actions
+
+A page that only has a single action is, in practice, quite rare. Most of the time you’ll need to have multiple actions on a page. In this app, creating a todo isn’t enough — we’d like to delete them once they’re complete.
+
+Take the actions object from the previous example and replace our default action with named `create` and `delete` actions:
+
+```js
+
+```

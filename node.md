@@ -50,7 +50,10 @@
     - [**JWT**](#jwt)
       - [`jwt.sign`](#jwtsign)
       - [`jwt.verify`](#jwtverify)
-    - [**JWT verification error**](#jwt-verification-error)
+        - [**JWT verification error**](#jwt-verification-error)
+    - [**bcrypt**](#bcrypt)
+      - [`bcrypt.hash`](#bcrypthash)
+      - [`bcrypt.compare`](#bcryptcompare)
     - [**Nodemon module**](#nodemon-module)
   - [**Streams**](#streams)
     - [**Streams in practice**](#streams-in-practice)
@@ -86,6 +89,7 @@
       - [**Check if user changed password after JWT was signed**](#check-if-user-changed-password-after-jwt-was-signed)
       - [**Put fresh user on the request object**](#put-fresh-user-on-the-request-object)
   - [Authentication in practice](#authentication-in-practice)
+    - [Logging out a user](#logging-out-a-user)
 - [**Database**](#database)
   - [**MongoDB**](#mongodb)
     - [**MongoDB key features**](#mongodb-key-features)
@@ -1011,9 +1015,50 @@ const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
 The result of the verify method is the decoded payload of the JWT. This payload includes an `iat` property containing a timestamp representing the time when the JWT was signed.
 
-### **JWT verification error**
+##### **JWT verification error**
 
 A JWT might be manipulated or expired. In case the token is manipulated and therefore invalid, an error will be generated with the `name` property of `JsonWebTokenError`. In case the token is expired, the `name` property would be `TokenExpiredError`.
+
+### **bcrypt**
+
+**`3rd-party`**
+
+Password encryption consists of two stages: **salting**, **hashing**. This library requires NPM installation:
+
+```
+npm install bcryptjs
+```
+
+Needs to be required in a file:
+
+```js
+const bcrypt = require("bcryptjs");
+```
+
+Now there are methods available on bcrypt.
+
+#### `bcrypt.hash`
+
+Performs Password encryption which is usually implemented in a Mongoose document pre-hook (if using Mongo database), if the password is modified. Accepts first the document field that contains the password, and then a cost parameter, determining how CPU intensive the salting operation will be. This method performs an asynchronous task and it should be awaited.
+
+```js
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordConfirm = undefined;
+  next();
+});
+```
+
+> After encryption, we usually get rid of the password confirm field by setting it to undefined. We don’t need to persist this field into the database.
+
+#### `bcrypt.compare`
+
+Performs a comparison between an input plain password and an encrypted password stored in the database, and finally returns a Boolean. This method is used to confirm the password that the user has inputted to log in. This method performs an asynchronous task and it should be awaited.
+
+```js
+const compare = await bcrypt.compare(inputPassword, encryptedPasword);
+```
 
 ### **Nodemon module**
 
@@ -1606,7 +1651,13 @@ After all steps are successfully verified, then the user document found in the p
 
 ## Authentication in practice
 
-To implement authentication, you can use a library called [JWT](#)
+Remember a fundamental point. Before being able to implement any authentication, you should first define your users table in the database. Notice that some columns (maybe email, phone, username, etc.) of such a table must be unique.
+
+To implement authentication, you can use a library called [JWT](#jwt) to generate and verify JSON Web Tokens. You would also need to use the [bcrypt](#bcrypt) library to encrypt and decrypt user passwords when writing/reading to/from database.
+
+### Logging out a user
+
+Since the login functionality performs authentication by signing and sending an HTTP-only cookie, logging users out cannot be done with deleting cookies. We can’t actually delete HTTP-only cookies. But we can send a new cookie with the exact same name but with no JWT in it. This would then replace the previous cookie. All subsequent requests will contain this new cookie with which the user will not be identified as logged in.
 
 # **Database**
 
