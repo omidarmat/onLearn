@@ -1957,7 +1957,9 @@ Whereas Svelte is a component framework, SvelteKit is an app framework (or ‘me
 
 SvelteKit apps are server-rendered by default (like traditional ‘multi-page apps’ or MPAs) for excellent first load performance and SEO characteristics, but can then transition to client-side navigation (like modern ‘single-page apps’ or SPAs) to avoid jankily reloading everything (including things like third-party analytics code) when the user navigates. They can run anywhere JavaScript runs, though — as we’ll see — your users may not need to run any JavaScript at all.
 
-## Pages
+## Routing
+
+### Pages
 
 SvelteKit uses filesystem-based routing, which means that the routes of your app — in other words, what the app should do when a user navigates to a particular URL — are defined by the directories in your codebase.
 
@@ -1978,7 +1980,7 @@ To fix this, you can add a folder called `about` in your `routes` folder, and th
 
 Unlike traditional multi-page apps, navigating to `/about` and back updates the contents of the current page, like a single-page app. This gives us the best of both worlds — fast server-rendered startup, then instant navigation. (This behaviour can be configured.)
 
-## Layouts
+### Layouts
 
 Different routes of your app will often share common UI. Instead of repeating it in each +page.svelte component, we can use a `+layout.svelte` component that **applies to all routes in the same directory**. In this file, the `{@render children()}` tag is where the page content will be rendered:
 
@@ -1998,3 +2000,103 @@ Different routes of your app will often share common UI. Instead of repeating it
 ```
 
 A `+layout.svelte` file applies to **every child route**, including the sibling `+page.svelte` (if it exists). You can nest layouts to arbitrary depth.
+
+### Route parameters
+
+To create routes with dynamic parameters, use square brackets around a valid variable name. For example, a file like `src/routes/blog/[slug]/+page.svelte` will create a route that matches `/blog/one`, `/blog/two`, `/blog/three` and so on.
+
+Multiple route parameters can appear within one URL segment, as long as they are **separated by at least one static character**: `foo/[bar]x[baz]` is a valid route where `[bar]` and `[baz]` are dynamic parameters.
+
+## Loading data
+
+### Page data
+
+At its core, SvelteKit’s job boils down to three things:
+
+1. Routing — figure out which route matches an incoming request
+2. Loading — get the data needed by the route
+3. Rendering — generate some HTML (on the server) or update the DOM (in the browser)
+
+We’ve seen how routing and rendering work. Let’s talk about the middle part — loading.
+
+Every page of your app can declare a load function in a `+page.server.js` file alongside the `+page.svelte` file. As the file name suggests, this module **only ever runs on the server**, including for client-side navigations.
+
+```js
+// routes/blog/+page.server
+import { posts } from "./data.js";
+
+export function load() {
+  return {
+    summaries: posts.map((post) => ({
+      slug: post.slug,
+      title: post.title,
+    })),
+  };
+}
+```
+
+We can then access this data in `src/routes/blog/+page.svelte` via the `data` prop:
+
+```html
+<!-- routes/blog/+page.svelte -->
+<script lang="ts">
+  let { data } = $props();
+</script>
+
+<h1>blog</h1>
+
+<ul>
+  {#each data.summaries as { slug, title }}
+  <li><a href="/blog/{slug}">{title}</a></li>
+  {/each}
+</ul>
+```
+
+And in another page:
+
+```js
+// routes/blog/[slug]/+page.server.js
+import { posts } from "../data.js";
+
+export function load({ params }) {
+  const post = posts.find((post) => post.slug === params.slug);
+
+  return {
+    post,
+  };
+}
+```
+
+> Notice how we can access the `slug` parameter in the `load` function as we desctructur `{params}`.
+
+And then again, use this returned data in the page:
+
+```html
+<!-- routes/blog/[slug]/+page.server.js -->
+<script lang="ts">
+  let { data } = $props();
+</script>
+
+<h1>{data.post.title}</h1>
+<div>{@html data.post.content}</div>
+```
+
+There’s one last detail we need to take care of — the user might visit an invalid pathname like `/blog/nope`, in which case we’d like to respond with a **404 page**:
+
+```js
+// routes/blog/[slug]/+page.server.js
+import { error } from "@sveltejs/kit";
+import { posts } from "../data.js";
+
+export function load({ params }) {
+  const post = posts.find((post) => post.slug === params.slug);
+
+  if (!post) error(404);
+
+  return {
+    post,
+  };
+}
+```
+
+We’ll learn more about error handling in later chapters.
