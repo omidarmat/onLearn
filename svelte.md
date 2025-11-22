@@ -1693,6 +1693,228 @@ You can also call `progress.set(value, options)` instead of assigning directly t
 
 ### Springs
 
+The `Spring` class is an alternative to `Tween` that often works better for values that are **frequently changing**.
+
+This is how you can import and set some variables to use it:
+
+```html
+<script>
+  import { Spring } from "svelte/motion";
+
+  let coords = new Spring({ x: 50, y: 50 });
+  let size = new Spring(10);
+</script>
+```
+
+As with Tween, springs have a writable `target` property and a readonly `current` property. So you can use these in a tamplate like this:
+
+```html
+<svg
+	onmousemove={(e) => {
+		coords.target = { x: e.clientX, y: e.clientY };
+	}}
+	onmousedown={() => (size.target = 30)}
+	onmouseup={() => (size.target = 10)}
+	role="presentation"
+>
+	<circle
+		cx={coords.current.x}
+		cy={coords.current.y}
+		r={size}
+	></circle>
+</svg>
+```
+
+Springs have default `stiffness` and `damping` values, which control the spring’s, well... springiness. We can specify our own initial values:
+
+```js
+let coords = new Spring(
+  { x: 50, y: 50 },
+  {
+    stiffness: 0.1,
+    damping: 0.25,
+  }
+);
+```
+
+## Advanced bindings
+
+### `contentEditable` binding
+
+Elements with a `contenteditable` attribute support `textContent` and `innerHTML` bindings. Take this example:
+
+```html
+<script>
+  let html = $state("<p>Write some text here!</p>");
+</script>
+
+<div contenteditable bind:innerHTML="{html}"></div>
+
+<pre>{html}</pre>
+
+<style>
+  [contenteditable] {
+    padding: 0.5em;
+    border: 1px solid #eee;
+    border-radius: 4px;
+  }
+</style>
+```
+
+### `each` block binding
+
+You can bind to properties inside `each` blocks.
+
+```jsx
+{#each todos as todo}
+	<li class={{ done: todo.done }}>
+		<input
+			type="checkbox"
+			bind:checked={todo.done}
+		/>
+
+		<input
+			type="text"
+			placeholder="What needs to be done?"
+			bind:value={todo.text}
+		/>
+	</li>
+{/each}
+```
+
+### Media elements
+
+You can bind to properties of `<audio>` and `<video>` elements, making it easy to (for example) build custom player UI. For instance:
+
+```html
+<script>
+	let { src, title, artist } = $props();
+
+	let time = $state(0);
+	let duration = $state(0);
+	let paused = $state(true);
+
+	function format(time) {
+		if (isNaN(time)) return '...';
+
+		const minutes = Math.floor(time / 60);
+		const seconds = Math.floor(time % 60);
+
+		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+	}
+</script>
+
+<div class={['player', { paused }]}>
+	<audio
+		{src}
+		bind:currentTime={time}
+		bind:duration
+		bind:paused
+		onended={() => {
+			time = 0;
+		}}
+		></audio>
+	<button
+		class="play"
+		aria-label={paused ? 'play' : 'pause'}
+		onclick={() => paused => !paused}
+	></button>
+</div>
+```
+
+Look at the example here to learn a lot more: https://svelte.dev/tutorial/svelte/media-elements
+
+The complete set of bindings for `<audio>` and `<video>` is as follows — seven readonly bindings:
+
+- `duration`: the total duration, in seconds
+- `buffered`: an array of `{start, end}` objects
+- `seekable`: ditto
+- `played`: ditto
+- `seeking`: boolean
+- `ended`: boolean
+- `readyState`: number between (and including) 0 and 4
+
+And five 2-way bindings:
+
+- `currentTime`: the current position of the playhead, in seconds
+- `playbackRate`: speed up or slow down (1 is normal)
+- `paused`: it is clear what it is!
+- `volume`: a value between 0 and 1
+- `muted`: a boolean value where true is muted
+
+Videos additionally have readonly `videoWidth` and `videoHeight` bindings.
+
+### Dimensions
+
+You can add `clientWidth`, `clientHeight`, `offsetWidth` and `offsetHeight` bindings to any element, and Svelte will update the bound values using a `ResizeObserver`.
+
+```html
+<div bind:clientWidth="{w}" bind:clientHeight="{h}">
+  <span style="font-size: {size}px" contenteditable>edit this text</span>
+  <span class="size">{w} x {h}px</span>
+</div>
+```
+
+Take a look at the example here to learn a lot more: https://svelte.dev/tutorial/svelte/dimensions
+
+### This
+
+You can use the special `bind:this` directive to get a **readonly binding** to an element in your component.
+
+```html
+<script>
+  import { paint } from "./gradient.js";
+
+  let canvas;
+
+  $effect(() => {
+    const context = canvas.getContext("2d");
+
+    let frame = requestAnimationFrame(function loop(t) {
+      frame = requestAnimationFrame(loop);
+      paint(context, t);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  });
+</script>
+
+<canvas bind:this="{canvas}" width="{32}" height="{32}"></canvas>
+```
+
+Note that the value of `canvas` will remain `undefined` until the component has mounted — in other words you can’t access it until the `$effect` runs.
+
+### Component bindings
+
+Just as you can bind to properties of DOM elements, you can bind to component props. For example, we can bind to the value prop of this `<Keypad>` component as though it were a form element.
+
+First, we need to mark the prop as _bindable_.
+
+```html
+<!-- Keypad.svelte -->
+<script>
+  let { value = $bindable(""), onsubmit } = $props();
+
+  const select = (num) => () => (value += num);
+  const clear = () => (value = "");
+</script>
+```
+
+Then, when using the component:
+
+```html
+<!-- App.svelte -->
+<Keypad bind:value="{pin}" {onsubmit} />
+```
+
+Now, when the user interacts with the keypad, the value of pin in the parent component is immediately updated.
+
+> Use component bindings sparingly. It can be difficult to track the flow of data around your application if you have too many of them, especially if there is no ‘single source of truth’.
+
+### Binding to component instances
+
 # Side notes
 
 ## Rendering HTML text
@@ -1716,3 +1938,63 @@ If you have a string variable containing an HTML text like the example below, yo
   <div>{@html marked(value)}</div>
 </div>
 ```
+
+# Basic SvelteKit
+
+Whereas Svelte is a component framework, SvelteKit is an app framework (or ‘metaframework’, depending on who you ask) that solves the tricky problems of building something production-ready:
+
+- Routing
+- Server-side rendering
+- Data fetching
+- Service workers
+- TypeScript integration
+- Prerendering
+- Single-page apps
+- Library packaging
+- Optimised production builds
+- Deploying to different hosting providers
+- ...and so on
+
+SvelteKit apps are server-rendered by default (like traditional ‘multi-page apps’ or MPAs) for excellent first load performance and SEO characteristics, but can then transition to client-side navigation (like modern ‘single-page apps’ or SPAs) to avoid jankily reloading everything (including things like third-party analytics code) when the user navigates. They can run anywhere JavaScript runs, though — as we’ll see — your users may not need to run any JavaScript at all.
+
+## Pages
+
+SvelteKit uses filesystem-based routing, which means that the routes of your app — in other words, what the app should do when a user navigates to a particular URL — are defined by the directories in your codebase.
+
+Every `+page.svelte` file inside `src/routes` creates a page in your app. In this app we currently have one page — `src/routes/+page.svelte`, which maps to `/`. If we navigate to `/about`, we’ll see a 404 Not Found error.
+
+To fix this, you can add a folder called `about` in your `routes` folder, and then add another `+page.svelte` app in it.
+
+```html
+<!-- routes/about/+page.svelte -->
+<nav>
+  <a href="/">home</a>
+  <a href="about">about</a>
+</nav>
+
+<h1>About</h1>
+<p>This is the about page.</p>
+```
+
+Unlike traditional multi-page apps, navigating to `/about` and back updates the contents of the current page, like a single-page app. This gives us the best of both worlds — fast server-rendered startup, then instant navigation. (This behaviour can be configured.)
+
+## Layouts
+
+Different routes of your app will often share common UI. Instead of repeating it in each +page.svelte component, we can use a `+layout.svelte` component that **applies to all routes in the same directory**. In this file, the `{@render children()}` tag is where the page content will be rendered:
+
+```html
+<!-- routes/+layout.svelte -->
+
+<script lang="ts">
+  let { children } = $props();
+</script>
+
+<nav>
+  <a href="/">home</a>
+  <a href="/about">about</a>
+</nav>
+
+{@render children()}
+```
+
+A `+layout.svelte` file applies to **every child route**, including the sibling `+page.svelte` (if it exists). You can nest layouts to arbitrary depth.
