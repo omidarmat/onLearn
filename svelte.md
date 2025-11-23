@@ -2269,3 +2269,356 @@ As another example, this could be a list of forms, each designed to invoke a ser
 </li>
 {/each}
 ```
+
+### Validation
+
+Users are a mischievous bunch, who will submit all kinds of nonsensical data if given the chance. To prevent them from causing chaos, it’s important to validate form data.
+
+The first line of defense is the browser’s built-in form validation, which makes it easy to, for example, mark an `<input>` as `required`.
+
+This kind of validation is helpful, but insufficient. Some validation rules (e.g. uniqueness) can’t be expressed using `<input>` attributes, and in any case, if the user is an elite hacker they might simply delete the attributes using the browser’s devtools. To guard against these sorts of shenanigans, you should always use **server-side validation**.
+
+As an example, in `src/lib/server/database.js`, validate that the description exists and is unique:
+
+```js
+// src/lib/server/database.js
+export function createTodo(userid, description) {
+  if (description === "") {
+    throw new Error("todo must have a description");
+  }
+
+  const todos = db.get(userid);
+
+  if (todos.find((todo) => todo.description === description)) {
+    throw new Error("todos must be unique");
+  }
+
+  todos.push({
+    id: crypto.randomUUID(),
+    description,
+    done: false,
+  });
+}
+```
+
+If you now try to submit 2 todos with identical description, SvelteKit takes us to an unfriendly-looking error page. On the server, we see a ‘todos must be unique’ error, but SvelteKit hides unexpected error messages from users because they often contain sensitive data.
+
+It would be much better to stay on the same page and provide an indication of what went wrong so that the user can fix it. To do this, we can use the `fail` function to return data from the action along with an **appropriate HTTP status code**:
+
+```js
+// +page.server.js
+import { fail } from "@sveltejs/kit";
+
+export const actions = {
+  create: async ({ cookies, request }) => {
+    const data = await request.formData();
+
+    try {
+      db.createTodo(cookies.get("userid"), data.get("description"));
+    } catch (error) {
+      return fail(422, {
+        description: data.get("description"),
+        error: error.message,
+      });
+    }
+  },
+};
+```
+
+Then in `+page.svelte` file we can access the returned value via the `form` prop, which is only ever populated after a form submission:
+
+```html
+<script lang="ts">
+  let { data, form } = $props();
+</script>
+
+<div class="centered">
+  <h1>todos</h1>
+
+  {#if form?.error}
+  <p class="error">{form.error}</p>
+  {/if}
+
+  <form method="POST" action="?/create">
+    <label>
+      add a todo: <input name="description" value={form?.description ?? ''}
+      autocomplete="off" required />
+    </label>
+  </form>
+</div>
+```
+
+> You can also return data from an action without wrapping it in `fail` — for example to show a ‘success!’ message when data was saved — and it will be available via the `form` prop.
+
+### Progressive enhancement
+
+Because we’re using `<form>`, our app works even if the user doesn’t have JavaScript (which happens more often than you probably think). That’s great, because it means our app is resilient.
+
+Most of the time, users do have JavaScript. In those cases, we can progressively enhance the experience, the same way SvelteKit progressively enhances `<a>` elements by using client-side routing.
+
+Import the `enhance` function from `$app/forms`...
+
+```html
+<!-- +page.svelte -->
+<script>
+  import { enhance } from "$app/forms";
+  let { data, form } = $props();
+</script>
+```
+
+Then add the `use:enhance` directive to the `<form>` element:
+
+```html
+<!-- +page.svelte -->
+<form method="POST" action="?/create" use:enhance></form>
+<form method="POST" action="?/delete" use:enhance></form>
+```
+
+And that’s all it takes! Now, when JavaScript is enabled, `use:enhance` will emulate the browser-native behaviour except for the full-page reloads. It will:
+
+- update the `form` prop
+- invalidate all data on a successful response, causing `load` functions to re-run
+- navigate to the new page on a redirect response
+- render the neares error page if an error occurs
+
+If we’re updating the page rather than reloading it, we can get fancy with things like transitions:
+
+```html
+<script lang="ts">
+  import { fly, slide } from "svelte/transition";
+  import { enhance } from "$app/forms";
+
+  let { data, form } = $props();
+</script>
+```
+
+and then use them on each todo element:
+
+```html
+<li in:fly={{ y: 20 }} out:slide>...</li>
+```
+
+### Customizing `use:enhance`
+
+With `use:enhance`, we can go further than just emulating the browser’s native behaviour. By providing a callback, we can add things like pending states and optimistic UI. Let’s simulate a slow network by adding an artificial delay to our two actions:
+
+```js
+// +page.server.js
+export const actions = {
+  create: async ({ cookies, request }) => {
+    await new Promise((fulfil) => setTimeout(fulfil, 1000));
+    // ...
+  },
+
+  delete: async ({ cookies, request }) => {
+    await new Promise((fulfil) => setTimeout(fulfil, 1000));
+    // ...
+  },
+};
+```
+
+When we create or delete items, it now takes a full second before the UI updates, leaving the user wondering if they messed up somehow. To solve that, add some local state...
+
+```html
+<!-- +page.svelte -->
+<script lang="ts">
+  import { fly, slide } from "svelte/transition";
+  import { enhance } from "$app/forms";
+
+  let { data, form } = $props();
+
+  let creating = $state(false);
+  let deleting = $state([]);
+</script>
+```
+
+Then in the form for creating todos:
+
+```jsx
+<form
+  method="POST"
+  action="?/create"
+  use:enhance={() => {
+    creating = true;
+
+    return async ({ update }) => {
+      await update();
+      creating = false;
+    };
+  }}
+>
+  <label>
+    add a todo:
+    <input
+      disabled={creating}
+      name="description"
+      value={form?.description ?? ""}
+      autocomplete="off"
+      required
+    />
+  </label>
+</form>
+```
+
+Also show a message while creating:
+
+```jsx
+{#if creating}
+	<span class="saving">saving...</span>
+{/if}
+```
+
+Then in the form for deleting:
+
+```jsx
+<ul class="todos">
+	{#each data.todos.filter((todo) => !deleting.includes(todo.id)) as todo (todo.id)}
+		<li in:fly={{ y: 20 }} out:slide>
+			<form
+				method="POST"
+				action="?/delete"
+				use:enhance={() => {
+					deleting = [...deleting, todo.id];
+					return async ({ update }) => {
+						await update();
+						deleting = deleting.filter((id) => id !== todo.id);
+					};
+				}}
+			>
+				<input type="hidden" name="id" value={todo.id} />
+				<button aria-label="Mark as complete">✔</button>
+
+				{todo.description}
+			</form>
+		</li>
+	{/each}
+</ul>
+```
+
+> `use:enhance` is very customizable — you can `cancel()` submissions, handle redirects, control whether the form is reset, and so on.
+
+## API routes
+
+SvelteKit allows you to create more than just pages. We can also create API routes by adding a `+server.js` file that exports functions corresponding to HTTP methods: `GET`, `PUT`, `POST`, `PATCH` and `DELETE`.
+
+### GET handlers
+
+For example:
+
+```js
+// src/routes/roll/+server.js
+export function GET() {
+  const number = Math.floor(Math.random() * 6) + 1;
+
+  return new Response(number, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+```
+
+Request handlers must return a `Response` object. Since it’s common to return JSON from an API route, SvelteKit provides a convenience function for generating these responses:
+
+```js
+import { json } from "@sveltejs/kit";
+
+export function GET() {
+  const number = Math.floor(Math.random() * 6) + 1;
+
+  return json(number);
+}
+```
+
+### POST handlers
+
+You can also add handlers that mutate data, such as `POST`. In most cases, you should use form actions instead — you’ll end up writing less code, and it’ll work without JavaScript, making it more resilient.
+
+Inside the `keydown` event handler of the ‘add a todo’ `<input>`, let’s post some data to the server:
+
+```jsx
+<label>
+  add a todo:
+  <input
+    type="text"
+    autocomplete="off"
+    onkeydown={async (e) => {
+      if (e.key !== "Enter") return;
+
+      const input = e.currentTarget;
+      const description = input.value;
+
+      const response = await fetch("/todo", {
+        method: "POST",
+        body: JSON.stringify({ description }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      input.value = "";
+    }}
+  />
+</label>
+```
+
+Then in a server file:
+
+```js
+// routes/todo/+server.js
+import { json } from "@sveltejs/kit";
+import * as database from "$lib/server/database.js";
+
+export async function POST({ request, cookies }) {
+  const { description } = await request.json();
+
+  const userid = cookies.get("userid");
+  const { id } = await database.createTodo({ userid, description });
+
+  return json({ id }, { status: 201 });
+}
+```
+
+As with load functions and form actions, the request is a standard `Request` object; `await request.json()` returns the data that we posted from the event handler.
+
+We’re returning a response with a 201 Created status and the `id` of the newly generated todo in our database. Back in the event handler, we can use this to update the page:
+
+```jsx
+<label>
+  add a todo:
+  <input
+    type="text"
+    autocomplete="off"
+    onkeydown={async (e) => {
+      if (e.key !== "Enter") return;
+
+      const input = e.currentTarget;
+      const description = input.value;
+
+      const response = await fetch("/todo", {
+        method: "POST",
+        body: JSON.stringify({ description }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const { id } = await response.json();
+
+      const todos = [
+        ...data.todos,
+        {
+          id,
+          description,
+        },
+      ];
+
+      data = { ...data, todos };
+
+      input.value = "";
+    }}
+  />
+</label>
+```
+
+> You should only update `data` in such a way that you’d get the same result by reloading the page. The data prop **is not deeply reactive**, so you need to replace it — mutations like `data.todos = todos` will **not cause a re-render**.
