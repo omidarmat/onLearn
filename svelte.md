@@ -2622,3 +2622,254 @@ We’re returning a response with a 201 Created status and the `id` of the newly
 ```
 
 > You should only update `data` in such a way that you’d get the same result by reloading the page. The data prop **is not deeply reactive**, so you need to replace it — mutations like `data.todos = todos` will **not cause a re-render**.
+
+### Other handlers
+
+Similarly, we can add handlers for other HTTP verbs. For example:
+
+```js
+// routes/todo/[id]/+server.js
+import * as database from "$lib/server/database.js";
+
+export async function PUT({ params, request, cookies }) {
+  // by 'params' you can access URL params for 'id'
+  const { done } = await request.json();
+  const userid = cookies.get("userid");
+
+  await database.toggleTodo({ userid, id: params.id, done });
+  return new Response(null, { status: 204 });
+}
+
+export async function DELETE({ params, cookies }) {
+  const userid = cookies.get("userid");
+
+  await database.deleteTodo({ userid, id: params.id });
+  return new Response(null, { status: 204 });
+}
+```
+
+## `$app/state`
+
+SvelteKit makes three readonly state objects available via the `$app/state` module — `page`, `navigating` and `updated`.
+
+### `page`
+
+The one you’ll use most often is page, which provides information about the current page:
+
+- `url` — the URL of the current page
+- `params` — the current page’s parameters
+- `route` — an object with an `id` property representing the current route
+- `status` — the HTTP status code of the current page
+- `error` — the error object of the current page, if any (you’ll learn more about error handling in later exercises)
+- `data` — the data for the current page, combining the return values of all load functions
+- `form` — the data returned from a form action
+
+Each of these properties is reactive, using `$state.raw` under the hood. Here’s an example using `page.url.pathname`:
+
+```html
+<!-- +layout.svelte -->
+ <script>
+	import {page} from '$app/state';
+	let { children } = $props();
+</script>
+
+<nav>
+	<a href="/" aria-current={page.url.pathname === '/'}>
+		home
+	</a>
+
+	<a href="/about" aria-current={page.url.pathname === '/about'}>
+		about
+	</a>
+</nav>
+
+{@render children()}
+```
+
+### `navigating`
+
+The `navigating` object represents the current navigation. When a navigation starts — because of a link click, or a back/forward navigation, or a programmatic `goto` — the value of `navigating` will become an object with the following properties:
+
+- `from` and `to` — objects with `params`, `route` and `url` properties
+- `type` — the type of navigation, e.g. `link`, `popstate` or `goto`
+
+It can be used to show a loading indicator for long-running navigations. For example:
+
+```html
+<!-- +layout.svelte -->
+ <script>
+	import { page, navigating } from '$app/state';
+	let { children } = $props();
+</script>
+
+<nav>
+	<a href="/" aria-current={page.url.pathname === '/'}>
+		home
+	</a>
+
+	<a href="/about" aria-current={page.url.pathname === '/about'}>
+		about
+	</a>
+
+	{#if navigating.to}
+		navigating to {navigating.to.url.pathname}
+	{/if}
+</nav>
+
+{@render children()}
+```
+
+Notice that as example, we have implemented an artifical layout in the `+page.server.js` files of `home` and `about` routes:
+
+```js
+export async function load() {
+  return new Promise((fulfil) => {
+    setTimeout(fulfil, 1000);
+  });
+}
+```
+
+This will cause the `navigating` state to be updated.
+
+### `updated`
+
+The `updated` state contains `true` or `false` depending on whether a new version of the app has been deployed since the page was first opened.
+
+For this to work, your `svelte.config.js` must specify `kit.version.pollInterval`.
+
+To use this, you can do:
+
+```html
+<!-- +layout.svelte -->
+<script lang="ts">
+  import { page, navigating, updated } from "$app/state";
+</script>
+```
+
+Version changes only happen in production, not during development. For that reason, `updated.current` will always be `false` while development.
+
+> You can manually check for new versions, regardless of `pollInterval`, by calling `updated.check()`.
+
+To use `pollInterval` you can do:
+
+```jsx
+{#if updated.current}
+	<div class="toast">
+		<p>
+			A new version of the app is available
+
+			<button onclick={() => location.reload()}>
+				reload the page
+			</button>
+		</p>
+	</div>
+{/if}
+```
+
+## Errors and redirects
+
+There are two types of errors in SvelteKit — _expected_ errors and _unexpected_ errors.
+
+An expected error is one that was thrown via the error helper from `@sveltejs/kit`, as in `src/routes/expected/+page.server.js`:
+
+```js
+// +page.sever.js
+import { error } from "@sveltejs/kit";
+
+export function load() {
+  error(420, "Enhance your calm");
+}
+```
+
+Any other error — such as the one in `src/routes/unexpected/+page.server.js` — is treated as unexpected:
+
+```js
+// +page.server.js
+export function load() {
+  throw new Error("Kaboom!");
+}
+```
+
+When you throw an expected error, you’re telling SvelteKit ‘don’t worry, I know what I’m doing here’. An unexpected error, by contrast, is assumed to be a bug in your app. When an unexpected error is thrown, its message and stack trace will be logged to the console.
+
+> In a later chapter we’ll learn about how to add custom error handling using the `handleError` hook.
+
+If an expected error happens, the expected error message is shown to the user, whereas the unexpected error message is redacted and replaced with a generic ‘Internal Error’ message and a 500 status code. That’s because error messages can contain sensitive data.
+
+### Error pages
+
+When something goes wrong inside a `load` function, SvelteKit renders an error page.
+
+The default error page is somewhat bland. We can customize it by creating a `src/routes/+error.svelte` component:
+
+```html
+<!-- src/routes/+error.svelte -->
+<script lang="ts">
+  import { page } from "$app/state";
+  import { emojis } from "./emojis.js";
+</script>
+
+<h1>{page.status} {page.error.message}</h1>
+
+<span style="font-size: 10em"> {emojis[page.status] ?? emojis[500]} </span>
+```
+
+Notice that the `+error.svelte` component is rendered inside the root `+layout.svelte`. We can create more granular `+error.svelte` boundaries:
+
+```html
+<!-- src/routes/expected/+error.svelte -->
+<h1>this error was expected</h1>
+```
+
+### Fallback errors
+
+If things go really wrong — an error occurs while loading the root layout data, or while rendering the error page — SvelteKit will fall back to a static error page.
+
+Add a new `src/routes/+layout.server.js` file to see this in action:
+
+```js
+export function load() {
+  throw new Error("yikes");
+}
+```
+
+You can customise the fallback error page. Create a src/`error.html` file:
+
+```html
+<h1>Game over</h1>
+<p>Code %sveltekit.status%</p>
+<p>%sveltekit.error.message%</p>
+```
+
+Notice that this file can include the following:
+
+- `%sveltekit.status%` — the HTTP status code
+- `%sveltekit.error.message%` — the error message
+
+### Redirects
+
+We can use the `redirect` mechanism to redirect from one page to another.
+
+Create a new load function in `src/routes/a/+page.server.js`:
+
+```js
+import { redirect } from "@sveltejs/kit";
+
+export function load() {
+  redirect(307, "/b");
+}
+```
+
+Navigating to `/a` will now take us straight to `/b`.
+
+You can `redirect(...)` inside `load` functions, form actions, API routes and the `handle` hook, which we’ll discuss in a later chapter.
+
+The most common status codes you’ll use:
+
+- `303` — for form actions, following a successful submission
+- `307` — for temporary redirects
+- `308` — for permanent redirects
+
+> `redirect(...)` throws, like `error(...)`, meaning no code after the redirect will run.
+
+# Advanced SvelteKit
