@@ -65,6 +65,17 @@
     - [This](#this)
     - [Component bindings](#component-bindings)
     - [Binding to component instances](#binding-to-component-instances)
+  - [Advanced transitions](#advanced-transitions)
+    - [Deferred transitions](#deferred-transitions)
+    - [Animations](#animations)
+  - [Context API](#context-api)
+    - [`setContext` and `getContext`](#setcontext-and-getcontext)
+  - [Special elements](#special-elements)
+    - [The `<svelte:window>` element](#the-sveltewindow-element)
+      - [`svelte:window>` bindings](#sveltewindow-bindings)
+    - [The `<svelte:document>` element](#the-sveltedocument-element)
+    - [The `<svelet:body>` element](#the-sveletbody-element)
+    - [The `<svelet:head>` element](#the-svelethead-element)
 - [Side notes](#side-notes)
   - [Rendering HTML text](#rendering-html-text)
 - [Basic SvelteKit](#basic-sveltekit)
@@ -97,6 +108,13 @@
     - [Fallback errors](#fallback-errors)
     - [Redirects](#redirects)
 - [Advanced SvelteKit](#advanced-sveltekit)
+  - [Hooks](#hooks)
+    - [The `RequestEvent` object](#the-requestevent-object)
+    - [The `handleFetch` hook](#the-handlefetch-hook)
+    - [The `handleError` hook](#the-handleerror-hook)
+  - [Page options](#page-options)
+    - [Basics](#basics)
+    - [The `src` option](#the-src-option)
 
 # Svelte
 
@@ -2015,6 +2033,332 @@ Now, when the user interacts with the keypad, the value of pin in the parent com
 
 ### Binding to component instances
 
+Just as you can bind to DOM elements, you can bind to component instances themselves with `bind:this`.
+
+This is useful in the rare cases that you need to interact with a component programmatically (rather than by providing it with updated props). Revisiting our canvas app from a few exercises ago, it would be nice to add a button to clear the screen.
+
+First, let’s export a function from `Canvas.svelte`:
+
+```html
+<!-- Canvas.svelte -->
+<script>
+  let canvas = $state();
+  let context = $state();
+  let coords = $state();
+
+  export function clear() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+</script>
+```
+
+Then, create a reference to the component instance:
+
+```html
+<!-- App.svelte -->
+<script>
+  let selected = $state(colors[0]);
+  let size = $state(10);
+  let showMenu = $state(true);
+
+  let canvas;
+</script>
+
+<canvas bind:this="{canvas}" color="{selected}" size="{size}" />
+```
+
+Finally, add a button that calls the clear function in `App.svelte`:
+
+```html
+<!-- App.svelte -->
+ 	<button onclick={() => canvas.clear()}>
+		clear
+	</button>
+```
+
+## Advanced transitions
+
+### Deferred transitions
+
+A particularly powerful feature of Svelte’s transition engine is the ability to defer transitions, so that they can be coordinated between multiple elements.
+
+Take a pair of todo lists, in which toggling a todo sends it to the opposite list. In the real world, things don’t behave like that — instead of disappearing and reappearing in another place, they move through a series of intermediate positions. Using motion can go a long way towards helping users understand what’s happening in your app.
+
+We can achieve this effect using the crossfade function, as seen in `transition.js`, which creates a pair of transitions called `send` and `receive`. When an element is ‘sent’, it looks for a corresponding element being ‘received’, and generates a transition that transforms the element to its counterpart’s position and fades it out. When an element is ‘received’, the reverse happens. If there is no counterpart, the `fallback` transition is used.
+
+```js
+// transition.js
+import { crossfade } from "svelte/transition";
+import { quintOut } from "svelte/easing";
+
+export const [send, receive] = crossfade({
+  duration: (d) => Math.sqrt(d * 200),
+
+  fallback(node, params) {
+    const style = getComputedStyle(node);
+    const transform = style.transform === "none" ? "" : style.transform;
+
+    return {
+      duration: 600,
+      easing: quintOut,
+      css: (t) => `
+				transform: ${transform} scale(${t});
+				opacity: ${t}
+			`,
+    };
+  },
+});
+```
+
+Then in `TodoList.svelte`, import the `send` and `receive` transitions from `transition.js`:
+
+```html
+<script lang="ts">
+  import { send, receive } from "./transition.js";
+
+  let { todos, remove } = $props();
+</script>
+```
+
+Then, add them to the `<li>` element, using the `todo.id` property as a key to match the elements:
+
+```html
+<li class={{ done: todo.done }} in:receive={{ key: todo.id }} out:send={{ key:
+todo.id }} >
+```
+
+Now, when you toggle items, they move smoothly to their new location. The non-transitioning items still jump around awkwardly — we can fix that in the next exercise.
+
+Refer to this link to see the example: https://svelte.dev/tutorial/svelte/deferred-transitions
+
+### Animations
+
+In the previous chapter, we used deferred transitions to create the illusion of motion as elements move from one todo list to the other.
+
+To complete the illusion, we also need to apply motion to the elements that aren’t transitioning. For this, we use the `animate` directive.
+
+First, import the `flip` function — flip stands for ‘First, Last, Invert, Play’ — from `svelte/animate` into `TodoList.svelte`:
+
+```html
+<!-- TodoList.svelte -->
+<script lang="ts">
+  import { flip } from "svelte/animate";
+  import { send, receive } from "./transition.js";
+
+  let { todos, remove } = $props();
+</script>
+```
+
+Then add it to the `<li>` elements:
+
+```html
+<li class={{ done: todo.done }} in:receive={{ key: todo.id }} out:send={{ key:
+todo.id }} animate:flip={{ duration: 200 }} >
+```
+
+> duration can also be a `d => milliseconds` function, where `d` is the number of pixels the element has to travel
+
+Note that all the transitions and animations are being applied with **CSS**, rather than JavaScript, meaning they won’t block (or be blocked by) the main thread.
+
+Refere to this link to see the example: https://svelte.dev/tutorial/svelte/animations
+
+## Context API
+
+The context API provides a mechanism for components to ‘talk’ to each other without passing around data and functions as props, or dispatching lots of events. It’s an advanced feature, but a useful one.
+
+### `setContext` and `getContext`
+
+As an example, inside `Canvas.svelte`, there’s an `addItem` function that adds an item to the canvas. We can make it available to components inside `<Canvas>`, like `<Square>`, with `setContext`:
+
+```html
+<!-- Canvas.svelte -->
+<script>
+  import { setContext } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
+
+  let canvas;
+  let items = new SvelteSet();
+
+  setContext("canvas", { addItem });
+
+  function addItem(fn) {
+    $effect(() => {
+      items.add(fn);
+      return () => items.delete(fn);
+    });
+  }
+</script>
+```
+
+Inside child components, we can now get the context with, well, `getContext`:
+
+```html
+<!-- Square.svelte -->
+<script>
+  import { getContext } from "svelte";
+  let { x, y, size, rotate } = $props();
+
+  getContext("canvas").addItem(draw);
+
+  function draw(ctx) {
+    ctx.save();
+
+    ctx.translate(x, y);
+    ctx.rotate(rotate);
+
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(-size / 2, -size / 2, size, size);
+
+    ctx.restore();
+  }
+</script>
+```
+
+This is an astonishing example: https://svelte.dev/tutorial/svelte/context-api
+
+`setContext` and `getContext` must be called during **component initialisation**, so that the context can be correctly bound. The key — `'canvas'` in this case — can be anything you like, including **non-strings**, which is useful for controlling who can access the context.
+
+Your context object can include anything, including reactive state. This allows you to pass values that change over time to child components:
+
+```js
+// in a parent component
+import { setContext } from 'svelte';
+
+let context = $state({...});
+setContext('my-context', context);
+```
+
+```js
+// in a child component
+import { getContext } from "svelte";
+
+const context = getContext("my-context");
+```
+
+## Special elements
+
+### The `<svelte:window>` element
+
+Just as you can add event listeners to any DOM element, you can add event listeners to the `window` object with `<svelte:window>`.
+
+We’ve already got an `onkeydown` function declared — now all we need to do is wire it up:
+
+```jsx
+// App.svelte
+<script>
+	let key = $state();
+	let keyCode = $state();
+
+	function onkeydown(event) {
+		key = event.key;
+		keyCode = event.keyCode;
+	}
+</script>
+
+ <svelte:window {onkeydown} />
+
+ <div style="text-align: center">
+	{#if key}
+		<kbd>{key === ' ' ? 'Space' : key}</kbd>
+		<p>{keyCode}</p>
+	{:else}
+		<p>Focus this window and press any key</p>
+	{/if}
+</div>
+```
+
+#### `svelte:window>` bindings
+
+We can also bind to certain properties of `window`, such as `scrollY`:
+
+```jsx
+// App.svelte
+<svelte:window bind:scrollY={y} />
+```
+
+The list of properties you can bind to is as follows:
+
+- `innerWidth`
+- `innerHeight`
+- `outerWidth`
+- `outerHeight`
+- `scrollX`
+- `scrollY`
+- `online` — an alias for `window.navigator.onLine`
+
+All except `scrollX` and `scrollY` are readonly.
+
+### The `<svelte:document>` element
+
+The `<svelte:document>` element allows you to listen for events that fire on `document`. This is useful with events like `selectionchange`, which doesn’t fire on `window`.
+
+Add the `onselectionchange` handler to the `<svelte:document>` tag:
+
+```jsx
+// App.svelte
+<svelte:document {onselectionchange} />
+```
+
+Look at this example:
+
+```html
+<script>
+  let selection = $state("");
+
+  const onselectionchange = (e) => {
+    selection = document.getSelection().toString();
+  };
+</script>
+
+<svelte:document {onselectionchange} />
+
+<h1>Select this text to fire events</h1>
+<p>Selection: {selection}</p>
+```
+
+> Avoid `mouseenter` and `mouseleave` handlers on this element, as these events are not fired on document in all browsers. Use `<svelte:body>` instead.
+
+### The `<svelet:body>` element
+
+Similar to `<svelte:window>` and `<svelte:document>`, the `<svelte:body>` element allows you to listen for events that fire on `document.body`. This is useful with the `mouseenter` and `mouseleave` events, which don’t fire on window.
+
+Add `onmouseenter` and `onmouseleave` handlers to the `<svelte:body>` tag...
+
+```html
+<!-- App.svelte -->
+<script>
+  import kitten from "./kitten.png";
+
+  let hereKitty = $state(false);
+</script>
+
+<svelte:body onmouseenter={() => hereKitty = true} onmouseleave={() => hereKitty
+= false} /> <img class={{ curious: hereKitty }} alt="Kitten wants to know what's
+going on" src={kitten} />
+```
+
+### The `<svelet:head>` element
+
+The `<svelte:head>` element allows you to insert elements inside the `<head>` of your document. This is useful for things like `<title>` and `<meta>` tags, which are critical for good SEO.
+
+Since those are quite hard to show in the context of this tutorial, we’ll use it for a different purpose — loading stylesheets.
+
+```html
+<!-- App.svelte -->
+<script lang="ts">
+  const themes = ["margaritaville", "retrowave", "spaaaaace", "halloween"];
+  let selected = $state(themes[0]);
+</script>
+
+<svelte:head>
+  <link rel="stylesheet" href="/tutorial/stylesheets/{selected}.css" />
+</svelte:head>
+
+<h1>Welcome to my site!</h1>
+```
+
+> In server-side rendering (SSR) mode, contents of `<svelte:head>` are returned separately from the rest of your HTML.
+
 # Side notes
 
 ## Rendering HTML text
@@ -2479,7 +2823,7 @@ And that’s all it takes! Now, when JavaScript is enabled, `use:enhance` will e
 - update the `form` prop
 - invalidate all data on a successful response, causing `load` functions to re-run
 - navigate to the new page on a redirect response
-- render the neares error page if an error occurs
+- render the nearest error page if an error occurs
 
 If we’re updating the page rather than reloading it, we can get fancy with things like transitions:
 
@@ -2973,3 +3317,186 @@ The most common status codes you’ll use:
 > `redirect(...)` throws, like `error(...)`, meaning no code after the redirect will run.
 
 # Advanced SvelteKit
+
+## Hooks
+
+SvelteKit provides several hooks — ways to intercept and override the framework’s default behaviour.
+
+The most elementary hook is `handle`, which lives in `src/hooks.server.js`. It receives an `event` object along with a `resolve` function, and returns a `Response`.
+
+`resolve` is where the magic happens: SvelteKit matches the incoming request URL to a route of your app, imports the relevant code (`+page.server.js` and `+page.svelte` files and so on), loads the data needed by the route, and generates the response.
+
+The default `handle` hook looks like this:
+
+```js
+// src/hooks.server.js
+export async function handle({ event, resolve }) {
+  return await resolve(event);
+}
+```
+
+For pages (as opposed to API routes), you can modify the generated HTML with `transformPageChunk`:
+
+```js
+export async function handle({ event, resolve }) {
+  return await resolve(event, {
+    transformPageChunk: ({ html }) =>
+      html.replace("<body", '<body style="color: hotpink"'),
+  });
+}
+```
+
+You can also create entirely new routes:
+
+```js
+export async function handle({ event, resolve }) {
+  if (event.url.pathname === "/ping") {
+    return new Response("pong"); // returns a page with just "pong" as content.
+  }
+
+  return await resolve(event, {
+    transformPageChunk: ({ html }) =>
+      html.replace("<body", '<body style="color: hotpink"'),
+  });
+}
+```
+
+### The `RequestEvent` object
+
+The `event` object passed into handle is the same object — an instance of a `RequestEvent` — that is passed into API routes in `+server.js` files, form actions in `+page.server.js` files, and `load` functions in `+page.server.js` and `+layout.server.js`.
+
+It contains a number of useful properties and methods, some of which we’ve already encountered:
+
+- `cookies` — the cookies API
+- `fetch` — the standard Fetch API, with additional powers
+- `getClientAddress()` — a function to get the client’s IP address
+- `isDataRequest` — `true` if the browser is requesting data for a page during client-side navigation, `false` if a page/route is being requested directly
+- `locals` — a place to put arbitrary data
+- `params` — the route parameters
+- `request` — the Request object
+- `route` — an object with an `id` property representing the route that was matched
+- `setHeaders(...)` — a function for setting HTTP headers on the response
+- `url` — a URL object representing the current request
+
+A useful pattern is to add some data to `event.locals` in `handle` so that it can be read in subsequent load functions:
+
+```js
+export async function handle({ event, resolve }) {
+  event.locals.answer = 42;
+  return await resolve(event);
+}
+```
+
+```js
+// src/routes/+page.server.js
+export function load(event) {
+  return {
+    message: `the answer is ${event.locals.answer}`,
+  };
+}
+```
+
+### The `handleFetch` hook
+
+The `event` object has a `fetch` method that behaves like the standard Fetch API, but with superpowers:
+
+- it can be used to make credentialed requests on the server, as it inherits the `cookie` and `authorization` headers from the incoming request
+- it can make **relative requests** on the server (ordinarily, `fetch` requires a URL with an origin when used in a server context)
+- internal requests (e.g. for `+server.js` routes) go directly to the handler function when running on the server, without the overhead of an HTTP call
+
+Its behaviour can be modified with the `handleFetch` hook, which by default looks like this:
+
+```js
+// src/hooks.server.js
+export async function handleFetch({ event, request, fetch }) {
+  return await fetch(request);
+}
+```
+
+For example, we could respond to requests for `src/routes/a/+server.js` with responses from `src/routes/b/+server.js` instead:
+
+```js
+export async function handleFetch({ event, request, fetch }) {
+  const url = new URL(request.url);
+  if (url.pathname === "/a") {
+    return await fetch("/b");
+  }
+
+  return await fetch(request);
+}
+```
+
+Later, when we cover universal `load` functions, we’ll see that `event.fetch` can also be called from the browser. In that scenario, `handleFetch` is useful if you have requests to a public URL like `https://api.yourapp.com` from the browser, that should be redirected to an internal URL (bypassing whatever proxies and load balancers sit between the API server and the public internet) when running on the server.
+
+### The `handleError` hook
+
+The handleError hook lets you intercept unexpected errors and trigger some behaviour, like pinging a Slack channel or sending data to an error logging service.
+
+As you’ll recall from an earlier exercise, an error is _unexpected_ if it wasn’t created with the `error` helper from `@sveltejs/kit`. It generally means **something in your app needs fixing**. The default behaviour is to log the error:
+
+```js
+// src/hooks.server.js
+export function handleError({ event, error }) {
+  console.error(error.stack);
+}
+```
+
+If you navigate to `/the-bad-place`, you’ll see this in action — the error page is shown, and if you open the terminal, you’ll see the `this is the bad place!` message from `src/routes/the-bad-place/+page.server.js`.
+
+```js
+// routes/+page.server.js
+export function load() {
+  throw new Error("this is the bad place!");
+}
+```
+
+Notice that we’re not showing the error message to the user. That’s because error messages can include sensitive information that at best will confuse your users, and at worst could benefit evildoers. Instead, the error object available to your application — represented as `page.error` in your `+error.svelte` pages, or `%sveltekit.error%` in your `src/error.html` fallback — is just this:
+
+```js
+{
+  message: "Internal Error"; // or 'Not Found' for a 404
+}
+```
+
+In some situations you may want to customise this object. To do so, you can return an object from `handleError`:
+
+```js
+// src/hooks.server.js
+export function handleError({ event, error }) {
+  console.error(error.stack);
+
+  return {
+    message: "everything is fine",
+    code: "JEREMYBEARIMY",
+  };
+}
+```
+
+You can now reference properties other than `message` in a custom error page. Create `src/routes/+error.svelte`:
+
+```html
+<script lang="ts">
+  import { page } from "$app/state";
+</script>
+
+<h1>{page.status}</h1>
+<p>{page.error.message}</p>
+<p>error code: {page.error.code}</p>
+```
+
+## Page options
+
+### Basics
+
+In the chapter on loading data, we saw how you can export `load` functions from `+page.js`, `+page.server.js`, `+layout.js` and `+layout.server.js` files. We can also export various page options from these modules:
+
+- `ssr` — whether or not pages should be server-rendered
+- `csr` — whether to load the SvelteKit client
+- `prerender` — whether to prerender pages at build time, instead of per-request
+- `trailingSlash` — whether to strip, add, or ignore trailing slashes in URLs
+
+Page options can apply to individual pages (if exported from `+page.js` or `+page.server.js`), or groups of pages (if exported from `+layout.js` or `+layout.server.js`). To define an option for the whole app, export it from the root layout. Child layouts and pages **override** values set in parent layouts, so — for example — you can enable prerendering for your entire app then disable it for pages that need to be dynamically rendered.
+
+You can mix and match these options in different areas of your app — you could prerender your marketing pages, dynamically server-render your data-driven pages, and treat your admin pages as a client-rendered SPA. This makes SvelteKit very versatile.
+
+### The `src` option
