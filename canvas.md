@@ -222,3 +222,141 @@ There are several properties which allow us to style lines.
 - `getLineDash()`: Returns the current line dash pattern array containing an even number of non-negative numbers.
 - `setLineDash(segments)`: Sets the current line dash pattern.
 - `lineDashOffset = value`: Specifies where to start a dash array on a line.
+
+# Using images
+
+Importing images into a canvas is basically a two step process:
+
+1. Get a reference to an `HTMLImageElement` object or to another canvas element as a source. It is also possible to use images by providing a URL.
+2. Draw the image on the canvas using the `drawImage()` function.
+
+The canvas API is able to use any of the following data types as an image source:
+
+- `HTMLImageElement`: These are images created using the `Image()` constructor, as well as any `<img>` element.
+- `SVGImageElement`: These are images embedded using the `<image>` element.
+- `HTMLVideoElement`: Using an HTML `<video>` element as your image source grabs the current frame from the video and uses it as an image.
+- `HTMLCanvasElement`: You can use another `<canvas>` element as your image source.
+- `ImageBitmap`: A bitmap image, eventually cropped. Such type are used to extract part of an image, a sprite, from a larger image
+- `OffscreenCanvas`: A special kind of `<canvas>` that is not displayed and is prepared without being displayed. Using such an image source allows to switch to it without the composition of the content to be visible to the user.
+- `VideoFrame`: An image representing one single frame of a video.
+
+There are several ways to get images for use on a canvas.
+
+## Using images from the same page
+
+We can obtain a reference to images on the same page as the canvas by using one of:
+
+- The `document.images` collection
+- The `document.getElementsByTagName()` method
+- If you know the ID of the specific image you wish to use, you can use `document.getElementById()` to retrieve that specific image
+
+## Creating images from scratch
+
+Another option is to create new `HTMLImageElement` objects in our script. To do this, we have the convenience of an `Image()` constructor:
+
+```js
+const img = new Image(); // Create new img element
+img.src = "myImage.png"; // Set source path
+```
+
+When this script gets executed, the image starts loading, but if you try to call `drawImage()` before the image has finished loading, it won't do anything. Older browsers may even throw an exception, so you need to be sure to use the **load event** so you don't draw the image to the canvas before it's ready:
+
+```js
+const ctx = document.getElementById("canvas").getContext("2d");
+const img = new Image();
+
+img.addEventListener("load", () => {
+  ctx.drawImage(img, 0, 0);
+});
+
+img.src = "myImage.png";
+```
+
+Whether you have `<img>` elements in your markup or you create them programmatically in JavaScript, external images may have CORS restrictions. By default, externally fetched images taint the canvas, preventing your site from reading data cross-origin. Using the `crossorigin` attribute of an `<img>` element (reflected by the `HTMLImageElement.crossOrigin` property), you can request permission to load an image from another domain using CORS. If the hosting domain permits cross-domain access to the image, the image can be used in your canvas without tainting it.
+
+## Embedding an image via data: URL
+
+Another possible way to include images is via the data: URL. Data URLs allow you to completely define an image as a Base64 encoded string of characters directly in your code.
+
+```js
+const img = new Image(); // Create new img element
+img.src =
+  "data:image/gif;base64,R0lGODlhCwALAIAAAAAA3pn/ZiH5BAEAAAEALAAAAAALAAsAAAIUhA+hkcuO4lmNVindo7qyrIXiGBYAOw==";
+```
+
+One advantage of data URLs is that the resulting image is available immediately without another round trip to the server. Another potential advantage is that it is also possible to encapsulate in one file all of your CSS, JavaScript, HTML, and images, making it more portable to other locations.
+
+Some disadvantages of this method are that your image is not cached, and for larger images the encoded URL can become quite long.
+
+## Drawing images
+
+Once we have a reference to our source image object we can use the `drawImage()` method to render it to the canvas. As we will see later the `drawImage()` method is overloaded and has several variants. In its most basic form it looks like this:
+
+`drawImage(image, x, y)`: Draws the image specified by the `image` parameter at the coordinates (`x`, `y`).
+
+# Pixel manipulation with canvas
+
+Until now we haven't looked at the actual pixels of our canvas. With the `ImageData` object you can directly read and write a data array to manipulate pixel data. We will also look into how image smoothing (anti-aliasing) can be controlled and how to save images from your canvas.
+
+## The `ImageData` object
+
+The `ImageData` object represents the underlying pixel data of an area of a canvas object. Its `data` property returns a `Uint8ClampedArray` (or `Float16Array` if requested) which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values (red, green, blue, and alpha, in that order; that is, "RGBA" format). Each color component is represented by an integer between 0 and 255. Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. Pixels then proceed from left to right, then downward, throughout the array.
+
+The `Uint8ClampedArray` contains `height` × `width` × 4 bytes of data, with index values ranging from 0 to (`height` × `width` × 4) - 1.
+
+For example, to read the blue component's value from the pixel at column 200, row 50 in the image, you would do the following:
+
+```js
+const blueComponent = imageData.data[50 * (imageData.width * 4) + 200 * 4 + 2];
+```
+
+If given a set of coordinates (X and Y), you may end up doing something like this:
+
+```js
+const xCoord = 50;
+const yCoord = 100;
+const canvasWidth = 1024;
+
+const getColorIndicesForCoord = (x, y, width) => {
+  const red = y * (width * 4) + x * 4;
+  return [red, red + 1, red + 2, red + 3];
+};
+
+const colorIndices = getColorIndicesForCoord(xCoord, yCoord, canvasWidth);
+
+const [redIndex, greenIndex, blueIndex, alphaIndex] = colorIndices;
+```
+
+You may also access the size of the pixel array in bytes by reading the `Uint8ClampedArray.length` attribute:
+
+```js
+const numBytes = imageData.data.length;
+```
+
+## Creating an ImageData object
+
+To create a new, blank `ImageData` object, you should use the `createImageData()` method. There are two versions of the `createImageData()` method:
+
+```js
+const myImageData = ctx.createImageData(width, height);
+```
+
+This creates a new `ImageData` object with the specified dimensions. All pixels are preset to transparent.
+
+You can also create a new `ImageData` object with the same dimensions as the object specified by `anotherImageData`. The new object's pixels are all preset to transparent black. This does not copy the image data!
+
+```js
+const myImageData = ctx.createImageData(anotherImageData);
+```
+
+## Getting the pixel data for a context
+
+To obtain an `ImageData` object containing a copy of the pixel data for a canvas context, you can use the `getImageData()` method:
+
+```js
+const myImageData = ctx.getImageData(left, top, width, height);
+```
+
+This method returns an `ImageData` object representing the pixel data for the area of the canvas whose corners are represented by the points (`left`, `top`), (`left+width`, `top`), (`left`, `top+height`), and (`left+width`, `top+height`). The coordinates are specified in canvas coordinate space units.
+
+This method is also demonstrated in the article Manipulating video using canvas: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Manipulating_video_using_canvas
