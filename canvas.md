@@ -223,6 +223,47 @@ There are several properties which allow us to style lines.
 - `setLineDash(segments)`: Sets the current line dash pattern.
 - `lineDashOffset = value`: Specifies where to start a dash array on a line.
 
+# Transformations
+
+Earlier in this tutorial we've learned about the canvas grid and the coordinate space. Until now, we only used the default grid and changed the size of the overall canvas for our needs. With transformations there are more powerful ways to translate the origin to a different position, rotate the grid and even scale it.
+
+## Saving and restoring state
+
+Before we look at the transformation methods, let's look at two other methods which are indispensable once you start generating ever more complex drawings.
+
+- `save()`: Saves the entire state of the canvas.
+- `restore()`: Restores the most recently saved canvas state.
+
+Canvas states are stored on a stack. Every time the `save()` method is called, the current drawing state is pushed onto the stack. A drawing state consists of:
+
+- The transformations that have been applied (i.e., `translate`, `rotate` and `scale` – see below).
+- The current values of the following attributes:
+
+  - `strokeStyle`
+  - `fillStyle`
+  - `globalAlpha`
+  - `lineWidth`
+  - `lineCap`
+  - `lineJoin`
+  - `miterLimit`
+  - `lineDashOffset`
+  - `shadowOffsetX`
+  - `shadowOffsetY`
+  - `shadowBlur`
+  - `shadowColor`
+  - `globalCompositeOperation`
+  - `font`
+  - `textAlign`
+  - `textBaseline`
+  - `direction`
+  - `imageSmoothingEnabled`.
+
+- The current clipping path, which we'll see in the next section.
+
+You can call the `save()` method as many times as you like. Each time the `restore()` method is called, the last saved state is popped off the stack and all saved settings are restored.
+
+See **Scaling** section on https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Transformations
+
 # Using images
 
 Importing images into a canvas is basically a two step process:
@@ -294,6 +335,39 @@ Once we have a reference to our source image object we can use the `drawImage()`
 
 `drawImage(image, x, y)`: Draws the image specified by the `image` parameter at the coordinates (`x`, `y`).
 
+# Basic animation
+
+Since we're using JavaScript to control `<canvas>` elements, it's also very easy to make (interactive) animations. In this chapter we will take a look at how to do some basic animations.
+
+Probably the biggest limitation is, that once a shape gets drawn, it stays that way. If we need to move it we have to redraw it and everything that was drawn before it. It takes a lot of time to redraw complex frames and the performance depends highly on the speed of the computer it's running on.
+
+## Basic animation steps
+
+These are the steps you need to take to draw a frame:
+
+1. **Clear the canvas** Unless the shapes you'll be drawing fill the complete canvas (for instance a backdrop image), you need to clear any shapes that have been drawn previously. The easiest way to do this is using the `clearRect()` method.
+2. **Save the canvas state** If you're changing any setting (such as styles, transformations, etc.) which affect the canvas state and you want to make sure the original state is used each time a frame is drawn, you need to save that original state.
+3. **Draw animated shapes** The step where you do the actual frame rendering.
+4. **Restore the canvas state** If you've saved the state, restore it before drawing a new frame.
+
+## Controlling an animation
+
+Shapes are drawn to the canvas by using the canvas methods directly or by calling custom functions. In normal circumstances, we only see these results appear on the canvas when the script finishes executing. For instance, it isn't possible to do an animation from within a `for` loop.
+
+That means we need a way to execute our drawing functions over a period of time. There are two ways to control an animation like this.
+
+### Scheduled updates
+
+First there's the `setInterval()`, `setTimeout()`, and `requestAnimationFrame()` functions, which can be used to call a specific function over a set period of time.
+
+- `setInterval()`: Starts repeatedly executing the function specified by `function` every `delay` milliseconds.
+- `setTimeout()`: Executes the function specified by `function` in `delay` milliseconds.
+- `requestAnimationFrame()`: Tells the browser that you wish to perform an animation and requests that the browser call a specified function to update an animation before the next repaint.
+
+If you don't want any user interaction you can use the `setInterval()` function, which repeatedly executes the supplied code. If we wanted to make a game, we could use keyboard or mouse events to control the animation and use `setTimeout()`. By setting listeners using `addEventListener()`, we catch any user interaction and execute our animation functions.
+
+# Advanced animation
+
 # Pixel manipulation with canvas
 
 Until now we haven't looked at the actual pixels of our canvas. With the `ImageData` object you can directly read and write a data array to manipulate pixel data. We will also look into how image smoothing (anti-aliasing) can be controlled and how to save images from your canvas.
@@ -360,3 +434,36 @@ const myImageData = ctx.getImageData(left, top, width, height);
 This method returns an `ImageData` object representing the pixel data for the area of the canvas whose corners are represented by the points (`left`, `top`), (`left+width`, `top`), (`left`, `top+height`), and (`left+width`, `top+height`). The coordinates are specified in canvas coordinate space units.
 
 This method is also demonstrated in the article Manipulating video using canvas: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Manipulating_video_using_canvas
+
+## Painting pixel data into a context
+
+You can use the `putImageData()` method to paint pixel data into a context:
+
+```js
+ctx.putImageData(myImageData, dx, dy);
+```
+
+The `dx` and `dy` parameters indicate the **device coordinates** within the context at which to paint the top left corner of the pixel data you wish to draw.
+
+For example, to paint the entire image represented by myImageData to the top left corner of the context, you can do the following:
+
+```js
+ctx.putImageData(myImageData, 0, 0);
+```
+
+> It is strongly recommended to visit the example about **Zooming and anti-aliasing** section on https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
+
+## Saving images
+
+The `HTMLCanvasElement` provides a `toDataURL()` method, which is useful when saving images. It returns a data URL containing a representation of the image in the format specified by the type parameter (defaults to PNG). The returned image is in a resolution of 96 dpi.
+
+> Note: Be aware that if the canvas contains any pixels that were obtained from another origin without using CORS, the canvas is tainted and its contents can no longer be read and saved. See **Security and tainted canvases** at https://developer.mozilla.org/en-US/docs/Web/HTML/How_to/CORS_enabled_image#security_and_tainted_canvases
+
+- `canvas.toDataURL('image/png')`: Default setting. Creates a PNG image.
+- `canvas.toDataURL('image/jpeg', quality)`: Creates a JPG image. Optionally, you can provide a quality in the range from 0 to 1, with one being the best quality and with 0 almost not recognizable but small in file size.
+
+Once you have generated a data URL from your canvas, you are able to use it as the source of any `<img>` or put it into a hyperlink with a download attribute to save it to disc, for example.
+
+You can also create a `Blob` from the canvas.
+
+`canvas.toBlob(callback, type, encoderOptions)`: Creates a `Blob` object representing the image contained in the canvas.
