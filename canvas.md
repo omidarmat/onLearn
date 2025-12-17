@@ -262,7 +262,21 @@ Canvas states are stored on a stack. Every time the `save()` method is called, t
 
 You can call the `save()` method as many times as you like. Each time the `restore()` method is called, the last saved state is popped off the stack and all saved settings are restored.
 
-See **Scaling** section on https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Transformations
+## Translating
+
+The first of the transformation methods we'll look at is `translate()`. This method is used to move the canvas and its origin to a different point in the grid.
+
+`translate(x, y)`: Moves the canvas and its origin on the grid. `x` indicates the horizontal distance to move, and `y` indicates how far to move the grid vertically.
+
+## Scaling
+
+The next transformation method is scaling. We use it to increase or decrease the units in our canvas grid. This can be used to draw scaled down or enlarged shapes and bitmaps.
+
+`scale(x, y)`: Scales the canvas units by `x` horizontally and by `y` vertically. Both parameters are real numbers. Values that are smaller than `1.0` reduce the unit size and values above `1.0` increase the unit size. Values of `1.0` leave the units the same size.
+
+Using negative numbers you can do axis mirroring (for example using `translate(0,canvas.height)`; `scale(1,-1)`; you will have the well-known Cartesian coordinate system, with the origin in the bottom left corner).
+
+By default, one unit on the canvas is exactly one pixel. If we apply, for instance, a scaling factor of `0.5`, the resulting unit would become `0.5` pixels and so shapes would be drawn at half size. In a similar way setting the scaling factor to `2.0` would increase the unit size and one unit now becomes two pixels. This results in shapes being drawn twice as large.
 
 # Using images
 
