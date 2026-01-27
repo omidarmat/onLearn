@@ -1,6 +1,8 @@
 - [OS management commands](#os-management-commands)
   - [Update all packages](#update-all-packages)
   - [List all installed apps](#list-all-installed-apps)
+  - [Search for apps](#search-for-apps)
+  - [Delete apps](#delete-apps)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -59,6 +61,40 @@ If you want to know if a specific package is installed on your device you can us
 
 ```bash
 sudo apt list -a package-name
+```
+
+## Search for apps
+
+Apps can be installed on Ubuntu OS in different ways. You can search for apps installed via APT by:
+
+```bash
+sudo apt -l | grep -i <package-name>
+```
+
+You can also search for apps installed via Snap by:
+
+```bash
+sudo snap list | grep -i <package-name>
+```
+
+## Delete apps
+
+To delete apps installed via APT you can use:
+
+```bash
+sudo apt remove <package-name>
+```
+
+To delete app dependencies:
+
+```bash
+sudo apt purge <package-name>
+```
+
+To delete all unused dependencies:
+
+```bash
+sudo apt autoremove
 ```
 
 # Filesystem commands
