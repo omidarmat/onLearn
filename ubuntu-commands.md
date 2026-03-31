@@ -29,6 +29,7 @@
     - [Adding an interface and using the VPN](#adding-an-interface-and-using-the-vpn)
     - [Toggling VPN on/off](#toggling-vpn-onoff)
   - [V2RayA](#v2raya)
+  - [ZIP](#zip)
 - [Terminal helper commands](#terminal-helper-commands)
   - [Command manual](#command-manual)
 - [The superuser](#the-superuser)
@@ -571,6 +572,22 @@ To see the service status you can use:
 ```bash
 sudo systemctl status v2raya
 ```
+
+## ZIP
+
+To install **zip** package do:
+
+```
+sudo apt intstall zip
+```
+
+Then to compress and encrypt a folder with password:
+
+```
+zip -er myfolder.zip myfolder/
+```
+
+You will be prompted for password interactively.
 
 # Terminal helper commands
 
