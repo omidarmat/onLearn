@@ -32,6 +32,7 @@
   - [ZIP](#zip)
 - [Terminal helper commands](#terminal-helper-commands)
   - [Command manual](#command-manual)
+  - [Unrar](#unrar)
 - [The superuser](#the-superuser)
 
 # OS management commands
@@ -598,6 +599,22 @@ To receive the instruction manual of a specific terminal command you can use the
 ```bash
 man uniq
 ```
+
+## Unrar
+
+To install **unrar** package do:
+
+```
+sudo apt install unrar
+```
+
+Then to unpack a multi-part pack of `.rar` files do:
+
+```
+unrar x file_part_1.rar
+```
+
+Unrar will find the next files and extract all of them into one file.
 
 # The superuser
 
