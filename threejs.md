@@ -334,3 +334,127 @@ cubesGroup.add(cube1);
 ```
 
 You can now apply all transforms that you learned to the group instead of the individual objects.
+
+# Animation
+
+Animating in ThreeJS is essentially done this way:
+
+1. Move the object
+2. Take a picture
+3. Move the object a bit more
+4. Take another picture
+5. And so on...
+
+Most screens run at 60 Frames per second (FPS), but some runs on higher and some other runs on lower FPS. However, your animation must look the same regardless of the framrate.
+
+## The `.requestAnimationFrame()` method of `window`
+
+The purpose of the method is to call the function that is provided on the next frame. So the method is not intended to do animations. Here is how you should do it:
+
+```js
+const tick = () => {
+  //   Update objects
+  mesh.rotation.y += 0.01;
+  //   Render
+  renderer.render(scene, camera);
+  window.requestAnimationFrame(tick);
+};
+
+// Don't forget to call the function once
+tick();
+```
+
+So you need to move the render method into the `tick` function so that it is called somewhat recursively.
+
+## The animation speed problem
+
+Notice that the `window.requestAnimationFrame(tick)` function calling rate is based on framerate. So the higher the framerate (on more professional systems), the faster the animation is performed. So you need to adapt your animation to the framerate. There are 2 solutions to this matter.
+
+### Time difference between ticks
+
+To do this, you need to know how much time is passed from the last tick. We use `Date.now()` to get the current timestamp. This is the fix:
+
+```js
+let time = Date.now();
+
+// Animations
+const tick = () => {
+  const currentTime = Date.now();
+  const deltaTime = currentTime - time;
+  time = currentTime;
+
+  //   Update objects
+  mesh.rotation.y += 0.002 * deltaTime;
+  //   Render
+  renderer.render(scene, camera);
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+### Three `Clock` class
+
+You can also instantiate the `Clock` class and use its `getElapsedTime()` method.
+
+```js
+const clock = new THREE.Clock();
+
+// Animations
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+  //   Update objects
+  mesh.position.y = Math.sin(elapsedTime);
+  mesh.position.x = Math.cos(elapsedTime);
+
+  // also try this for fun!
+  camera.position.y = Math.sin(elapsedTime);
+  camera.position.x = Math.cos(elapsedTime);
+  camera.lookAt(mesh.position);
+
+  //   Render
+  renderer.render(scene, camera);
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+The elapsed time is measured since the `Clock` is instantiated and is expressed in seconds.
+
+However, there are better and more advanced solutions for implementing and controlling animations.
+
+## The `gsap` library
+
+Install the gsap library:
+
+```
+npm install gsap@3.5.1
+```
+
+Then import it in to the script file of your project:
+
+```js
+import gsap from "gsap";
+```
+
+### GSAP tools
+
+GSAP has several tools for controlling object animation.
+
+#### `gsap.to()`
+
+Since GSAP uses its own tick and elapsed time calculation, you can remove animation codes from the `tick` function and only leave the render function in it.
+
+```js
+gsap.to(mesh.position, { x: 2, duration: 1, delay: 1 });
+
+// Animations
+const tick = () => {
+  //   Render
+  renderer.render(scene, camera);
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
