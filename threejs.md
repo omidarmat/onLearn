@@ -458,3 +458,156 @@ const tick = () => {
 
 tick();
 ```
+
+# Cameras
+
+There are various types of camera in ThreeJS. Here is a list:
+
+1. `ArrayCamera`
+2. `Camera`
+3. `CubeCamera`
+4. `OrthographicCamera`
+5. `PerspectiveCamera`
+6. `StereoCamera`
+
+Notice that you are not supposed to use the `Camera` class directly. It is designed to be an abstract class. Other camera classes inherit from the `Camera` class.
+
+## `ArrayCamera`
+
+The `ArrayCamera` is used to render the scene from multiple cameras on specific areas of the render. For instance, if you are implementing something like a 3D software UI you can use this class.
+
+## `StereoCamera`
+
+The `StereoCamera` is used to render a scene through two cameras that mimic human eyes to create a parallax effect. The output of this render is specifically used with VR, red-blue glasses or cardboard.
+
+## `CubeCamera`
+
+The `CubeCamera` is used to do 6 renders, each facing a different direction. This class can be used to render the surrounding like environment map, reflection or shadow map.
+
+## `OrthographicCamera`
+
+The `OrthographicCamera` is used to render a scene without perspective. No perspective means that two object with the same size will appear the same size regardless of their distance to the camera. If perspective is applied, further objects should appear smaller than closer ones.
+
+Here is the signature of the `OrthographicCamera` instantiation:
+
+```ts
+const orthographicCamera = new THREE.OrthographicCamera(
+  left as number,
+  right as number,
+  top as number,
+  bottom as number,
+  near as number,
+  far as number,
+);
+```
+
+So instead of defining the field of view with a single numeric value as in `PerspectiveCamera`, here you define the field of view with four numeric values. Notice the shape of the field of view in this camera is not like a cone, but like a rectangle.
+
+Afterwards, there 2 other parameters defining the `near` and `far` values. Refer to `PerspectiveCamera` description on these two parameters.
+
+**IMPORTANT**
+
+If values (`-1`, `1`, `1`, `-1`) are used as (`left`, `right`, `top`, `bottom`), and the render scene dimensions are not square, your objects would appear distorted. Also, changing the render dimensions will change the type of distortion on your objects. To fix this, you need to account for the scene aspect ratio. For instance, if your scene is going to be `width x height`, multiply values of one direction of the field view, for instance, left and right:
+
+```js
+const aspectRatio = width / height;
+
+const orthographicCamera = new THREE.OrthographicCamera(
+  left * aspectRatio as number,
+  right * aspectRatio as number,
+  top as number,
+  bottom as number,
+  near as number,
+  far as number,
+);
+```
+
+## `PerspectiveCamera`
+
+It is now obvious what this class is used for. Here is the signature of the `PerspectiveCamera` instantiation:
+
+```ts
+const perspectiveCamera = new THREE.PerspectiveCamera(
+  fieldOfView as number,
+  aspectRatio as number,
+  near as number,
+  far as number,
+);
+```
+
+1. First parameter: Field of view, also called "fov", is expressed in **angles**. It defines the vertical vision angle. Be careful with really high values, since objects at the edge of the render frame will appear distorted.
+2. Aspect ratio: The width of the render divided by the height.
+3. Near: Defines how close the camera can see. Any object (or part of the object) closer than this value will not show up in the scene.
+4. Far: Defines how far the camera can see. Any object (or part of the object) further than this value will not show up in the scene.
+
+**IMPORTANT**
+
+Do not use extreme values (`0.00001` or `9999999`) for `near` and `far` parameters. This could lead to a glitch problem called **z-fighting**. The values you should use for these two parameters depend on your project and scene.
+
+# Controlling cameras
+
+One of the most used controlls for the camera, is the mouse. Therefore, you should be able to get the position of your mouse cursor. You can simply use `addEventListener` on the `window` object and listen to `mousemove` events and get `clientX` or `clientY` values. However, the problem with this is that these values would be different on different devices and screens. We want these values to always stay between `-0.5` and `0.5`. To do this, you can divide `clientX` by your canvas `width`, and `clientY` by canvas `height` and then subtract `0.5` from each.
+
+```ts
+const cursor = {
+  x: 0,
+  y: 0,
+};
+
+window.addEventListener("mousemove", (event) => {
+  cursor.x = event.clientX / sizes.width - 0.5;
+  cursor.y = event.clientY / sizes.height - 0.5;
+});
+```
+
+You might think why not dividing them by viewport width and height. That is actually correct, but think of the canvas as a **full-screen** area. Now you can use the cursor positions to animate the camera movement in the `tick` function:
+
+```js
+const tick = () => {
+  // Update objects
+  camera.position.x = -cursor.x * 2; // arbitrary amplitude;
+  camera.position.y = -cursor.y * 2; // arbitrary amplitude;
+  camera.lookAt(mesh.position);
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+> Notice that the above method used to position the camera will always prevent you from seeing the other side of the object. That is because the camera is moving along the `x` axis. To be able to see the other side of the object, the camera needs to move on a circle around the object. To do this, you need to implement some math:
+
+```js
+const tick = () => {
+  // Update objects
+  camera.position.x = Math.sin(cursor.x * Math.PI * 2) * 3;
+  camera.position.z = Math.cos(cursor.x * Math.PI * 2) * 3;
+  camera.position.y = cursor.y * 5;
+  camera.lookAt(mesh.position); // Always place "lookAt" after object positioning, otherwise your looking direction will be off.
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+## ThreeJS controls
+
+ThreeJS has provided users with various controller classes. Here is a list:
+
+1. `DeviceOrientationControls`
+2. `DragControls`
+3. `FristPersonControls`
+4. `FlyControls`
+5. `OrbitControls`
+6. `PointerLockControls`
+7. `TrackballControls`
+8. `TransformControls`
