@@ -3,6 +3,7 @@
   - [List all installed apps](#list-all-installed-apps)
   - [Search for apps](#search-for-apps)
   - [Delete apps](#delete-apps)
+  - [Update the system PATH](#update-the-system-path)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -98,6 +99,22 @@ To delete all unused dependencies:
 ```bash
 sudo apt autoremove
 ```
+
+## Update the system PATH
+
+To update system path you should edit the `.bashrc` file:
+
+```bash
+sudo nano ~/.bashrc
+```
+
+You would probably want to add a line similar to the one below at the end of the file:
+
+```
+export PATH=/usr/local/nodejs/bin:$PATH
+```
+
+Follow your target repository documents for more precise instructions.
 
 # Filesystem commands
 
