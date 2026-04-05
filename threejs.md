@@ -611,3 +611,189 @@ ThreeJS has provided users with various controller classes. Here is a list:
 6. `PointerLockControls`
 7. `TrackballControls`
 8. `TransformControls`
+
+Among the list, `TransformControls` and `DragControls` are not actually about controlling cameras, but objects. Let's test `OrbitControls`.
+
+### `OrbitControls`
+
+Notice that when using a camera controller class like `OrbitControls`, all camera transforms will be done with this class, so there should be no manual camera controlling code in the `tick` function.
+
+The instantiation of `OrbitControls` is not as simple as it seems. You cannot access `THREE.OrbitControls`. As of 2026, the class is located at this path:
+
+```
+/node_modules/three/examples/jsm/Addons.js
+```
+
+So you can import it by doing:
+
+```js
+import { OrbitControls } from "three/examples/jsm/Addons.js";
+```
+
+Then instantiate the class by giving it, as first paramtere, the camera object, and as second parameter, a DOM element that would act as a refernce to which the mouse movements are measured by the controlling class.
+
+```js
+const controls = new OrbitControls(camera, canvas);
+```
+
+Now as simple as this `tick` function is, the camera movement is controlled by the class so nicely:
+
+```js
+const tick = () => {
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+You can also change the camera target by:
+
+```js
+const controls = new OrbitControls(camera, canvas);
+controls.target.y = 1;
+controls.update();
+```
+
+> Notice the `.update()` call which is necessary after changing the camera's target.
+
+#### Damping
+
+Up until now, the camera controller is working fine, but the animation is not smooth. To implement smooth animations with damping, you can set `enableDamping` property of the `controls` object to true.
+
+```js
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+```
+
+But there is one more piece left. You should call the `.update()` method on each `tick` to make it work fine, since you need the damping to work also when the mouse is not dragging.
+
+```js
+const tick = () => {
+  // Update objects
+  controls.update();
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
+```
+
+# Going full-screen
+
+In order to provide an immersive experience for the user, try and make your WebGL canvas full-screen. You can simple change the `sizes` object from past, and make it like this:
+
+```js
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
+```
+
+Then you would have to add a CSS styling to the project in order to fit the canvas in the screen and disable scroliing:
+
+```css
+* {
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  overflow: hidden;
+}
+
+.webgl {
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: none;
+}
+```
+
+## Handling resize
+
+Until now, the canvas is initiated with the viewport size, but the size will not be updated if the screen size is changed. To do this you should listen to the `resize` event on the `window` object. In the callback provided to the event listener there are basically 3 things to do:
+
+1. Update canvas sizes
+2. Update camera's aspect ratio and call `.updateProjectionMatrix()` on the camera
+3. Update the renderer size using `.setSize()`
+4. Update the renderer pixel ratio using `.setPixelRatio`
+
+```js
+window.addEventListener("resize", () => {
+  // Update size
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // refer to handling pixel ratio section
+});
+```
+
+## Handling pixel ratio
+
+If you are experiencing blurry renders or stairs effect on the edges, that is because you are working on a screen with pixel ratio that is not `1`. The pixel ratio corresponds to how many physical pixels you have on the screen for 1 pixel unit on the software part.
+
+To get your current pixel ratio you can use:
+
+```js
+window.devicePixelRatio;
+```
+
+To update the renderer accordingly, you can use `.setPixelRatio()` on the renderer. Remember that if the device pixel ratio is too high, such as 3, 4 or 5, there will be so many re-renders. To prevent this, you should apply a maximum of 2 using `Math.min()`.
+
+```js
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+```
+
+Notice that this handling should be applied in both renderer initialization and the `resize` event handler.
+
+```js
+window.addEventListener("resize", () => {
+  // Update size
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({
+  canvas: canvas,
+});
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+```
+
+## Handle full-screen
+
+It is a convention to listen for the `dbclick` event on the `window` object and enable full-screen mode. You can then check the current full-screen state and toggle it respectively. Notice that you can use `.requestFullscreen()` on the `canvas` element, and also use `.exitFullscreen()` on the `window` object.
+
+```js
+window.addEventListener("dblclick", () => {
+  if (!document.fullscreenElement) {
+    canvas.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+```
