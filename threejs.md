@@ -820,3 +820,126 @@ window.addEventListener("dblclick", () => {
   }
 });
 ```
+
+# Geometries
+
+A geometry in ThreeJS is composed of **vertices** and **faces**. Vertices are point coordinates in 3D space. Vertices can be used to create **meshes**, but it can also be used for **particles**. A vertex can store more data than just position data. It can store UV coordinates, normals, colors, or any random data.
+
+All the following geometries inherit from the `BufferGeometry` class. The methods included in the class will not affect the mesh, but the vertices of the mesh. Here is a list of available geometry classes available in ThreeJS:
+
+1. `BoxGeometry`
+2. `PlaneGeometry`
+3. `CircleGeometry`
+4. `ConeGeometry`
+5. `CylinderGeometry`
+6. `RingGeometry`
+7. `TorusGeometry`
+8. `TorusKnotGeometry`
+9. `DodecahedronGeometry`
+10. `OctahedronGeometry`
+11. `TetrahedronGeometry`
+12. `IcosahedronGeometry`
+13. `SphereGeometry`
+14. `ShapeGeometry`
+15. `TubeGeometry`
+16. `TubeGeometry`
+17. `ExtrudeGeometry`
+18. `LatheGeometry`
+19. `TextGeometry`
+
+By combining these geometries you can build really complex objects. For extremely detailed objects you would want to use a 3D software.
+
+## `BoxGeometry`
+
+The `BoxGeometry` has these properties:
+
+1. `width`
+2. `height`
+3. `depth`
+4. `widthSegments`: determines number of subdivisions in the `x` axis
+5. `heightSegments`
+6. `depthSegments`
+7. `color`
+8. `wireframe`: receives boolean; if `true` displays the composing triangles
+
+The number of subdivisions on each axis determines how many triangles will compose each face. For `1` segment, you get `2` triangles per face. For `2` segments, you get `8` triangles per face. More triangles mean more details. So if your geometry does not need details, don't increase your segments. For instance, if you are going to create a terain, you will need a lot of details, hence more segments.
+
+## Creating a geometry
+
+Before creating a geometry, you need to understand how to store buffer geomtery data. You first need to create the data that would then be used as vertices data. To do this, you should use `Float32Array`, which is **typed array** which can only store `float`s. It has a fixed length and therefore, it is easier for the computer to handle.
+
+There are 2 ways of creating and filling a `Float32Array`:
+
+```js
+const positionsArray = new Float32Array(9);
+
+// First vertex
+positionsArray[0] = 0; // x
+positionsArray[1] = 0; // y
+positionsArray[2] = 0; // z
+
+// Second vertex
+positionsArray[3] = 0;
+positionsArray[4] = 1;
+positionsArray[5] = 0;
+
+// Third vertex
+positionsArray[6] = 1;
+positionsArray[7] = 0;
+positionsArray[8] = 0;
+```
+
+or
+
+```js
+const positionsArray = new Float32Array(
+  [
+    0,
+    0,
+    0, // First vertex
+    0,
+    1,
+    0, // Second vertex
+    1,
+    0,
+    0,
+  ], // Third vertex
+);
+```
+
+So since the `Float32Array` is a one-dimension array, you should insert data for all vertices into it. Therefore, starting from the beginning of the array, each 3 number will represent the 3D coordinates of each vertex.
+
+After creating the `Float32Array`, you can convert it into a `BufferAttribute` object of ThreeJS:
+
+```js
+const positionAttribute = new THREE.BufferAttribute(positionsArray, 3);
+// 3 indicates how many values corresponds to one vertex
+```
+
+Now you can send this `BufferAttribute` to `BufferGeometry`:
+
+```js
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", positionsAttribute);
+// "position" is the name that will be used in the shaders
+```
+
+Now you have created a simple geometry. Here is an alternative process for creating a geometry:
+
+```js
+const geometry = new THREE.BufferGeometry();
+
+const count = 50;
+const positionsArray = new Float32Array(count * 3 * 3);
+
+for (let i = 0; i < count * 3 * 3; i++) {
+  positionsArray[i] = (Math.random() - 0.5) * 4;
+}
+
+const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3);
+geometry.setAttribute("position", positionsAttribute);
+```
+
+## Indeices
+
+There are some vertices in any object that are used commonly by multiple triangles.
