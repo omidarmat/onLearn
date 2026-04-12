@@ -88,6 +88,7 @@
     - [**Implement controller**](#implement-controller)
     - [**Set up error handling strategy**](#set-up-error-handling-strategy)
     - [**Integrate TypeScript**](#integrate-typescript)
+    - [**Integrating Swagger for documentation and testing**](#integrating-swagger-for-documentation-and-testing)
 - [**Athentication \& Authorization**](#athentication--authorization)
   - [**JSON Web Token (JWT)**](#json-web-token-jwt)
     - [**JWT creation**](#jwt-creation)
@@ -1978,6 +1979,111 @@ This will also require you to update your `package.json` scripts:
 
 ```ts
 import app from "./app.js";
+```
+
+### **Integrating Swagger for documentation and testing**
+
+To add Swagger to the project, you first need to install its dependencies:
+
+```bash
+npm install swagger-ui-express swagger-jsdoc
+npm install -D @types/swagger-ui-express @types/swagger-jsdoc
+```
+
+Then create a `swagger.ts` file in the `config` folder of the project with this code:
+
+```js
+// /src/config/swagger.ts
+import swaggerJsdoc from "swagger-jsdoc";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const options: swaggerJsdoc.Options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Gibidoo API",
+      version: "1.0.0",
+    },
+  },
+  apis: [path.join(__dirname, "../routes/*.ts")],
+};
+
+export const swaggerSpec = swaggerJsdoc(options);
+```
+
+Then register the swagger path in your `app.ts` middleware stack right before your routes:
+
+```js
+// /src/app.ts
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Your server routes...
+```
+
+Now for Swagger to be able to read your routes, you need to add comments before each route. For instance, in a `cvRouter.ts` file, add comments starting with `@openapi` initator:
+
+```js
+// /src/routes/cvRouter.ts
+/**
+ * @openapi
+ * /cv-items:
+ *   get:
+ *     summary: Get all CV items
+ *     tags:
+ *       - cv-item
+ *     responses:
+ *       200:
+ *         description: Get a full list of CV items
+ */
+router.get("/", getCvItems);
+```
+
+Or as another example, in a `moveisRouter.ts` file:
+
+```js
+// /src/rorutes/moviesRouter.ts
+/**
+ * @openapi
+ * /movies:
+ *   post:
+ *     summary: Create movie
+ *     tags:
+ *       - movies
+ *     requestBody:
+ *       required: true
+ *       content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              required:
+ *                 - title
+ *                 - subtitle
+ *                 - description
+ *                 - year
+ *                 - director
+ *              properties:
+ *                title:
+ *                  type: string
+ *                subtitle:
+ *                  type: string
+ *                description:
+ *                  type: string
+ *                year:
+ *                  type: number
+ *                  example: 2006
+ *                director:
+ *                  type: string
+ *     responses:
+ *       200:
+ *         description: Movie record created successfully
+ *       400:
+ *         description: Bad request
+ */
+router.post("/", createMovie);
 ```
 
 # **Athentication & Authorization**
