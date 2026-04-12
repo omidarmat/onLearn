@@ -87,6 +87,7 @@
     - [**Implement router**](#implement-router)
     - [**Implement controller**](#implement-controller)
     - [**Set up error handling strategy**](#set-up-error-handling-strategy)
+    - [**Integrate TypeScript**](#integrate-typescript)
 - [**Athentication \& Authorization**](#athentication--authorization)
   - [**JSON Web Token (JWT)**](#json-web-token-jwt)
     - [**JWT creation**](#jwt-creation)
@@ -1923,6 +1924,60 @@ Then put this middleware at the end of your middleware stack in your `app.js` fi
 ```js
 // /src/app.js
 app.use(errorHandler);
+```
+
+### **Integrate TypeScript**
+
+To integrate Typescript, you first need to install its dependencies:
+
+```bash
+npm install -D typescript @types/node @types/express @types/pg @types/cookie-parser @types/cors tsx
+```
+
+Then generate a Typescript configuration file using this command:
+
+```bash
+npx tsc --init
+```
+
+And put this configuration JSON object in it:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src", "drizzle.config.ts"], // <-- add drizzle.config.ts explicitely to make "process" identifiable to VS code.
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+This will also require you to update your `package.json` scripts:
+
+```json
+// package.json
+{
+  "scripts": {
+    "dev": "nodemon --exec tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  }
+}
+```
+
+> Notice that with `NodeNext` module resolution method of TypeScript, you don't need to change your relative imports from `.js` extensions to `.ts`. So, for example, this import in the `server.ts` file remains intact:
+
+```ts
+import app from "./app.js";
 ```
 
 # **Athentication & Authorization**
