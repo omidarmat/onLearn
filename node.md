@@ -78,6 +78,15 @@
     - [**Morgan**](#morgan)
   - [**Creating custom middleware**](#creating-custom-middleware)
   - [**Express regular workflow**](#express-regular-workflow)
+    - [**Initiate the project**](#initiate-the-project)
+    - [**Install dependencies**](#install-dependencies)
+    - [**Establish Express conventional folder structure**](#establish-express-conventional-folder-structure)
+    - [**Set up scripts**](#set-up-scripts)
+    - [**Set up database with Drizzle ORM**](#set-up-database-with-drizzle-orm)
+    - [**Set up server application**](#set-up-server-application)
+    - [**Implement router**](#implement-router)
+    - [**Implement controller**](#implement-controller)
+    - [**Set up error handling strategy**](#set-up-error-handling-strategy)
 - [**Athentication \& Authorization**](#athentication--authorization)
   - [**JSON Web Token (JWT)**](#json-web-token-jwt)
     - [**JWT creation**](#jwt-creation)
@@ -107,7 +116,6 @@ So here are the 5 steps involved in a request-response cycle:
 
 1. When we request a URL in the browser, the browser makes a request to a **DNS**. This special server will find the real IP address that matches the web address we typed in the URL bar of our browser. This happens through our **ISP**. The real IP address (something like `https://216.58.211.206:443`) is returned to our browser, and our browser will call it. This URL now contains, again, the protocol, the **IP address** and the **port number**. Remember that this port number is not about the resource that we request.
 2. A **TCP/IP** socket connection is established between the server and the client. This is a 2-way connection that will remain live until all the files of the website are transferred. TCP stands for **Transmission Control Protocol**, and IP stands for **Internet protocol**. Together, they are **communication protocols** that define how data should travel across the web.
-
    - The job of TCP is to break the request/response into thousands of small chunks called packets before they are sent. Once these chunks arrive at their destination, TCP will re-assemble them into the original request/response. This makes the travel happen as fast as possible.
    - The job of IP is to send and route all of the packets through the internet. It ensures that all of them arrive at a specific destination, using IP addresses on each packet.
 
@@ -218,7 +226,6 @@ To build a REST API we need to follow some principles:
 1. Separate API into logical resources: all data that is going to be shared in the API, should be divided into logical resources. A **resource** is an object or any representation of something which has data associated to it. Any information that can be _named_ (not verb) can be a resource. Example: foods, users, reviews.
 2. Expose structured, resource-based URLs: we need to expose the APIs data using some URLs that clients can send requests to. For example, `https://www.roos.com/foods` is a URL and `/foods` at the end is called an **endpoint**.
 3. Use HTTP methods (verbs): endpoints should only contain resource names and not the actions that can be performed on them. The verbs or actions (CRUD) are already defined by HTTP methods.
-
    - `GET`: used to perform _read_ operation on data. It is usually responded with data retrieved from database. If the endpoint only contains the name of the resource, the response would contain all the data from that resource. But if a certain document is needed, usually an identifier is inserted with a `/` after the resource name. The identifier can be an ID or a name (`roos.com/foods/4`)
    - `POST`: used to perform _create_ operation. It enables the user to send data to server, so to create a document in our database. In this case no ID should be sent. The server should figure out an ID for the new document.
    - `PATCH` or `PUT`: both used to update documents. The URL should contain an identifier for the specific document that is going to be updated. With PUT, the client is supposed to send the entire updated object, but with PATCH they should only send the specific part of the document that is changed.
@@ -246,11 +253,9 @@ const parsedData = JSON.parse(jsonData);
 MVC stands for Model, View, Controller. These are the three parts of this architecture, each assigned to hold certain functionalities.
 
 - **Model:** concerned with everything about **application's data** and the **business logic**.
-
   - Business logic is all the code that solves the actual business problem. It is the code directly related to business rules, how the business should work, and business needs. For example, in a restaurant website, business logic will be concerned with creating orders, adding or removing foods from the menu, allowing users to write reviews about their orders, ensuring only authenticated users can access certain pages, etc.
 
 - **Controller:** concerned with handling application's requests, interact with models, and send back responses to the client. All this is called **application logic**.
-
   - application logic is the code that is only concerned with the application implementation, not the underlying business problem that we are attempting to solve. Application logic is the logic that makes the application work. For exmaple, most of application logic is concerned with managing requests and responses. It is more about the technical stuff. Or if we have the View layer, application logic will act as a bridge between business logic and presentation logic.
 
 - **View:** The view layer is necessary if we have a graphical interface, which is the case if we are doing frontend development or if we are building a server-side rendered website. In the last case, the view layer will contain the templates used to generate the website pages that we are going to send back to the client as response. This is called the **presentation logic**.
@@ -280,11 +285,9 @@ Having JavaScript outside of a browser in a stand-alone environment (NodeJS), we
 ## **NodeJS advantages**
 
 1. NodeJS is **single-threaded** and based on an [**event-driven**](#the-event-driven-architecture), **non-blocking I/O model**, making it very light-weight and efficient.
-
    - In NodeJS `process`, which is where our application runs, there is only one single thread (i.e. where our code is executed in the machine's processor). All users accessing our application will use the same single thread. In this situation, if one user make the application run a synchronous code, all other users would have to wait until that code is done executing before they could use the application. This is why we developers use lots of asynchronous code, and therefore, callbacks in NodeJS applications in order to implement the non-blocking I/O model. In this approach, we off-load heavy tasks to background processes, so that all users can use the application at the same time, without blocking each other. After the background processes are done, specified callbacks will be called to act in the main execution thread. This is what makes NodeJS applications highly performant and scalable. However, while using lots of callbacks, we should always avoid **callback hell** using ES6 **promises** or ES8 **async/await**.
 
 2. NodeJS is perfect for building fast and scalable data-intensive applications. Therefore, NodeJS can be used to build:
-
    - API with database behind it (preferably NoSQL)
    - Data streaming (like YouTube)
    - Real-time chat application
@@ -303,7 +306,6 @@ The NodeJS runtime has several dependencies. But the most important ones are _V8
 
 - **V8 JavaScript engine:** The V8 engine is written in JavaScript and C++. Without V8, Node would have no way of understanding JavaScript.
 - **Libuv:** a C++ open-source library focused on asynchronous I/O, providing Node with access to the underlying computer operating system, file system, networking, etc. Libuv is also responsible for the implementation of the **event loop** and the **thread pool**.
-
   - Event loop is responsible for handling easy tasks, like executing callbacks and network I/O.
   - Thread pool is for more heavy work, like file access or compression etc.
 
@@ -510,7 +512,6 @@ First remember that in NodeJS, every single JavaScript file is treated as a modu
 When we use the `require()` function to require a module, a couple of steps happen:
 
 1. Path to the required module is resolved and the file is loaded. In order to decide which module should be loaded, Node takes a few steps:
-
    - When the require function receieves the module's name, it will first try to load a core module with that name. It will automatically find the path to that module and then load it.
    - If the path starts with `./` or `../` it means that it is a relative path to a developer module, so Node will try to load that.
    - If there is no file with that name (remember that we don't write the `js` extention at the end of file name), Node will try to find a folder with `index.js` and load it.
@@ -689,7 +690,6 @@ In order to read files with the FS module, we can use two FS functions:
 **`.readFileSync()`**: this is the synchronous version of FS reading functionality.
 
 - Accpets two arguments:
-
   1. Path to the file that is going to be read.
   2. Character encoding of the file: this is usually `utf-8` if the file only contains english language characters.
 
@@ -702,11 +702,9 @@ const textIn = fs.readFileSync("./txt/input.txt", "uft-8");
 **`.readFile()`**: this is the asynchronous version of FS reading functionality.
 
 - Accpets two arguments:
-
   1. Path to the file that is going to be read.
   2. Character encoding of the file.
   3. Callback function: has access to two arguments.
-
      - error
      - data
 
@@ -734,7 +732,7 @@ const textIn = fs.readFile("./txt/input.txt", "utf-8", (err, data) => {
 ```js
 const tempOverview = fs.readFileSync(
   `${__dirname}/templates/template-overview.html`,
-  "utf-8"
+  "utf-8",
 );
 ```
 
@@ -745,7 +743,6 @@ In this situation, we usually produce or already have a data that we want to wri
 **`.writeFileSync()`**: this is the synchronous version of FS writing functionality.
 
 - Accpets two arguments:
-
   1. Path to the file that is going to be written into. If the output file does not exist in the file system, the function will automatically create it for us.
   2. Data that is going to be written. Can be a variable holding the data.
 
@@ -805,7 +802,6 @@ A web server is actually an application that can listen for requests and respond
 We should create a JavaScript file and in there, we create a web server. Creating a web server basically includes 2 steps:
 
 1. **Creating a server** using the `.createServer()` method on the `http` module. The method accepts a callback function that gets called whenever a request hits the server. This callback function has access to 2 arguments:
-
    - **Request object:** includes all kinds of stuff like the request URL, request headers, etc.
    - **Response object:** includes a bunch of tools for sending out the response, like `.end()` method.
 
@@ -848,7 +844,6 @@ Hello from the server!
 **`.writeHead()`**: used to set status code and setting response headers. (refer to [HTTP headers](#http-headers))
 
 - Receives 2 arguments:
-
   1. status code
   2. [response headers](#standard-http-response-headers): should be passed into the method as an object.
 
@@ -955,7 +950,6 @@ Basically, what slugify does is that it provides us with a `slufigy()` function 
 
 1. String
 2. Formatting options: this would be passed into the function as an object of options.
-
    - `replacement`: using a string, determines what character should spaces be replaced with. default is dash (`-`).
    - `remove`: using a regular expression, determines which characters should be removed from the given string.
    - `lower`: using a boolean, determines whether the given string should be converted to lowercase or not.
@@ -1556,52 +1550,369 @@ Now as the request object is passed on to the next middleware and route handler 
 
 ## **Express regular workflow**
 
-When we want to start an Express project, these are the usual steps that we take:
+Here is a fully revised workflow for initiating a NodeJS backend project that uses Express and Drizzle ORM for Postgresql database. We use Docker to run an instance of Postgresql.
 
-1. Create the `package.json` file. We run the `npm init` command in the terminal.
-2. Install Express using NPM. We run `npm i express`. We may want to use version 4 since it is the most stable version (`npm i express@4`). But the Express team has been working on version 5. There are not a lot of changes implemented though. This will create the `node_modules` folder in our project root.
-3. Create `app.js` file. It is a convention to place all the Express configuration in a file called `app.js`. We should `require` Express in the `app.js` file in order to be able to work with it.
+### **Initiate the project**
 
-```js
-const express = require("express");
+Go to the directory where you want to place your project folder and run:
+
+```bash
+npm init
 ```
 
-4. Call the `express` variable and assign its result to another variable which is conventionally called `app`. `express` is a function that, upon calling, will add a bunch of methods to the `app` variable.
+Go through interactive steps and finialize project initiation.
 
-```js
-const app = express();
+### **Install dependencies**
+
+There are various dependencies that are required to begin working on the project. Here is a list which you can follow and install using `npm install <package-name>`:
+
+- `express`
+- `dotenv`
+- `express-rate-limit`
+- `cookie-parser`
+- `drizzle-orm`
+- `pg`
+- `drizzle-kit` (dev dependency)
+- `nodemon` (global installation)
+
+### **Establish Express conventional folder structure**
+
+You can follow this structure for your project folder structure in order to have everything cleanly in its right place:
+
+```
++ src
+  + config
+    - index.js
+  + controllers
+    - exampleController.js
+  + db
+    - index.js
+    - schema.js
+  + middleware
+    - errorHandler.js
+  + routes
+    - exampleRouter.js
+  + utils
+    - appError.js
+  - app.js
+  - server.js
+- .env
+- .gitignore
+- docker-compose.yaml
+- Dockerfile
+- drizzle.config.js
+- localhost+2-key.pem
+- localhost+2.pem
+- package.json
 ```
 
-5. Use `.listen()` method on the `app` variable to start up a server. This method accepts first the port number, and second a callback function that will get called as soon as the server starts listening.
+### **Set up scripts**
+
+In the `package.json` file of your project, put these scripts as they will be needed along the way:
+
+```json
+"scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "db:start": "docker compose up",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+```
+
+### **Set up database with Drizzle ORM**
+
+In `drizzle.config.js` file go on and put this code:
 
 ```js
-app.listen(3000, () => {
-  console.log("App running on port 3000");
+// drizzle.config.js
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  out: "./drizzle",
+  schema: "./src/db/schema.js",
+  dialect: "postgresql",
+  dbCredentials: {
+    host: process.env.DATABASE_HOST || "localhost",
+    port: parseInt(process.env.DATABASE_PORT || 5432),
+    user: process.env.DATABASE_USERNAME,
+    password: process.env.DATABASE_PASSWORD,
+    database: process.env.DATABASE_NAME,
+    ssl: false,
+  },
 });
 ```
 
-6. Define [routes](#defining-routes). Routing means to determine how an application will respond to a client request on a specific **URL** with a specific **HTTP method**.
-7. Define your [middlewares](#implementing-middleware). You certainly cannot define all the middleware you need right in the beginning. Define the ones you currently need to run for your requests and routes before the final route handler function is executed. Then as you move foreward in developing your projects, you will need to add more middleware.
-8. Define neccessary [variable environments](#environment-variables) in a `config.env` file in the root directory and connect it to your Node application using the [dotenv](#dotenv-module) package.
-
-This is the regular file structure that you should follow in your project:
+Then provide the environment variables in your `.env` file as:
 
 ```
-[Project root]
-- controllers (dir)
-    tourController.js
-    userController.js
-- node_modules (dir)
-- public (dir)
-- routes (dir)
-    tourRoutes.js
-    userRoutes.js
-app.js
-server.js (entry => npm script: "nodemon server.js")
-config.env
-package.json
-package-lock.json
-.prettierrc
+<!-- APP -->
+PORT=3006
+NODE_ENV=development
+
+<!-- DATABASE -->
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=hotbuttt
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=gibidoo-db
+```
+
+Then in the `db` folder and inside `index.js` file set up drizzle interface for Posgresql:
+
+```js
+// /db/index.js
+import { drizzle } from "drizzle-orm/node-postgres";
+import { config } from "../config/index.js";
+import * as schema from "./schema.js";
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: config.databaseUrl });
+// which one
+export const db = drizzle(pool, { schema });
+```
+
+Move on to the `docker-compose.yaml` file to set up Docker container for Postgresql:
+
+```yaml
+services:
+  gibidoo-db:
+    image: postgres
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${DATABASE_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - gibidoo-data:/var/lib/postgresql/data
+volumes:
+  gibidoo-data:
+```
+
+You can now run your database container using:
+
+```bash
+npm run db:start
+```
+
+Then use this command to push your schema to the database:
+
+```bash
+npm run db:push
+```
+
+### **Set up server application**
+
+There are 2 files to set up here: `app.js` and `server.js`; The first, is related to the core functional app which is responsible for routing and all your middleware, and the second is responsible for configuration stuff such as database etc.
+
+Take this code as a boilerplate for the `app.js` file:
+
+```js
+// app.js
+import cookieParser from "cookie-parser";
+import express from "express";
+import { rateLimit } from "express-rate-limit";
+import cors from "cors";
+import { config } from "./config/index.js";
+import { AppError } from "./utils/appError.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import cvRouter from "./routes/cvRouter.js";
+
+const app = express();
+
+const limiter = rateLimit({
+  max: 20,
+  windowMs: 10 * 1000,
+  message: "=x Too many requests from this IP!",
+});
+
+app.use("/api", limiter);
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: `https://localhost:${config.port}`,
+    credentials: true,
+  }),
+);
+
+// Routes
+app.use("/api/v1/exampleResource", exampleRouter);
+
+app.use((req, res, next) => {
+  next(new AppError(`Cannot access ${req.originalUrl} route on this server.`));
+});
+
+app.use(errorHandler);
+
+export default app;
+```
+
+Then import the `app` into the `server.js` file and:
+
+```js
+// server.js
+import { drizzle } from "drizzle-orm/node-postgres";
+import { config } from "./config/index.js";
+import * as schema from "./db/schema.js";
+import https from "https";
+import app from "./app.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+process.on("uncaughtException", (err) => {
+  console.log("=x UNCAUGHT EXCEPTION! shutting down...");
+  console.log(err.name, err.message);
+  console.log(err.stack);
+  process.exit(1);
+});
+
+const db = drizzle(config.databaseUrl, {
+  schema: {
+    ...schema,
+  },
+});
+
+if (!db) throw new Error("=x Could not connect to database!");
+
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, "../localhost+2-key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "../localhost+2.pem")),
+};
+
+if (process.env.NODE_ENV === "development") {
+  https.createServer(httpsOptions, app).listen(config.port, () => {
+    console.log(`HTTPS Server running on https://localhost:${config.port}`);
+  });
+} else {
+  const server = app.listen(config.port, () => {
+    console.log(`HTTP Server running on port ${config.port}`);
+  });
+
+  process.on("unhandledRejection", (err) => {
+    console.log("=x UNHANDLED REJECTION! shutting down...");
+    console.log(err.name, err.message);
+    server.close(() => {
+      process.exit(1);
+    });
+  });
+}
+```
+
+Notice that you also need to set up self-signed certificates for establishing an HTTPS connection when developing on your local machine. To do this, you first need to use the `mkcert` package at the root of your project:
+
+```bash
+sudo apt install mkcert
+mkcert localhost 127.0.0.1 ::1
+```
+
+This will generate two files at the root of your project: `localhost+2-key.pem` and `localhost+2.pem`. You can then reference these files in the `options` object of your HTTPS connection in the `server.js` file, as you can already see in the code above. This setup is usually necessary if you want to transfer secure HTTP cookies while developing the app.
+
+### **Implement router**
+
+The `routes` folder is where you define routers corresponding to each resource in a separate file. For instance, you can use this code for an examplary `cvRouter.js` file:
+
+```js
+// cvRouter.js
+import express from "express";
+import { createCvItem, getCvItems } from "../controllers/cvController.js";
+
+const router = express.Router();
+
+router.route("/").get(getCvItems).post(createCvItem);
+
+export default router;
+```
+
+Then you can import this router in the `app.js` file in your middleware:
+
+```js
+// app.js
+app.use("/api/v1/cv-items", cvRouter);
+```
+
+### **Implement controller**
+
+The `controller` folder of your project is where you define your route handlers corresponding to each resource. For instance, in a `cvController.js` file:
+
+```js
+// cvController.js
+export const createCvItem = async (req, res, next) => {};
+export const getCvItems = async (req, res, next) => {};
+// other handlers...
+```
+
+### **Set up error handling strategy**
+
+The error handling strategy contains two pieces.
+
+1. Extend the default `Error` class to `AppError` where you can store more information on the error object:
+
+```js
+// /utils/appError.js
+export class AppError extends Error {
+  status;
+  statusCode;
+  isOperational;
+
+  constructor(message, statusCode) {
+    super(message);
+
+    this.statusCode = statusCode;
+    this.status = statusCode >= 400 && statusCode < 500 ? "fail" : "error";
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+```
+
+2. Implement a middleware for handling errors:
+
+```js
+// /middleware/errorHandler.js
+export const errorHandler = (err, req, res, next) => {
+  console.log(err);
+
+  if (process.env.NODE_ENV === "production") {
+    if (err.isOperational) {
+      res.status(err.statusCode || 500).json({
+        status: err.status || "error",
+        message: err.message || "=x Internal server error",
+      });
+    } else {
+      console.log("ERROR: ", err);
+      res.status(500).json({
+        status: "error",
+        message: "=x Something went wrong!",
+      });
+    }
+  } else if (process.env.NODE_ENV === "development") {
+    res.status(err.statusCode || 500).json({
+      status: err.status || "error",
+      error: err,
+      message: err.message || "=x Internal server error",
+      stack: err.stack,
+    });
+  }
+};
+```
+
+Then put this middleware at the end of your middleware stack in your `app.js` file:
+
+```js
+// /src/app.js
+app.use(errorHandler);
 ```
 
 # **Athentication & Authorization**
