@@ -1670,8 +1670,10 @@ import * as schema from "./schema.js";
 import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: config.databaseUrl });
-// which one
+// This gives you more control on database configs, such as timeouts, max connections, etc.
 export const db = drizzle(pool, { schema });
+
+if (!db) throw new Error("🔴 Could not connect to database!");
 ```
 
 Move on to the `docker-compose.yaml` file to set up Docker container for Postgresql:
@@ -1758,14 +1760,12 @@ Then import the `app` into the `server.js` file and:
 
 ```js
 // server.js
-import { drizzle } from "drizzle-orm/node-postgres";
-import { config } from "./config/index.js";
-import * as schema from "./db/schema.js";
-import https from "https";
-import app from "./app.js";
 import fs from "fs";
+import https from "https";
 import path from "path";
 import { fileURLToPath } from "url";
+import app from "./app.js";
+import { config } from "./config/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1776,14 +1776,6 @@ process.on("uncaughtException", (err) => {
   console.log(err.stack);
   process.exit(1);
 });
-
-const db = drizzle(config.databaseUrl, {
-  schema: {
-    ...schema,
-  },
-});
-
-if (!db) throw new Error("=x Could not connect to database!");
 
 const httpsOptions = {
   key: fs.readFileSync(path.join(__dirname, "../localhost+2-key.pem")),
@@ -1847,8 +1839,26 @@ The `controller` folder of your project is where you define your route handlers 
 
 ```js
 // cvController.js
-export const createCvItem = async (req, res, next) => {};
-export const getCvItems = async (req, res, next) => {};
+import { db } from "../db/index.js";
+
+export const createCvItem = async (req, res, next) => {
+  // creating logic here...
+};
+
+export const getCvItems = async (req, res, next) => {
+  try {
+    const items = await db.query.cv_items.findMany({
+      orderBy: (table, { desc }) => [desc(table.created_at)],
+    });
+
+    return res.status(201).json({
+      status: "success",
+      data: items,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 // other handlers...
 ```
 
