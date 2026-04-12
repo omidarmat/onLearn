@@ -942,4 +942,78 @@ geometry.setAttribute("position", positionsAttribute);
 
 ## Indeices
 
-There are some vertices in any object that are used commonly by multiple triangles.
+There are some vertices in any object that are used commonly by multiple triangles. When creating a `BufferGeometry`, you can specify a bunch of vertices and then the indices to create the faces and reuse vertices multiple times. This will cause less data to be processed for rendering and therefore improves performance.
+
+This matter is not covered yet in this document.
+
+# Debug UI
+
+An essential aspect of every creative project is for the developer, the designers, and also for the client to be able to tweak things easily. This might even surprise you by exposing unexpected results which could lead to new ideas.
+
+There various libraries available to use as a debug UI for ThreeJS:
+
+1. `dat.GUI`
+2. `lil-gui`
+3. `control-panel`
+4. `ControlKit`
+5. `Uil`
+6. `Tweakpane`
+7. `Guify`
+8. `Oui`
+
+We are going to use `lil-gui` here. It is popular, it is continously maintained and is easy to use.
+
+## Setting up `lil-gui`
+
+First install it using this command:
+
+```
+npm install lil-gui
+```
+
+You can then import it into your project and instantiate it:
+
+```js
+// script.js
+import GUI from "lil-gui";
+
+const gui = new GUI();
+```
+
+## Different types of tweaks
+
+There are different types of tweaks that `lil-gui` can handle for you:
+
+1. Range: for numbers with min and max values
+2. Color: for colors with various formats
+3. Text: for simple texts
+4. Checkbox: for booleans
+5. Select: for a choice from a list of values
+6. Button: for triggering a function
+
+We are now going to try some of these. Notice that most of the tweaks can be implemented using:
+
+```js
+gui.add(parameters);
+// Parameters can either be an object or a property of that object
+```
+
+### Range
+
+Let's try with `mesh.position.y` and tweak it using the GUI.
+
+```js
+const mesh = THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+gui.add(mesh.position, "y", -3, 3, 0.01);
+// Meaning that you are trying to tweak the 'y' property of the 'mesh.position' object. You can also determin "minimum" and "maximum" values as the third and fourth parameters, and finally a "precision" parameter.
+```
+
+> Notice that if you don't provide minimum, maximum and the preceision parameters, the tweak would appear in the form of text input. But if you do provide the parameters, it will become a dragger.
+
+Since this method of passing paramters can be a bit ugly in your code, you can use method chaining like this:
+
+```js
+gui.add(mesh.position, "y").min(-3).max(3).step(0.01);
+```
