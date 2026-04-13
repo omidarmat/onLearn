@@ -84,6 +84,7 @@
     - [**Set up scripts**](#set-up-scripts)
     - [**Set up database with Drizzle ORM**](#set-up-database-with-drizzle-orm)
     - [**Set up server application**](#set-up-server-application)
+      - [Client-server HTTPS connection](#client-server-https-connection)
     - [**Implement router**](#implement-router)
     - [**Implement controller**](#implement-controller)
     - [**Set up error handling strategy**](#set-up-error-handling-strategy)
@@ -1811,6 +1812,54 @@ mkcert localhost 127.0.0.1 ::1
 ```
 
 This will generate two files at the root of your project: `localhost+2-key.pem` and `localhost+2.pem`. You can then reference these files in the `options` object of your HTTPS connection in the `server.js` file, as you can already see in the code above. This setup is usually necessary if you want to transfer secure HTTP cookies while developing the app.
+
+#### Client-server HTTPS connection
+
+As you are probably going to create a front-end web application, here is the instruction you need to follow to be able establish HTTPS connection between your front-end app and backend NodeJS app. Here we assume the front-end app is built using Vite React.
+
+You first need to generate self-signed certificates at the root directory of your front-end project:
+
+```
+mkcert localhost
+```
+
+This will generate the files. You then need to reference these files in the `vite.config.ts` file at the project root:
+
+```js
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import fs from "fs";
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    host: true,
+    https: {
+      key: fs.readFileSync("localhost-key.pem"),
+      cert: fs.readFileSync("localhost.pem"),
+    },
+    hmr: {
+      protocol: "wss",
+      host: "localhost",
+      port: 5173,
+    },
+  },
+});
+```
+
+Notice that by doing this, you don't need to use the `@vitejs/plugin-basic-ssl` package and import it in the configuration plugins.
+
+Also, in order to prevent CORS errors from the backend application, make sure you insert the front-end origin from where the requests are going to be generated and sent to the backend app:
+
+```js
+app.use(
+  cors({
+    origin: `https://localhost:5173`,
+    credentials: true,
+  }),
+);
+```
 
 ### **Implement router**
 
