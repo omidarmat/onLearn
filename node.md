@@ -1855,7 +1855,8 @@ Also, in order to prevent CORS errors from the backend application, make sure yo
 ```js
 app.use(
   cors({
-    origin: `https://localhost:5173`,
+    origin: [`https://localhost:5173`, `https://localhost:${config.port}`],
+    // The second origin is for swagger docs testing purposes
     credentials: true,
   }),
 );
