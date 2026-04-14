@@ -90,6 +90,28 @@
     - [**Set up error handling strategy**](#set-up-error-handling-strategy)
     - [**Integrate TypeScript**](#integrate-typescript)
     - [**Integrating Swagger for documentation and testing**](#integrating-swagger-for-documentation-and-testing)
+  - [Running a Telegram/Bale bot with Node and Express](#running-a-telegrambale-bot-with-node-and-express)
+    - [Initiate project](#initiate-project)
+    - [Install project dependencies](#install-project-dependencies)
+    - [Establish project folder strucutre](#establish-project-folder-strucutre)
+    - [Set up `package.json`](#set-up-packagejson)
+    - [Set up typescript](#set-up-typescript)
+    - [Introduce your environment variables](#introduce-your-environment-variables)
+    - [Set up database connection:](#set-up-database-connection)
+    - [Set up bot and boilerplate](#set-up-bot-and-boilerplate)
+    - [Set up webhook](#set-up-webhook)
+    - [Bot development](#bot-development)
+    - [Using `telegraf`](#using-telegraf)
+      - [Commands](#commands)
+      - [Listening to text messages](#listening-to-text-messages)
+      - [Inline keyboards (buttons)](#inline-keyboards-buttons)
+      - [Reply keyboards](#reply-keyboards)
+      - [Conversations / multi-step flows](#conversations--multi-step-flows)
+      - [Middleware](#middleware)
+      - [Handling media](#handling-media)
+      - [Sending different message types](#sending-different-message-types)
+      - [Organizing commands into separate files](#organizing-commands-into-separate-files)
+      - [DB interaction inside a command](#db-interaction-inside-a-command)
 - [**Athentication \& Authorization**](#athentication--authorization)
   - [**JSON Web Token (JWT)**](#json-web-token-jwt)
     - [**JWT creation**](#jwt-creation)
@@ -2135,6 +2157,557 @@ Or as another example, in a `moveisRouter.ts` file:
  */
 router.post("/", createMovie);
 ```
+
+## Running a Telegram/Bale bot with Node and Express
+
+In order to initiate a bot project using NodeJS Express library, with Postgresql database (managed by Drizzle ORM) proceed with the following steps:
+
+### Initiate project
+
+Go to your target directory and run `npm init`, follow the interactive inputs and initialize the project.
+
+### Install project dependencies
+
+Here is the list of dependencies you need to work on a bot project:
+
+1. `dotenv`
+2. `drizzle-orm`
+3. `express`
+4. `express-rate-limit`
+5. `pg`
+6. `telegraf`
+
+And the dev dependencies are:
+
+1. `@types/express`
+2. `@types/node`
+3. `@types/pg`
+4. `drizzle-kit`
+5. `ts-node`
+6. `tsx`
+7. `typescript`
+
+You can install them using these commands:
+
+```
+npm install express telegraf drizzle-orm pg dotenv
+npm install -D drizzle-kit @types/pg tsx typescript
+```
+
+### Establish project folder strucutre
+
+Follow the conventional folder structure used in bot projects:
+
+```
+├── src/
+
+│ ├── bot/
+
+│ │ └── index.ts # Telegraf bot setup
+
+│ ├── db/
+
+│ │ ├── index.ts # DB connection
+
+│ │ └── schema.ts # Drizzle schema
+
+│ ├── routes/
+
+│ │ └── webhook.ts # Express webhook route
+
+│ └── index.ts # Entry point
+
+├── drizzle.config.ts
+
+├── .env
+
+└── tsconfig.json
+```
+
+### Set up `package.json`
+
+Set up project's scripts and entry in the `package.json` file as:
+
+```json
+{
+  "name": "myfinbot-bale",
+  "version": "1.0.0",
+  "description": "A tool to manage peronal finances",
+  "license": "ISC",
+  "author": "Omid Armat",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --exec tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:start": "docker compose up",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "pg": "^8.20.0",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
+```
+
+### Set up typescript
+
+Put this code in the `tsconfig.json` file:
+
+```js
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src", "drizzle.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### Introduce your environment variables
+
+Put your environment variables in your `.env` file at the root directory of your project:
+
+```
+PORT=3006
+NODE_ENV=development
+
+BOT_API_ROOT=https://tapi.bale.ai
+BOT_TOKEN=2074080196:POfnypV1DZs4Kuk90amZP0oSvYmDPUKgk_I
+WEBHOOK_URL=https://localhost
+
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=hotbuttt
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=myfinbot-db
+```
+
+> Notice that the `telegraf` libarary needs `BOT_API_ROUTE`, `BOT_TOKEN` and `WEBOOK_URL` variables. You will see how to use them in the comming sections.
+
+### Set up database connection:
+
+For database you need to configure both `drizzle.config.ts` and `/db/index.ts` files. Here is the configuration code:
+
+```js
+// drizzle.config.ts
+import { defineConfig } from "drizzle-kit";
+import "dotenv/config";
+
+export default defineConfig({
+  out: "./drizzle",
+  schema: "./src/db/schema.ts",
+  dialect: "postgresql",
+  dbCredentials: {
+    host: process.env.DATABASE_HOST || "localhost",
+    port: parseInt(process.env.DATABASE_PORT || "5432"),
+    user: process.env.DATABASE_USERNAME,
+    password: process.env.DATABASE_PASSWORD,
+    database: process.env.DATABASE_NAME || "myfinbot-db",
+    ssl: false,
+  },
+});
+```
+
+Then establish database connection in your `/db/index.ts` file:
+
+```js
+// /db/index.ts
+import { drizzle } from "drizzle-orm/node-postgres";
+import { config } from "../config/index.js";
+import * as schema from "./schema.js";
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: config.databaseUrl });
+export const db = drizzle(pool, { schema });
+
+if (!db) throw new Error("=x Could not connect to database!");
+```
+
+### Set up bot and boilerplate
+
+To set up the bot, you need to implement this code in the `/src/bot/index.ts` file:
+
+```js
+// /src/bot/index.ts
+import { Telegraf } from "telegraf";
+import { db } from "../db/index.js";
+import { config } from "../config/index.js";
+import { createUser } from "../controllers/users.js";
+import { TUserInsert } from "../types/users.js";
+import { Markup } from "telegraf";
+
+export const bot = new Telegraf(config.botToken!, {
+  telegram: {
+    apiRoot: config.botApiRoot, // used to alter the default api root URL from Telegram's API.
+  },
+});
+
+bot.start(async (ctx) => {
+  const baleId = String(ctx.from.id);
+
+  const newUserData = {
+    bale_id: baleId,
+    username: ctx.from.username,
+  } satisfies TUserInsert;
+
+  const createdUser = await createUser(newUserData);
+
+  if (!createdUser) {
+    ctx.reply(
+      `${ctx.from.username}، از اینکه به مای‌فین‌بات بازگشتید خوشحالیم.`,
+    );
+  } else {
+    console.log(createdUser);
+
+    ctx.reply(`${createdUser.username}، به مای‌فین‌بات خوش آمدید.`);
+  }
+});
+
+bot.command("help", (ctx) => {
+  ctx.reply(`"help" command received.`);
+});
+
+bot.command("reset", (ctx) => {
+  ctx.reply(`"reset" command received.`);
+});
+
+bot.command("menu", (ctx) => {
+  ctx.reply(
+    "یک گزینه را انتخاب کنید:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Option A", "action_a")],
+      [Markup.button.callback("Option B", "action_b")],
+    ]),
+  );
+});
+
+bot.action("action_a", (ctx) => {
+  ctx.reply("You presses Option A");
+});
+
+bot.action("action_b", (ctx) => {
+  ctx.reply("You presses Option B");
+});
+```
+
+### Set up webhook
+
+To initiate bot connection, you need to set up a webhook. Implement this in the `/src/routes/webhookRouter.ts` file as a router:
+
+```js
+// /src/routes/webhookRouter.ts
+import { Router } from "express";
+import { bot } from "../bot/index.js";
+
+const router = Router();
+
+router.post("/webhook", (req, res) => {
+  bot.handleUpdate(req.body, res);
+});
+
+export default router;
+```
+
+Then use this webhook router in the `/src/index.ts` entry file of your project:
+
+```js
+import "dotenv/config";
+import express from "express";
+import { bot } from "./bot/index.js";
+import webhookRouter from "./routes/webhookRouter.js";
+import { config } from "./config/index.js";
+
+const app = express();
+app.use(express.json());
+app.use(webhookRouter);
+
+const port = config.port || 3006;
+
+if (config.nodeEnv === "production") {
+  app.listen(port, async () => {
+    await bot.telegram.setWebhook(`${config.webhookUrl}/webhook`);
+    console.log(`=> Server running on port ${port}`);
+  });
+} else {
+  bot.launch();
+  console.log("Bot is running with long polling...");
+
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+}
+```
+
+Notice that as you develop the project on `localhost` (`NODE_ENV` is not `production`) you cannot use a webhook since it needs a reachable webhook url. Instead, you can use **long poll** for development.
+
+### Bot development
+
+To develop the bot using commands and actions follow **Bale** documents at `https://docs.bale.ai/`.
+
+### Using `telegraf`
+
+Here is a brief guide on how to use the libarary. Some of the library features may not work depending on **Bale** implementation.
+
+Here's a solid overview of how to build out your bot's functionality with Telegraf.
+
+#### Commands
+
+Register commands with `bot.command()`:
+
+```ts
+bot.command("start", (ctx) => {
+  ctx.reply("Hello! I am your bot.");
+});
+
+bot.command("help", (ctx) => {
+  ctx.reply("Available commands:\n/start\n/help\n/about");
+});
+```
+
+Set the command list visible in the app menu:
+
+```ts
+await bot.telegram.setMyCommands([
+  { command: "start", description: "Start the bot" },
+  { command: "help", description: "Show help" },
+]);
+```
+
+#### Listening to text messages
+
+```ts
+// exact match
+bot.hears("hi", (ctx) => ctx.reply("Hey there!"));
+
+// regex match
+bot.hears(/order #(\d+)/, (ctx) => {
+  const orderId = ctx.match[1];
+  ctx.reply(`Looking up order ${orderId}...`);
+});
+
+// any text message
+bot.on("text", (ctx) => {
+  ctx.reply(`You said: ${ctx.message.text}`);
+});
+```
+
+#### Inline keyboards (buttons)
+
+```ts
+import { Markup } from "telegraf";
+
+bot.command("menu", (ctx) => {
+  ctx.reply(
+    "Choose an option:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Option A", "action_a")],
+      [Markup.button.callback("Option B", "action_b")],
+    ]),
+  );
+});
+
+// handle button clicks
+bot.action("action_a", (ctx) => {
+  ctx.answerCbQuery(); // always call this to dismiss the loading state
+  ctx.reply("You picked Option A");
+});
+
+bot.action("action_b", (ctx) => {
+  ctx.answerCbQuery();
+  ctx.reply("You picked Option B");
+});
+```
+
+#### Reply keyboards
+
+```ts
+bot.command("keyboard", (ctx) => {
+  ctx.reply(
+    "Pick one:",
+    Markup.keyboard([["Option 1", "Option 2"], ["Option 3"]])
+      .resize()
+      .oneTime(),
+  );
+});
+
+// remove keyboard
+ctx.reply("Done", Markup.removeKeyboard());
+```
+
+#### Conversations / multi-step flows
+
+Telegraf doesn't have built-in session/wizard support out of the box, so install the sessions middleware:
+
+```bash
+npm install @telegraf/session
+```
+
+Then set up a simple state machine:
+
+```ts
+import { session } from "telegraf";
+
+// define session type
+interface SessionData {
+  step?: string;
+  name?: string;
+}
+
+// attach session middleware
+bot.use(session<SessionData>({ defaultSession: () => ({}) }));
+
+bot.command("register", (ctx) => {
+  ctx.session.step = "awaiting_name";
+  ctx.reply("What is your name?");
+});
+
+bot.on("text", (ctx) => {
+  if (ctx.session.step === "awaiting_name") {
+    ctx.session.name = ctx.message.text;
+    ctx.session.step = "awaiting_age";
+    ctx.reply(`Nice to meet you ${ctx.session.name}! How old are you?`);
+    return;
+  }
+
+  if (ctx.session.step === "awaiting_age") {
+    ctx.session.step = undefined;
+    ctx.reply(
+      `Got it! Registered as ${ctx.session.name}, age ${ctx.message.text}.`,
+    );
+    return;
+  }
+});
+```
+
+#### Middleware
+
+Great for things like logging, auth checks, or injecting DB into context:
+
+```ts
+// logging middleware
+bot.use(async (ctx, next) => {
+  console.log(`[${ctx.from?.id}] ${ctx.updateType}`);
+  await next();
+});
+
+// auth guard — restrict certain commands
+const adminOnly = async (ctx: any, next: () => Promise<void>) => {
+  const adminIds = process.env.ADMIN_IDS?.split(",") || [];
+  if (!adminIds.includes(String(ctx.from?.id))) {
+    return ctx.reply("Access denied.");
+  }
+  await next();
+};
+
+bot.command("admin", adminOnly, (ctx) => {
+  ctx.reply("Welcome, admin!");
+});
+```
+
+#### Handling media
+
+```ts
+bot.on("photo", (ctx) => {
+  const photo = ctx.message.photo.at(-1); // highest resolution
+  ctx.reply(`Got a photo! File ID: ${photo?.file_id}`);
+});
+
+bot.on("document", (ctx) => {
+  ctx.reply(`Got a file: ${ctx.message.document.file_name}`);
+});
+```
+
+#### Sending different message types
+
+```ts
+// with markdown
+ctx.replyWithMarkdownV2("*bold* and _italic_");
+
+// edit a message
+await ctx.editMessageText("Updated text");
+
+// send to a specific chat
+await bot.telegram.sendMessage(chatId, "Hello from the server!");
+
+// delete a message
+await ctx.deleteMessage();
+```
+
+#### Organizing commands into separate files
+
+As your bot grows, split commands into modules:
+
+```ts
+// src/bot/commands/start.ts
+import { Telegraf } from "telegraf";
+
+export function registerStartCommand(bot: Telegraf) {
+  bot.command("start", (ctx) => ctx.reply("Hello!"));
+}
+```
+
+```ts
+// src/bot/index.ts
+import { Telegraf } from 'telegraf';
+import { registerStartCommand } from './commands/start';
+
+export const bot = new Telegraf(process.env.BOT_TOKEN!, { ... });
+
+registerStartCommand(bot);
+// register more...
+```
+
+#### DB interaction inside a command
+
+```ts
+import { db } from "../db";
+import { users } from "../db/schema";
+import { eq } from "drizzle-orm";
+
+bot.command("profile", async (ctx) => {
+  const user = await db.query.users.findFirst({
+    where: eq(users.telegramId, String(ctx.from.id)),
+  });
+
+  if (!user) return ctx.reply("You are not registered.");
+  ctx.reply(`Username: ${user.username}`);
+});
+```
+
+The general flow to keep in mind:
+
+1. `bot.use()` for middleware (runs on every update)
+2. `bot.command()` for `/commands`
+3. `bot.hears()` for text matching
+4. `bot.on()` for update types (text, photo, etc.)
+5. `bot.action()` for inline button callbacks
+
+Order matters — Telegraf processes handlers top to bottom, so put middleware before commands.
 
 # **Athentication & Authorization**
 
