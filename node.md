@@ -1884,6 +1884,22 @@ app.use(
 );
 ```
 
+**IMPORTANT**
+
+In order to be able to transfer authentication token cookies between the client and server, you need this cookie options object on the server side:
+
+```js
+const sessionCookieOptions = {
+    path: "/",
+    httpOnly: true,
+    sameSite: "none" as const,
+    secure: true,
+    maxAge: parseInt(process.env.TOKEN_EXP_DAYS || "30") * 24 * 60 * 60,
+  }
+```
+
+Also, on the client side, you need to add `credentials: "include"` to your `fetch` options.
+
 ### **Implement router**
 
 The `routes` folder is where you define routers corresponding to each resource in a separate file. For instance, you can use this code for an examplary `cvRouter.js` file:
