@@ -124,6 +124,9 @@
       - [**Put fresh user on the request object**](#put-fresh-user-on-the-request-object)
   - [Authentication in practice](#authentication-in-practice)
     - [Logging out a user](#logging-out-a-user)
+- [**HTTP status codes**](#http-status-codes)
+  - [✅ 2xx — Success](#-2xx--success)
+  - [🔀 3xx — Redirection](#-3xx--redirection)
 - [**Database**](#database)
   - [**MongoDB**](#mongodb)
     - [**MongoDB key features**](#mongodb-key-features)
@@ -2779,6 +2782,124 @@ To implement authentication, you can use a library called [JWT](#jwt) to generat
 ### Logging out a user
 
 Since the login functionality performs authentication by signing and sending an HTTP-only cookie, logging users out cannot be done with deleting cookies. We can’t actually delete HTTP-only cookies. But we can send a new cookie with the exact same name but with no JWT in it. This would then replace the previous cookie. All subsequent requests will contain this new cookie with which the user will not be identified as logged in.
+
+# **HTTP status codes**
+
+Here are the HTTP status codes from 200-300:
+
+---
+
+## ✅ 2xx — Success
+
+These codes indicate that the client's request was successfully received, understood, and accepted.
+
+**200 OK** — The request was successful. The response body contains the requested data.
+
+**201 Created** — The request was successful and a new resource was created (commonly used with POST/PUT).
+
+**202 Accepted** — The request has been accepted for processing, but processing is not yet complete.
+
+**203 Non-Authoritative Information** — The request was successful, but the response comes from a third-party source.
+
+**204 No Content** — The request was successful but there is no content to return.
+
+**205 Reset Content** — The request was successful; the client should reset the document view.
+
+**206 Partial Content** — The server is delivering only part of the resource (used with range headers).
+
+**207 Multi-Status** — Conveys information about multiple resources (used in WebDAV).
+
+**208 Already Reported** — Members of a DAV binding have already been enumerated (used in WebDAV).
+
+**226 IM Used** — The server has fulfilled a GET request and the response is a representation of the result of one or more instance manipulations.
+
+---
+
+## 🔀 3xx — Redirection
+
+These codes indicate that further action is needed to complete the request.
+
+**300 Multiple Choices** — There are multiple options for the resource; the client should choose one.
+
+**301 Moved Permanently** — The resource has been permanently moved to a new URL.
+
+**302 Found** — The resource is temporarily located at a different URL.
+
+**303 See Other** — The response can be found at a different URL using a GET request.
+
+**304 Not Modified** — The resource has not been modified since the last request (used for caching).
+
+**305 Use Proxy** — _(Deprecated)_ The requested resource must be accessed through a proxy.
+
+**307 Temporary Redirect** — The resource is temporarily at a different URL; the same HTTP method must be used.
+
+**308 Permanent Redirect** — The resource has permanently moved; the same HTTP method must be used.
+
+---
+
+> **Note:** Code **306** is unused and reserved, and **305** is deprecated due to security concerns.
+
+Here are the HTTP status codes from 400-500:
+
+**400 Bad Request** - The server cannot process the request due to client error (malformed syntax, invalid request message, etc.)
+
+**401 Unauthorized** - Authentication is required and has failed or not been provided
+
+**402 Payment Required** - Reserved for future use (originally intended for digital payment systems)
+
+**403 Forbidden** - The server understands the request but refuses to authorize it
+
+**404 Not Found** - The requested resource could not be found
+
+**405 Method Not Allowed** - The request method is not supported for the requested resource
+
+**406 Not Acceptable** - The server cannot produce a response matching the accept headers
+
+**407 Proxy Authentication Required** - Authentication with a proxy is required
+
+**408 Request Timeout** - The server timed out waiting for the request
+
+**409 Conflict** - The request conflicts with the current state of the server
+
+**410 Gone** - The requested resource is no longer available and will not be available again
+
+**411 Length Required** - The request did not specify the length of its content
+
+**412 Precondition Failed** - One or more conditions in the request header fields evaluated to false
+
+**413 Payload Too Large** - The request entity is larger than the server is willing to process
+
+**414 URI Too Long** - The URI provided was too long for the server to process
+
+**415 Unsupported Media Type** - The media format of the requested data is not supported
+
+**416 Range Not Satisfiable** - The range specified in the Range header cannot be fulfilled
+
+**417 Expectation Failed** - The expectation given in the Expect header could not be met
+
+**418 I'm a teapot** - An April Fools' joke from 1998 (RFC 2324)
+
+**421 Misdirected Request** - The request was directed at a server that cannot produce a response
+
+**422 Unprocessable Entity** - The request was well-formed but contains semantic errors
+
+**423 Locked** - The resource being accessed is locked
+
+**424 Failed Dependency** - The request failed due to failure of a previous request
+
+**425 Too Early** - The server is unwilling to risk processing a request that might be replayed
+
+**426 Upgrade Required** - The client should switch to a different protocol
+
+**428 Precondition Required** - The server requires the request to be conditional
+
+**429 Too Many Requests** - The user has sent too many requests in a given time (rate limiting)
+
+**431 Request Header Fields Too Large** - The server refuses to process the request because header fields are too large
+
+**451 Unavailable For Legal Reasons** - The resource is unavailable due to legal reasons
+
+**500 Internal Server Error** - A generic error message when the server encounters an unexpected condition
 
 # **Database**
 
