@@ -55,3 +55,20 @@ To remove a remote origin from your repo:
 ```
 git remote remove <remote-name>
 ```
+
+# Ignoring already-tracked items
+
+When you are trying to ignore some folders or files that are already tracked by git, you canno simply add them to the `.gitignore` file. You should also remove them from Git's cache:
+
+```
+git rm -r --cached <folder-name>/
+git rm --cached <file-name>
+```
+
+Then commit the change:
+
+```
+git commit -m 'stop tracking files'
+```
+
+Then you can push your changes to the remote.
