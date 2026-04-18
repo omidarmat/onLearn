@@ -47,3 +47,11 @@ Both should greet you by username.
 ---
 
 One thing to keep in mind: if you use this key anywhere else (other servers, services), you'll need to update those too before the old key stops working.
+
+# Managing remotes in a repo
+
+To remove a remote origin from your repo:
+
+```
+git remote remove <remote-name>
+```
