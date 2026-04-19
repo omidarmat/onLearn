@@ -131,6 +131,15 @@
   - [**MongoDB**](#mongodb)
     - [**MongoDB key features**](#mongodb-key-features)
     - [**MongoDB BSON vs Relational Database**](#mongodb-bson-vs-relational-database)
+  - [Row Locking in PostgreSQL (Drizzle ORM)](#row-locking-in-postgresql-drizzle-orm)
+    - [The Core Problem](#the-core-problem)
+    - [Pessimistic Locking — `FOR UPDATE`](#pessimistic-locking--for-update)
+    - [`FOR UPDATE SKIP LOCKED`](#for-update-skip-locked)
+    - [`FOR NO KEY UPDATE`](#for-no-key-update)
+    - [`FOR SHARE`](#for-share)
+    - [Optimistic Locking — Version Column](#optimistic-locking--version-column)
+    - [Advisory Locks](#advisory-locks)
+    - [Choosing the Right Strategy](#choosing-the-right-strategy)
 
 # **Back-end theory**
 
@@ -2936,3 +2945,226 @@ Here are 2 more things about the BSON format:
 
 1. Maximum size for each document is currently 16 mb.
 2. Each document contains a unique ID which acts as the primary key of the document. This ID is of type `ObjectID` and it is automatically generated when it is created.
+
+## Row Locking in PostgreSQL (Drizzle ORM)
+
+When multiple requests hit the same data simultaneously, you need row locking to prevent race conditions. PostgreSQL handles this at the row level, not column level.
+
+---
+
+### The Core Problem
+
+Request A reads balance: $100
+Request B reads balance: $100
+Request A deducts $30 → writes $70
+Request B deducts $50 → writes $50 ← WRONG, should be $20
+
+Without locking, both transactions read the same value and overwrite each other.
+
+---
+
+### Pessimistic Locking — `FOR UPDATE`
+
+Blocks other transactions from modifying the row until your transaction completes.
+
+```typescript
+await db.transaction(async (tx) => {
+  // Lock the row immediately on read
+  const [account] = await tx
+    .select()
+    .from(accounts)
+    .where(eq(accounts.id, accountId))
+    .for("update");
+
+  if (account.balance < amount) {
+    throw new Error("Insufficient balance");
+  }
+
+  await tx
+    .update(accounts)
+    .set({ balance: account.balance - amount })
+    .where(eq(accounts.id, accountId));
+});
+```
+
+Any other transaction trying to touch that row will wait until this one commits or rolls back.
+
+---
+
+### `FOR UPDATE SKIP LOCKED`
+
+Useful for job queues — skip rows already locked by another worker instead of waiting.
+
+```typescript
+async function claimNextJob(workerId: number) {
+  return await db.transaction(async (tx) => {
+    // Grab the next available job, skip ones already being processed
+    const [job] = await tx
+      .select()
+      .from(jobs)
+      .where(eq(jobs.status, "pending"))
+      .orderBy(asc(jobs.createdAt))
+      .limit(1)
+      .for("update", { skipLocked: true }); // skip rows locked by other workers
+
+    if (!job) return null;
+
+    await tx
+      .update(jobs)
+      .set({ status: "processing", workerId, startedAt: new Date() })
+      .where(eq(jobs.id, job.id));
+
+    return job;
+  });
+}
+```
+
+Without `skipLocked`, all workers would queue up on the same row. With it, each worker moves on to the next available job.
+
+---
+
+### `FOR NO KEY UPDATE`
+
+A lighter lock — allows other transactions to still follow foreign keys pointing to this row, but blocks updates to non-key columns.
+
+```typescript
+await db.transaction(async (tx) => {
+  // Lighter lock — child rows referencing this via FK are not blocked
+  const [user] = await tx
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .for("no key update");
+
+  await tx
+    .update(users)
+    .set({ lastLoginAt: new Date(), loginCount: user.loginCount + 1 })
+    .where(eq(users.id, userId));
+});
+```
+
+Use this when you're not touching the primary key and want to reduce contention.
+
+---
+
+### `FOR SHARE`
+
+Allows multiple transactions to read the same row simultaneously, but blocks anyone from updating it.
+
+```typescript
+await db.transaction(async (tx) => {
+  // Multiple transactions can hold FOR SHARE on the same row
+  // But no one can UPDATE until all of them release
+  const [product] = await tx
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .for("share");
+
+  // Safe to read and make decisions based on this data
+  if (product.stock < quantity) {
+    throw new Error("Out of stock");
+  }
+
+  // ... proceed with order creation
+});
+```
+
+---
+
+### Optimistic Locking — Version Column
+
+No database lock is held. Instead, you detect conflicts at write time using a version number.
+
+```typescript
+// schema
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  stock: integer("stock").notNull(),
+  version: integer("version").notNull().default(0),
+});
+
+// usage
+async function decrementStock(productId: number, qty: number) {
+  return await db.transaction(async (tx) => {
+    const [product] = await tx
+      .select()
+      .from(products)
+      .where(eq(products.id, productId));
+
+    if (product.stock < qty) {
+      throw new Error("Insufficient stock");
+    }
+
+    // Update only succeeds if version hasn't changed since we read it
+    const result = await tx
+      .update(products)
+      .set({
+        stock: product.stock - qty,
+        version: product.version + 1,
+      })
+      .where(
+        and(
+          eq(products.id, productId),
+          eq(products.version, product.version), // conflict detection
+        ),
+      );
+
+    if (result.rowCount === 0) {
+      throw new Error("Conflict detected — retry");
+    }
+  });
+}
+```
+
+If two transactions read version `5` and both try to write, only the first one succeeds. The second sees `rowCount === 0` and knows to retry.
+
+---
+
+### Advisory Locks
+
+Application-level locks tied to an arbitrary integer ID. Useful when you want to lock a logical resource that doesn't map directly to a single row.
+
+```typescript
+// Generate a stable numeric key from a business concept
+const LOCK_NAMESPACE = 12345;
+const lockKey = LOCK_NAMESPACE * 1000 + userId;
+
+await db.transaction(async (tx) => {
+  // Acquires lock for the duration of the transaction
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockKey})`);
+
+  // Now safe to do multi-step operations on this user's data
+  const [wallet] = await tx
+    .select()
+    .from(wallets)
+    .where(eq(wallets.userId, userId));
+
+  await tx
+    .update(wallets)
+    .set({ balance: wallet.balance - amount })
+    .where(eq(wallets.userId, userId));
+
+  await tx.insert(transactions).values({
+    userId,
+    amount: -amount,
+    type: "debit",
+  });
+});
+// Lock is automatically released when transaction ends
+```
+
+---
+
+### Choosing the Right Strategy
+
+| Scenario                                    | Strategy                 |
+| ------------------------------------------- | ------------------------ |
+| Financial transactions, inventory           | `FOR UPDATE`             |
+| Job queue with multiple workers             | `FOR UPDATE SKIP LOCKED` |
+| Update non-key columns, reduce contention   | `FOR NO KEY UPDATE`      |
+| Read-then-decide, low contention expected   | Optimistic locking       |
+| Lock a logical resource, not a specific row | Advisory locks           |
+| Shared read, block writes                   | `FOR SHARE`              |
+
+The golden rule: always wrap locks inside a transaction. A lock without a transaction boundary is meaningless — PostgreSQL releases row locks at transaction end, not statement end.
