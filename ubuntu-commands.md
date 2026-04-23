@@ -58,6 +58,8 @@ To receive a list of all the apps already installed on your device you can use t
 
 ```bash
 sudo apt list --installed
+# or
+dpkg -l
 ```
 
 If you want to know if a specific package is installed on your device you can use this command:
@@ -78,6 +80,33 @@ You can also search for apps installed via Snap by:
 
 ```bash
 sudo snap list | grep -i <package-name>
+```
+
+or
+
+```bash
+dpkg -l | grep <package-name>
+```
+
+You can find the path at which a given command/binary exists on your machine using this command:
+
+```bash
+which command-name
+```
+
+This will return the path if found, or nothing if not installed.
+
+You can also search for packages using keywords:
+
+```bash
+sudo apt search <keyword>
+```
+
+You can also check the version of a given app or package:
+
+```bash
+<package-name> --version
+# example: python3 --version
 ```
 
 ## Delete apps
