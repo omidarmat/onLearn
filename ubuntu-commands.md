@@ -7,6 +7,7 @@
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
+  - [Modifying permissions](#modifying-permissions)
   - [Traversing the filesystem](#traversing-the-filesystem)
     - [Change directory](#change-directory)
     - [Go up to the parent directory](#go-up-to-the-parent-directory)
@@ -172,6 +173,21 @@ To make the list include full information even about the hidden files you can us
 ```bash
 ls -all
 ```
+
+## Modifying permissions
+
+When listing files using `ls` you will notice that at the beginning of each row corresponding to a file, there is something like `-rw-r--r--` which indicates the file operation permissions:
+
+1. `-rw-r--r--`: reading and writing are permitted.
+2. `-r--r--r--`: only reading is permitted.
+
+You can change these permissions using the `chmod` command.
+
+```
+chmod -w file1.txt file2.txt
+```
+
+This will change permissions to `-r--r--r--`. Now if you attempt to delete these files you will receive warnings.
 
 ## Traversing the filesystem
 
