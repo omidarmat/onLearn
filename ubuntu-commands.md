@@ -35,6 +35,7 @@
 - [Terminal helper commands](#terminal-helper-commands)
   - [Command manual](#command-manual)
   - [Unrar](#unrar)
+  - [man](#man)
 - [The superuser](#the-superuser)
 
 # OS management commands
@@ -674,6 +675,15 @@ Then to unpack a multi-part pack of `.rar` files do:
 
 ```
 unrar x file_part_1.rar
+```
+
+## man
+
+using `man` before all known terminal commands will give you a manual document on how to use the command.
+
+```
+man ls
+man cd
 ```
 
 Unrar will find the next files and extract all of them into one file.
