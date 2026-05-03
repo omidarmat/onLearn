@@ -58,6 +58,7 @@
     - [The `--build` flag on Docker compose](#the---build-flag-on-docker-compose)
     - [Container names by Docker compose](#container-names-by-docker-compose)
   - [Docker compose up and down](#docker-compose-up-and-down)
+  - [Fresh-clearing all Docker system](#fresh-clearing-all-docker-system)
 - [Utility containers and executing commands in containers](#utility-containers-and-executing-commands-in-containers)
   - [Why use utility conatiners](#why-use-utility-conatiners)
   - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
@@ -93,6 +94,7 @@
   - [Problems with manual deployment](#problems-with-manual-deployment)
   - [Why Kubernetes?](#why-kubernetes)
   - [What is Kubernetes?](#what-is-kubernetes)
+- [Modyfing Docker registry](#modyfing-docker-registry)
 
 # What is Docker?
 
@@ -1045,7 +1047,7 @@ mongoose.connect(
     } else {
       app.listen(3000);
     }
-  }
+  },
 );
 ```
 
@@ -1083,7 +1085,7 @@ mongoose.connect(
     } else {
       app.listen(3000);
     }
-  }
+  },
 );
 ```
 
@@ -1127,7 +1129,7 @@ mongoose.connect(
     } else {
       app.listen(3000);
     }
-  }
+  },
 );
 ```
 
@@ -1237,7 +1239,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -1286,7 +1288,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -1393,7 +1395,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -1423,7 +1425,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -1589,7 +1591,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -1999,7 +2001,7 @@ mongoose.connect(
       console.log("CONNECTED TO MONGODB!!");
       app.listen(80);
     }
-  }
+  },
 );
 ```
 
@@ -2126,6 +2128,13 @@ However, this command will not delete the volumes you introduced into any of you
 
 ```
 docker-compose down -v
+```
+
+## Fresh-clearing all Docker system
+
+```
+docker builder prune -af
+docker system prune -af
 ```
 
 # Utility containers and executing commands in containers
@@ -2653,3 +2662,15 @@ Kubernetes allows you to write down some configuraion file where you define your
 > Kubernetes configuration files will be understood by machines that support Kubernetes. Even if the machine does not support Kubernetes, you can manually install some Kubernetes software on it.
 
 **Kubernetes is like Docker compose for multiple machines**. So it is like Docker compose with some convenient deployment-specific features for running and managing your containerized application on a multi-machine setup.
+
+# Modyfing Docker registry
+
+```
+nano /etc/docker/daemon.json
+```
+
+```
+{
+"registry-mirrors": ["https://mirror-docker.runflare.com"]
+}
+```
