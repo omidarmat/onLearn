@@ -630,7 +630,7 @@ Now to activate strict mode, we can do the rendering in another way. So instead 
 root.render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 ```
 
@@ -1301,7 +1301,7 @@ useEffect(
     if (!title) return;
     document.title = `${title} ${userRating && `(Rated ${userRating})`}`;
   },
-  [title, userRating]
+  [title, userRating],
 );
 ```
 
@@ -1328,7 +1328,7 @@ export default function App() {
           setIsLoading(true);
           setError("");
           const res = await fetch(
-            `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`,
           );
 
           if (!res.ok)
@@ -1355,7 +1355,7 @@ export default function App() {
 
       fetchMovies();
     },
-    [query]
+    [query],
   );
 
   return (
@@ -1532,7 +1532,7 @@ export default function App() {
     async function fetchMovies() {
       setIsLoading(true);
       const res = await fetch(
-        `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`
+        `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`,
       );
 
       const data = await res.json();
@@ -1589,7 +1589,7 @@ export default function App() {
       try {
         setIsLoading(true);
         const res = await fetch(
-          `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`
+          `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`,
         );
 
         if (!res.ok)
@@ -1649,7 +1649,7 @@ export default function App() {
       try {
         setIsLoading(true);
         const res = await fetch(
-          `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`
+          `http://www.omdbapi.com/?i=tt3896198&apikey=${KEY}&s=${query}`,
         );
 
         if (!res.ok)
@@ -1712,7 +1712,7 @@ useEffect(
         setError("");
         const res = await fetch(
           `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
 
         if (!res.ok)
@@ -1743,7 +1743,7 @@ useEffect(
       controller.abort();
     };
   },
-  [query]
+  [query],
 );
 ```
 
@@ -1763,7 +1763,7 @@ useEffect(
 
     document.addEventListener("keydown", callback);
   },
-  [onCloseMovie]
+  [onCloseMovie],
 );
 ```
 
@@ -1787,7 +1787,7 @@ useEffect(
       document.removeEventListener("keydown", callback);
     };
   },
-  [onCloseMovie]
+  [onCloseMovie],
 );
 ```
 
@@ -1982,7 +1982,7 @@ Then we take all the state declaration and update logic from the `App` component
 const PostContext = createContext();
 function PostProvider() {
   const [posts, setPosts] = useState(() =>
-    Array.from({ length: 30 }, () => createRandomPost())
+    Array.from({ length: 30 }, () => createRandomPost()),
   );
   const [searchQuery, setSearchQuery] = useState("");
   const searchedPosts =
@@ -1990,7 +1990,7 @@ function PostProvider() {
       ? posts.filter((post) =>
           `${post.title} ${post.body}`
             .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+            .includes(searchQuery.toLowerCase()),
         )
       : posts;
 
@@ -2029,7 +2029,7 @@ function App() {
     function () {
       document.documentElement.classList.toggle("fake-dark-mode");
     },
-    [isFakeDark]
+    [isFakeDark],
   );
 
   return (
@@ -3179,8 +3179,8 @@ We start by defining the `handleToggleItem` function in the `App` component sinc
 function handleToggleItem(id) {
   setItems((items) =>
     items.map((item) =>
-      item.id === id ? { ...item, packed: !item.packed } : item
-    )
+      item.id === id ? { ...item, packed: !item.packed } : item,
+    ),
   );
 }
 ```
@@ -3202,8 +3202,8 @@ export default function App() {
   function handleToggleItem(id) {
     setItems((items) =>
       items.map((item) =>
-        item.id === id ? { ...item, packed: !item.packed } : item
-      )
+        item.id === id ? { ...item, packed: !item.packed } : item,
+      ),
     );
   }
 
@@ -3329,7 +3329,6 @@ We can classify state in terms of state accessibility and state domain.
 > If you need to create a state variable in a component but you are not sure if it should be local or global, there is nice trick you can use. All you need to do is to ask yourself if this component was rendered twice, should a state update in one of them reflect in the other one? If the answer is no, then it means that it should be a local state, but if it is a yes, you should implement a global state.
 
 2. Domain: we can classify each piece of state in 2 categories: When you have a piece of state, it is extremely important to know whether you are dealing with remote state or UI state, because they should be managed in complete different ways.
-
    - Remote state: this is all application data that is loaded from a remote server, usually using an API. It is state that lives on a server that can be loaded into the application. Remote state is usually acquired asynchronously, and might need to be re-fetched and updated frequently. Therefore, in a large-scale app, remote state should be cached, revalidated and so on, which needs some special tools.
    - UI state: basically everything else, such as theme, list filters, form data, etc. In other words, all state that is not core application data that we usually fetch from an API is UI state. UI state is usually synchronous and stored right in the application and does not interact with any server at all. UI state is very easy to handle with the tools that we know of, such as `useState` and `useReducer`.
 
@@ -3526,7 +3525,6 @@ We are now going to take a quick look at each of the phases involved in displayi
 The process that we are interested in starts by React each time that a new render is triggered, most of the time by updating the state somewhere in the app. So we can now list the phases as:
 
 1. Render is triggered: There are only 2 ways in which a render can be triggered:
-
    - Initial render of the application, which is the very first time that the app runs.
    - Re-render which happens when state is updated in one or more component instances.
 
@@ -3965,7 +3963,7 @@ useEffect(
   function () {
     setIsTop(imdbRating > 8);
   },
-  [imdbRating]
+  [imdbRating],
 );
 ```
 
@@ -4037,7 +4035,7 @@ useEffect(
   function () {
     localStorage.setItem("watched", JSON.stringify(watched));
   },
-  [watched]
+  [watched],
 );
 ```
 
@@ -4178,7 +4176,7 @@ function Search({ query, setQuery }) {
       document.addEventListener("keydown", callback);
       return () => document.removeEventListener("keydown", callback);
     },
-    [setQuery]
+    [setQuery],
   );
 
   return (
@@ -4212,7 +4210,7 @@ useEffect(
   function () {
     if (userRating) countRef.current = countRef.current + 1;
   },
-  [userRating]
+  [userRating],
 );
 ```
 
@@ -4250,7 +4248,7 @@ function DateCounter() {
 
 Now as we click on the `+` button to increment the date, we see the console shows `0 1` in response. So the state is `0` and the action is `1`. So what is happening here? The reducer function has access to the current state, and then it also gets access to the action, which currently is the `1` value we passed into the `dispatch` function. So whatever we pass into the `dispatch` function will be received in the reducer function as the action. The idea in the reducer function is to take the current state and the action and, based on these, return the next state.
 
-Now to implement a simlir functionality to decrease the date. So we now need to call the `dispatch` function again. In terms of `useReducer` is considered as dispatching an action.
+Now to implement a similar functionality to decrease the date. So we now need to call the `dispatch` function again. In terms of `useReducer` is considered as dispatching an action.
 
 ```js
 function reducer(state, action) {
@@ -4309,7 +4307,7 @@ function DateCounter() {
 }
 ```
 
-But this makes us totally lose control over the input value. So we can now think about the action provided to the reducer function. In this case we have 3 actions: decreasing the count, increasing it, and setting it. So we should actually name these actions. we are no longer going to pass single values to the `dispatch` function, but an object which contains an action as well as the single values.
+But this makes us totally lose control over the input value. So we can now think about the action provided to the reducer function. In this case we have 3 actions: decreasing the count, increasing it, and setting it. So we should actually name these actions. We are no longer going to pass single values to the `dispatch` function, but an object which contains an action as well as the single values.
 
 ```js
 const dec = function () {
@@ -4333,7 +4331,7 @@ const defineCount = function (e) {
 };
 ```
 
-And we now have to update the `reducer` function to acount for the different `type` properties in the action object.
+And we now have to update the `reducer` function to account for the different `type` properties in the action object.
 
 ```js
 function reducer(state, action) {
@@ -4587,12 +4585,10 @@ Behind the scenes the dispatch function has access to the reducer function becau
 We would have to think about answers to a couple of questions in order to figure out when we do need to use the `useReducer` hook.
 
 1. Just one piece of state?
-
    - Yes: just use one `useState` hook.
    - No: go to question No. 2
 
 2. Do states frequently update together?
-
    - Yes: possible `useReducer` case. Before that, you need to answer one more question. Are you willing to implement slightly more complex code?
      - Yes: Definately use the `useReducer` hook.
      - No: Go for `useState` hook.
@@ -4684,7 +4680,7 @@ export function useMovies(query, callback) {
           setError("");
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-            { signal: controller.signal }
+            { signal: controller.signal },
           );
 
           if (!res.ok)
@@ -4716,7 +4712,7 @@ export function useMovies(query, callback) {
         controller.abort();
       };
     },
-    [query]
+    [query],
   );
 }
 ```
@@ -4741,7 +4737,7 @@ export function useMovies(query, callback) {
           setError("");
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-            { signal: controller.signal }
+            { signal: controller.signal },
           );
 
           if (!res.ok)
@@ -4773,7 +4769,7 @@ export function useMovies(query, callback) {
         controller.abort();
       };
     },
-    [query]
+    [query],
   );
 
   return { movies, isLoading, error };
@@ -6444,7 +6440,7 @@ export async function createCabin(neWCabin) {
     await supase.from("cabin").delete().eq("id", data.id);
     console.error(error);
     throw new Error(
-      "Cabin image could not be uploaded and the cabin was not created"
+      "Cabin image could not be uploaded and the cabin was not created",
     );
   }
 
@@ -7299,7 +7295,7 @@ So in this situation, the archive component is a perfect candidate for memoizati
 ```jsx
 const Archive = memo(function Archive({ show }) {
   const [posts] = useState(() =>
-    Array.from({ length: 30000 }, () => createRandomPost())
+    Array.from({ length: 30000 }, () => createRandomPost()),
   );
 
   const [showArchive, setShowArchive] = useState(show);
@@ -7326,7 +7322,7 @@ return <Archive archiveOptions={archiveOptions} />
 ```jsx
 const Archive = memo(function Archive({ archiveOptions }) {
   const [posts] = useState(() =>
-    Array.from({ length: 30000 }, () => createRandomPost())
+    Array.from({ length: 30000 }, () => createRandomPost()),
   );
 
   const [showArchive, setShowArchive] = useState(archiveOptions.show);
@@ -7386,7 +7382,7 @@ Now passing the `archivedOptions` object as prop to the `Archive` component is n
 ```jsx
 const Archive = memo(function Archive({ archiveOptions }) {
   const [posts] = useState(() =>
-    Array.from({ length: 30000 }, () => createRandomPost())
+    Array.from({ length: 30000 }, () => createRandomPost()),
   );
 
   const [showArchive, setShowArchive] = useState(archiveOptions.show);
@@ -7420,7 +7416,7 @@ return (
 ```jsx
 const Archive = memo(function Archive({ archiveOptions, onAddPost }) {
   const [posts] = useState(() =>
-    Array.from({ length: 30000 }, () => createRandomPost())
+    Array.from({ length: 30000 }, () => createRandomPost()),
   );
 
   const [showArchive, setShowArchive] = useState(archiveOptions.show);
@@ -7813,7 +7809,7 @@ function Window({ children, name }) {
 
       return () => document.removeEventListener("click", handleClick);
     },
-    [close]
+    [close],
   );
 
   // some other logic
@@ -7995,7 +7991,7 @@ function ProtectedRoute({ children }) {
     function () {
       if (!isAuthenticated && !isLoading) navigate("/login");
     },
-    [isAuthenticated, isLoading, navigate]
+    [isAuthenticated, isLoading, navigate],
   );
   // 3. While loading, show a spinner
   if (isLoading) return <Spinner />;
@@ -8948,7 +8944,7 @@ export default async function CabinList({ filter }) {
     displayedCabins = cabins.filter((cabin) => cabin.maxCapacity <= 3);
   if (filter === "medium")
     displayedCabins = cabins.filter(
-      (cabin) => cabin.maxCapacity >= 4 && cabin.maxCapacity <= 7
+      (cabin) => cabin.maxCapacity >= 4 && cabin.maxCapacity <= 7,
     );
   if (filter === "large")
     displayedCabins = cabins.filter((cabin) => cabin.maxCapacity >= 8);
