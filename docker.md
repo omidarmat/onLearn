@@ -94,7 +94,7 @@
   - [Problems with manual deployment](#problems-with-manual-deployment)
   - [Why Kubernetes?](#why-kubernetes)
   - [What is Kubernetes?](#what-is-kubernetes)
-- [Modyfing Docker registry](#modyfing-docker-registry)
+- [Modyfing Docker registry URL](#modyfing-docker-registry-url)
 
 # What is Docker?
 
@@ -2663,7 +2663,7 @@ Kubernetes allows you to write down some configuraion file where you define your
 
 **Kubernetes is like Docker compose for multiple machines**. So it is like Docker compose with some convenient deployment-specific features for running and managing your containerized application on a multi-machine setup.
 
-# Modyfing Docker registry
+# Modyfing Docker registry URL
 
 ```
 nano /etc/docker/daemon.json

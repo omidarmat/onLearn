@@ -4,6 +4,10 @@
   - [Search for apps](#search-for-apps)
   - [Delete apps](#delete-apps)
   - [Update the system PATH](#update-the-system-path)
+  - [Adding Ubuntu package mirror](#adding-ubuntu-package-mirror)
+  - [Get Ubuntu release codename](#get-ubuntu-release-codename)
+  - [Get System architecture](#get-system-architecture)
+  - [Get system time](#get-system-time)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -146,6 +150,79 @@ export PATH=/usr/local/nodejs/bin:$PATH
 ```
 
 Follow your target repository documents for more precise instructions.
+
+## Adding Ubuntu package mirror
+
+To add URIs that act as mirrors for downloading ubuntu packages, you need to edit the `/etc/apt/sources.list.d/ubuntu.sources` file using `nano`:
+
+```
+// ubuntu.sources
+
+Types: deb
+URIs: http://mirror.arvancloud.ir/ubuntu http://mirror-linux.runflare.com/ubuntu  [...other uris]
+Suites: noble noble-updates noble-backports
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+```
+
+## Get Ubuntu release codename
+
+```
+lsb_release -cs
+<!-- returns "noble" or any other codename -->
+```
+
+## Get System architecture
+
+```
+dpkg --print-architecture
+<!-- return "amd64" or any other architecture -->
+```
+
+## Get system time
+
+```
+timedatectl
+```
+
+this will return a report like this:
+
+```
+               Local time: Wed 2026-05-06 11:34:08 +0330
+           Universal time: Wed 2026-05-06 08:04:08 UTC
+                 RTC time: Wed 2026-05-06 08:04:07
+                Time zone: Asia/Tehran (+0330, +0330)
+System clock synchronized: no
+              NTP service: active
+          RTC in local TZ: no
+```
+
+If system clock synchronization is set to "no" you can change it by:
+
+```
+sudo timedatectl set-ntp true
+```
+
+> system clock synchronization set to "no" might cause your SSL certificates to be considered invalid.
+
+You can also check the status of NTP service:
+
+```
+sudo systemctl status systemd-timesyncd
+```
+
+If it is disabled, you can enable it using:
+
+```
+sudo systemctl enable systemd-timesyncd
+sudo systemctl start systemd-timesyncd
+```
+
+In order to set you system timezone:
+
+```
+sudo timedatectl set-timezone Asia/Tehran
+```
 
 # Filesystem commands
 
