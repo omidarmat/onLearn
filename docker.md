@@ -2665,12 +2665,22 @@ Kubernetes allows you to write down some configuraion file where you define your
 
 # Modyfing Docker registry URL
 
+In order to alter the resource from where docker is going to pull images, you should create and fill in a special file at `/etc/docker`:
+
 ```
 nano /etc/docker/daemon.json
 ```
+
+Put this content in the file:
 
 ```
 {
 "registry-mirrors": ["https://mirror-docker.runflare.com"]
 }
+```
+
+And then you need to restart Docker:
+
+```
+systemctl restart docker
 ```
