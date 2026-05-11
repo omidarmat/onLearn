@@ -107,6 +107,7 @@
       - [Inline keyboards (buttons)](#inline-keyboards-buttons)
       - [Reply keyboards](#reply-keyboards)
       - [Conversations / multi-step flows](#conversations--multi-step-flows)
+        - [Deprecated `bot.on("text", (ctx) => {})`](#deprecated-botontext-ctx--)
       - [Middleware](#middleware)
       - [Handling media](#handling-media)
       - [Sending different message types](#sending-different-message-types)
@@ -2614,6 +2615,7 @@ bot.command("register", (ctx) => {
   ctx.reply("What is your name?");
 });
 
+// NOTICE: using this format of event for ".on()" listener is deprecated
 bot.on("text", (ctx) => {
   if (ctx.session.step === "awaiting_name") {
     ctx.session.name = ctx.message.text;
@@ -2631,6 +2633,67 @@ bot.on("text", (ctx) => {
   }
 });
 ```
+
+##### Deprecated `bot.on("text", (ctx) => {})`
+
+Telegraf now recommends using the `message` method with filter utilities instead of `on`. Here's how to refactor your code:
+
+```ts
+import { Telegraf } from "telegraf";
+import { message } from "telegraf/filters";
+
+const bot = new Telegraf(process.env.BOT_TOKEN!);
+
+// Old way (deprecated)
+// bot.on('document', (ctx) => { ... });
+
+// New way with filter utils
+bot.on(message("document"), (ctx) => {
+  ctx.reply(`Got a file: ${ctx.message.document.file_name}`);
+});
+```
+
+**Common filter examples:**
+
+```ts
+import { message } from "telegraf/filters";
+
+// Text messages
+bot.on(message("text"), (ctx) => {
+  ctx.reply(`You said: ${ctx.message.text}`);
+});
+
+// Photos
+bot.on(message("photo"), (ctx) => {
+  ctx.reply("Got a photo!");
+});
+
+// Documents
+bot.on(message("document"), (ctx) => {
+  ctx.reply(`File: ${ctx.message.document.file_name}`);
+});
+
+// Voice messages
+bot.on(message("voice"), (ctx) => {
+  ctx.reply("Got a voice message");
+});
+
+// Stickers
+bot.on(message("sticker"), (ctx) => {
+  ctx.reply("Nice sticker!");
+});
+```
+
+**Multiple filters:**
+
+```ts
+// Listen to both photos and videos
+bot.on(message(["photo", "video"]), (ctx) => {
+  ctx.reply("Got media!");
+});
+```
+
+The filter utilities provide better type safety—`ctx.message` will be correctly typed based on the filter you use.
 
 #### Middleware
 
