@@ -8,6 +8,7 @@
   - [Get Ubuntu release codename](#get-ubuntu-release-codename)
   - [Get System architecture](#get-system-architecture)
   - [Get system time](#get-system-time)
+  - [Working with bluetooth](#working-with-bluetooth)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -222,6 +223,66 @@ In order to set you system timezone:
 
 ```
 sudo timedatectl set-timezone Asia/Tehran
+```
+
+## Working with bluetooth
+
+You can connect to a Bluetooth headset using `bluetoothctl`, the command-line tool for managing Bluetooth devices.
+
+Here's the basic workflow:
+
+```bash
+# Start the Bluetooth interactive shell
+bluetoothctl
+
+# Inside bluetoothctl:
+power on
+agent on
+default-agent
+scan on
+```
+
+Wait until you see your headset appear in the scan results. Note its MAC address (format: `XX:XX:XX:XX:XX:XX`).
+
+```bash
+# Stop scanning once you find it
+scan off
+
+# Pair with the device
+pair XX:XX:XX:XX:XX:XX
+
+# Trust it (so it auto-connects in the future)
+trust XX:XX:XX:XX:XX:XX
+
+# Connect
+connect XX:XX:XX:XX:XX:XX
+
+# Exit
+exit
+```
+
+**One-liner approach** (if you already know the MAC address):
+
+```bash
+echo -e "power on\nconnect XX:XX:XX:XX:XX:XX" | bluetoothctl
+```
+
+**To disconnect:**
+
+```bash
+bluetoothctl disconnect XX:XX:XX:XX:XX:XX
+```
+
+**To list already paired devices:**
+
+```bash
+bluetoothctl devices
+```
+
+If your headset doesn't connect, make sure it's in pairing mode and that `bluetooth.service` is running:
+
+```bash
+sudo systemctl status bluetooth
 ```
 
 # Filesystem commands
