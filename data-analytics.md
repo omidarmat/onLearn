@@ -256,7 +256,7 @@ Still heavily used.
 Key skills:
 
 - Sorting and filtering
-- Pivot tables: A Pivot Table in Excel is a tool used to **summarize** and **analyze** large datasets by **grouping** and **aggregating** data. It allows analysts to quickly compute metrics like sums, averages, and counts and reorganize the data dynamically without modifying the original dataset.
+- Pivot tables: A Pivot Table in Excel is a tool used to **summarize** and **analyze** large datasets by **grouping** and **aggregating** data. It allows analysts to quickly compute **metrics** like sums, averages, and counts and reorganize the data dynamically without modifying the original dataset.
 - Basic formulas
 
 Examples:
@@ -359,7 +359,7 @@ You do not need perfect textbook answers. Clear reasoning matters more.
 
 ### Strong Answer
 
-> Data analytics is the process of collecting, cleaning, analyzing, and interpreting data to discover insights and help organizations make better decisions.
+> Data analytics is the process of **collecting**, **cleaning**, **analyzing**, and **interpreting** data to discover insights and help organizations make better **decisions**.
 
 You can optionally add:
 
@@ -371,7 +371,7 @@ You can optionally add:
 
 ### Strong Answer
 
-> I enjoy solving problems and working with data-driven decision making. I’m interested in learning how to transform raw data into meaningful insights and use tools like SQL and Python to analyze real-world problems.
+> I enjoy **solving problems** and working with data-driven decision making. I’m interested in learning how to transform raw data into meaningful insights and use tools like SQL and Python to analyze real-world problems.
 
 Interviewers mainly want:
 
@@ -385,11 +385,11 @@ Interviewers mainly want:
 
 ### Strong Answer
 
-> Data analytics focuses more on understanding historical data, identifying trends, creating reports, and helping business decisions. Data science is broader and often includes machine learning, predictive modeling, and building algorithms.
+> Data analytics focuses more on **understanding historical data**, identifying **trends**, creating **reports**, and helping **business decisions**. Data science is broader and often includes machine learning, predictive modeling, and building algorithms.
 
 Short version:
 
-- Analytics → insights and reporting
+- Analytics → **insights and reporting**
 - Data Science → prediction and modeling
 
 ---
@@ -419,7 +419,7 @@ This demonstrates outlier impact.
 
 ### Strong Answer
 
-> Data cleaning is the process of identifying and fixing issues in data such as missing values, duplicates, incorrect formats, or inconsistent entries to improve data quality before analysis.
+> Data cleaning is the process of **identifying and fixing issues in data** such as **missing values**, **duplicates**, **incorrect formats**, or **inconsistent entries** to improve data quality before analysis.
 
 Examples:
 
@@ -448,7 +448,7 @@ Common tasks:
 
 ### Strong Answer
 
-> A JOIN combines data from multiple tables using a related column.
+> A JOIN c**ombines data from multiple tables** using a related column.
 
 Example:
 
@@ -469,7 +469,7 @@ This allows combining customer information with order information.
 
 ### Strong Answer
 
-> INNER JOIN returns only matching rows from both tables, while LEFT JOIN returns all rows from the left table and matching rows from the right table.
+> INNER JOIN returns **only matching rows** from both tables, while LEFT JOIN returns **all rows from the left table** and matching rows from the right table.
 
 Simple example:
 
@@ -482,7 +482,7 @@ Simple example:
 
 ### Strong Answer
 
-> A Pivot Table is an Excel feature used to summarize and aggregate large datasets dynamically. It helps analyze data by grouping values and calculating metrics like sums, averages, or counts.
+> A Pivot Table is an Excel feature used to **summarize** and **aggregate** large datasets dynamically. It helps analyze data by grouping values and calculating metrics like sums, averages, or counts.
 
 ---
 
@@ -490,7 +490,7 @@ Simple example:
 
 ### Strong Answer
 
-> Structured data is organized into rows and columns, like databases or spreadsheets. Unstructured data does not follow a fixed format, such as images, videos, emails, or social media posts.
+> Structured data is organized into **rows and columns**, like databases or spreadsheets. Unstructured data does not follow a fixed format, such as images, videos, emails, or social media posts.
 
 Examples:
 
@@ -520,7 +520,7 @@ You can add:
 
 A structured answer is impressive.
 
-> First, I would understand the business problem and goals. Then I would inspect and clean the data, explore patterns and distributions, identify trends or anomalies, perform analysis, and finally communicate the insights using visualizations or reports.
+> First, I would understand the **business problem and goals**. Then I would **inspect and clean** the data, explore **patterns and distributions**, identify **trends or anomalies**, perform **analysis**, and finally communicate the insights using **visualizations or reports**.
 
 This shows process thinking.
 
@@ -587,7 +587,7 @@ They want:
 
 If they go slightly deeper, know these basics:
 
-### Aggregation
+### Aggregation (تجمیع)
 
 Summarizing data:
 
@@ -597,7 +597,7 @@ Summarizing data:
 
 ---
 
-### KPI (Key Performance Indicator)
+### KPI (Key Performance Indicator - شاخص کلیدی عملکرد)
 
 A measurable business metric.
 
@@ -677,10 +677,3 @@ Analytics is less about memorizing formulas and more about:
 - communicating insights
 
 ---
-
-If you want, I can also give you:
-
-- a realistic mock interview,
-- SQL questions beginners are asked,
-- Excel interview exercises,
-- or a one-page “Data Analytics interview cheat sheet.”
