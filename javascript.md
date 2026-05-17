@@ -125,6 +125,9 @@
       - [**3. `Object.create()`:**](#3-objectcreate)
         - [**_Defining a prototype object and instance methods_**](#defining-a-prototype-object-and-instance-methods)
         - [**_Creating an object (instance)_**](#creating-an-object-instance-2)
+    - [**Implementation of Dependency Inversion principle**](#implementation-of-dependency-inversion-principle)
+    - [**Implementation of Dependency Injection pattern**](#implementation-of-dependency-injection-pattern)
+    - [**Implementation of Factory pattern with DI**](#implementation-of-factory-pattern-with-di)
 - [**MVC architecture**](#mvc-architecture)
   - [**Publisher-subscriber pattern**](#publisher-subscriber-pattern)
 - [**Working with the DOM**](#working-with-the-dom)
@@ -649,7 +652,6 @@ As a JavaScript code enters the engine, there are some steps ahead of this code:
 The computers CPU only understands 0s and 1s. So any computer program ultimately needs to be converted into machine code. This is done through **compilation** or **interpretation**.
 
 - Compilation: The entire source code is converted into machine code at once. The machine code is then written into a portable file that can be executed on any computer. So there are 2 steps here:
-
   - **Compilation:** machine code is built
   - **Execution:** machine code is executed in CPU. This step can happen way after the source code was compiled.
 
@@ -676,7 +678,6 @@ All these execution contexts together, make up the call stack. When all function
 Inside an execution context we have:
 
 1. **Variable environment object:** it contains
-
    - `let`, `const`, and `var` declarations inside and outside function.
    - functions
    - `arguments` object
@@ -1951,7 +1952,7 @@ Actually, there are two ways of handling errors. We can pass a second callback f
 const getCountryData = function (country) {
   fetch("<URL>").then(
     (response) => response.json(),
-    (err) => alert(err)
+    (err) => alert(err),
   );
 };
 ```
@@ -2626,6 +2627,362 @@ to input data into this object is it is defined in the `Person` object, we shoul
 omid.init("Omid", 1992);
 ```
 
+### **Implementation of Dependency Inversion principle**
+
+Here's a clean example of dependency inversion in JavaScript:
+
+```javascript
+// ❌ Without Dependency Inversion (tight coupling)
+class EmailService {
+  send(message) {
+    console.log(`Sending email: ${message}`);
+  }
+}
+
+class UserNotification {
+  constructor() {
+    this.emailService = new EmailService(); // Directly depends on concrete class
+  }
+
+  notify(user, message) {
+    this.emailService.send(message);
+  }
+}
+
+// ✅ With Dependency Inversion (loose coupling)
+// High-level module depends on abstraction, not concrete implementation
+class UserNotification {
+  constructor(notificationService) {
+    this.notificationService = notificationService; // Depends on abstraction
+  }
+
+  notify(user, message) {
+    this.notificationService.send(message);
+  }
+}
+
+// Concrete implementations
+class EmailService {
+  send(message) {
+    console.log(`📧 Email: ${message}`);
+  }
+}
+
+class SMSService {
+  send(message) {
+    console.log(`📱 SMS: ${message}`);
+  }
+}
+
+class PushNotificationService {
+  send(message) {
+    console.log(`🔔 Push: ${message}`);
+  }
+}
+
+// Usage - inject the dependency
+const emailNotifier = new UserNotification(new EmailService());
+emailNotifier.notify("user@example.com", "Welcome!");
+
+const smsNotifier = new UserNotification(new SMSService());
+smsNotifier.notify("+1234567890", "Welcome!");
+
+// Easy to test with mock
+class MockNotificationService {
+  send(message) {
+    console.log(`🧪 Mock: ${message}`);
+  }
+}
+
+const testNotifier = new UserNotification(new MockNotificationService());
+testNotifier.notify("test", "Test message");
+```
+
+**Key benefits:**
+
+- `UserNotification` doesn't care about the concrete implementation
+- Easy to swap services without changing `UserNotification`
+- Simple to test with mocks
+- Follows the principle: depend on abstractions, not concretions
+
+### **Implementation of Dependency Injection pattern**
+
+**Dependency Inversion Principle (DIP)**: A design principle - high-level modules shouldn't depend on low-level modules; both should depend on abstractions.
+
+**Dependency Injection (DI)**: A design pattern - a technique to implement DIP by passing dependencies from outside rather than creating them internally.
+
+Here's a simple DI implementation in JavaScript:
+
+```javascript
+// Simple DI Container
+class DIContainer {
+  constructor() {
+    this.services = new Map();
+  }
+
+  // Register a service
+  register(name, definition, dependencies = []) {
+    this.services.set(name, { definition, dependencies });
+  }
+
+  // Resolve and create instance
+  get(name) {
+    const service = this.services.get(name);
+    if (!service) {
+      throw new Error(`Service ${name} not found`);
+    }
+
+    const { definition, dependencies } = service;
+
+    // Resolve dependencies first
+    const resolvedDeps = dependencies.map((dep) => this.get(dep));
+
+    // Create instance with resolved dependencies
+    return new definition(...resolvedDeps);
+  }
+}
+
+// Services
+class Database {
+  connect() {
+    console.log("💾 Database connected");
+  }
+}
+
+class Logger {
+  log(message) {
+    console.log(`📝 Log: ${message}`);
+  }
+}
+
+class UserRepository {
+  constructor(database, logger) {
+    this.database = database;
+    this.logger = logger;
+  }
+
+  findUser(id) {
+    this.database.connect();
+    this.logger.log(`Finding user ${id}`);
+    return { id, name: "John" };
+  }
+}
+
+class UserService {
+  constructor(userRepository, logger) {
+    this.userRepository = userRepository;
+    this.logger = logger;
+  }
+
+  getUser(id) {
+    this.logger.log(`Getting user ${id}`);
+    return this.userRepository.findUser(id);
+  }
+}
+
+// Setup DI Container
+const container = new DIContainer();
+
+container.register("database", Database);
+container.register("logger", Logger);
+container.register("userRepository", UserRepository, ["database", "logger"]);
+container.register("userService", UserService, ["userRepository", "logger"]);
+
+// Usage - container handles all dependency creation
+const userService = container.get("userService");
+const user = userService.getUser(123);
+console.log(user);
+```
+
+**Three types of DI:**
+
+```javascript
+// 1. Constructor Injection (most common)
+class Service {
+  constructor(dependency) {
+    this.dependency = dependency;
+  }
+}
+
+// 2. Setter Injection
+class Service {
+  setDependency(dependency) {
+    this.dependency = dependency;
+  }
+}
+
+// 3. Method Injection
+class Service {
+  doSomething(dependency) {
+    dependency.execute();
+  }
+}
+```
+
+**Summary:**
+
+- DIP = principle (what to achieve)
+- DI = pattern (how to achieve it)
+- DI makes testing easier and code more modular
+
+### **Implementation of Factory pattern with DI**
+
+Here's a practical example using a payment processing system:
+
+```javascript
+// Payment processors
+class StripePayment {
+  process(amount) {
+    console.log(`💳 Processing $${amount} via Stripe`);
+    return { success: true, transactionId: 'stripe_' + Date.now() };
+  }
+}
+
+class PayPalPayment {
+  process(amount) {
+    console.log(`💰 Processing $${amount} via PayPal`);
+    return { success: true, transactionId: 'paypal_' + Date.now() };
+  }
+}
+
+class CryptoPayment {
+  process(amount) {
+    console.log(`₿ Processing $${amount} via Crypto`);
+    return { success: true, transactionId: 'crypto_' + Date.now() };
+  }
+}
+
+// Email service
+class EmailNotifier {
+  send(to, subject, body) {
+    console.log(`📧 Sending email to ${to}: ${subject}`);
+  }
+}
+
+// Analytics service
+class Analytics {
+  track(event, data) {
+    console.log(`📊 Tracking: ${event}`, data);
+  }
+}
+
+// Order service with DI
+class OrderService {
+  constructor(paymentProcessor, emailNotifier, analytics) {
+    this.paymentProcessor = paymentProcessor;
+    this.emailNotifier = emailNotifier;
+    this.analytics = analytics;
+  }
+
+  checkout(order) {
+    console.log(`\n🛒 Processing order #${order.id}`);
+    
+    // Process payment
+    const result = this.paymentProcessor.process(order.amount);
+    
+    if (result.success) {
+      // Send confirmation
+      this.emailNotifier.send(
+        order.customerEmail,
+        'Order Confirmation',
+        `Your order #${order.id} is confirmed`
+      );
+      
+      // Track analytics
+      this.analytics.track('order_completed', {
+        orderId: order.id,
+        amount: order.amount,
+        transactionId: result.transactionId
+      });
+    }
+    
+    return result;
+  }
+}
+
+// Usage - inject different payment methods
+const order1 = {
+  id: 1001,
+  amount: 99.99,
+  customerEmail: 'customer@example.com'
+};
+
+const order2 = {
+  id: 1002,
+  amount: 149.99,
+  customerEmail: 'another@example.com'
+};
+
+// Stripe checkout
+const stripeOrder = new OrderService(
+  new StripePayment(),
+  new EmailNotifier(),
+  new Analytics()
+);
+stripeOrder.checkout(order1);
+
+// PayPal checkout
+const paypalOrder = new OrderService(
+  new PayPalPayment(),
+  new EmailNotifier(),
+  new Analytics()
+);
+paypalOrder.checkout(order2);
+
+// Testing with mocks
+class MockPayment {
+  process(amount) {
+    return { success: true, transactionId: 'mock_123' };
+  }
+}
+
+class MockEmail {
+  send() {
+    console.log('📧 Mock email sent');
+  }
+}
+
+class MockAnalytics {
+  track() {
+    console.log('📊 Mock tracking');
+  }
+}
+
+const testOrder = new OrderService(
+  new MockPayment(),
+  new MockEmail(),
+  new MockAnalytics()
+);
+testOrder.checkout({ id: 9999, amount: 1, customerEmail: 'test@test.com' });
+```
+
+**Factory pattern with DI:**
+
+```javascript
+// Factory to create configured services
+class OrderServiceFactory {
+  static create(paymentMethod) {
+    const processors = {
+      stripe: new StripePayment(),
+      paypal: new PayPalPayment(),
+      crypto: new CryptoPayment()
+    };
+
+    return new OrderService(
+      processors[paymentMethod],
+      new EmailNotifier(),
+      new Analytics()
+    );
+  }
+}
+
+// Simple usage
+const service = OrderServiceFactory.create('stripe');
+service.checkout(order1);
+```
+
+This shows how DI makes your code flexible - same `OrderService` works with any payment processor without modification.
+
 # **MVC architecture**
 
 ## **Publisher-subscriber pattern**
@@ -2694,11 +3051,8 @@ This Node type has a couple of child types: **Element**, **Text**, **Comment**, 
 - `Window` node
 
 - `Node` node: every single node in the DOM is of this type. Each `Node` is represented in JavaScript by an object that has access to special methods and properties, such as `.textContent`, `.childNodes`, `.parentNode`, `cloneNode` among many others.
-
   - `Element` node: each HTML element is of this type. Gives each HTML elemtn access to a ton of useful methods and properties, such as `innerHTML`, `classList`, `children`, `parentElement`, `append()`, `remove()`, `querySelector()`, `closest()` and so on. Each element is represented internally as an object.
-
     - `HTMLElement` node: this node type would have exactly one child type for each HTML element that exists in the HTML file. Each of these HTML elements can have unique properties. (e.g `src` attribute of the `<img>` element, or `href` attribute of the `<a>` element)
-
       - HTMLDivElement
       - HTMLButtonElement
 
@@ -2790,7 +3144,6 @@ const allButtons = document.getElementsByClassName("button");
 Used to insert HTML markup into a certain HTML element.
 
 - Accepts two arguments:
-
   1. Determine where the HTML markup should be inserted in the HTML element: `beforeend`, `beforebegin`, `afterend`, `afterbegin`.
   2. HTML markup code
 

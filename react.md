@@ -151,8 +151,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-    - [Introducing global styles](#introducing-global-styles)
-    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+      - [Introducing global styles](#introducing-global-styles)
+      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -181,6 +181,12 @@
       - [The `useLogin` custom hook](#the-uselogin-custom-hook)
       - [The login form component](#the-login-form-component)
     - [Authorization](#authorization)
+  - [Implementation of Dependency Injection pattern in React](#implementation-of-dependency-injection-pattern-in-react)
+    - [1. Context API (Built-in DI)](#1-context-api-built-in-di)
+    - [2. Custom Hooks (Lightweight DI)](#2-custom-hooks-lightweight-di)
+    - [3. Props Injection (Simple \& Testable)](#3-props-injection-simple--testable)
+    - [4. DI Container (Advanced)](#4-di-container-advanced)
+    - [5. Real-World Example](#5-real-world-example)
 - [React Server Components (RSC)](#react-server-components-rsc)
   - [Server components vs. client components](#server-components-vs-client-components)
   - [Traditional React vs. RSC](#traditional-react-vs-rsc)
@@ -8024,6 +8030,256 @@ export function useLogin() {
 ```
 
 This way, the `useUser` custom hook will simply get the user data from cache and therefore, no unnecessary attempts on interacting with the database.
+
+## Implementation of Dependency Injection pattern in React
+
+Here's how to use DI in React:
+
+### 1. Context API (Built-in DI)
+
+```javascript
+// services/ApiService.js
+export class ApiService {
+  async fetchUsers() {
+    const res = await fetch('/api/users');
+    return res.json();
+  }
+}
+
+export class MockApiService {
+  async fetchUsers() {
+    return [{ id: 1, name: 'Test User' }];
+  }
+}
+
+// context/ServiceContext.jsx
+import { createContext, useContext } from 'react';
+import { ApiService } from '../services/ApiService';
+
+const ServiceContext = createContext(null);
+
+export function ServiceProvider({ children, services }) {
+  const defaultServices = {
+    apiService: new ApiService(),
+    ...services  // Allow override for testing
+  };
+  
+  return (
+    <ServiceContext.Provider value={defaultServices}>
+      {children}
+    </ServiceContext.Provider>
+  );
+}
+
+export function useServices() {
+  const context = useContext(ServiceContext);
+  if (!context) {
+    throw new Error('useServices must be used within ServiceProvider');
+  }
+  return context;
+}
+
+// App.jsx
+import { ServiceProvider } from './context/ServiceContext';
+
+function App() {
+  return (
+    <ServiceProvider>
+      <UserList />
+    </ServiceProvider>
+  );
+}
+
+// components/UserList.jsx
+import { useServices } from '../context/ServiceContext';
+import { useEffect, useState } from 'react';
+
+function UserList() {
+  const { apiService } = useServices();
+  const [users, setUsers] = useState([]);
+  
+  useEffect(() => {
+    apiService.fetchUsers().then(setUsers);
+  }, [apiService]);
+  
+  return (
+    <ul>
+      {users.map(user => <li key={user.id}>{user.name}</li>)}
+    </ul>
+  );
+}
+```
+
+### 2. Custom Hooks (Lightweight DI)
+
+```javascript
+// hooks/useApi.js
+import { useMemo } from 'react';
+import { ApiService } from '../services/ApiService';
+
+export function useApi() {
+  return useMemo(() => new ApiService(), []);
+}
+
+// components/UserList.jsx
+function UserList() {
+  const api = useApi();
+  const [users, setUsers] = useState([]);
+  
+  useEffect(() => {
+    api.fetchUsers().then(setUsers);
+  }, [api]);
+  
+  return <ul>{/* ... */}</ul>;
+}
+```
+
+### 3. Props Injection (Simple & Testable)
+
+```javascript
+// components/UserList.jsx
+function UserList({ apiService }) {
+  const [users, setUsers] = useState([]);
+  
+  useEffect(() => {
+    apiService.fetchUsers().then(setUsers);
+  }, [apiService]);
+  
+  return <ul>{/* ... */}</ul>;
+}
+
+// App.jsx
+function App() {
+  const apiService = useMemo(() => new ApiService(), []);
+  
+  return <UserList apiService={apiService} />;
+}
+
+// Testing
+import { render } from '@testing-library/react';
+import { MockApiService } from '../services/ApiService';
+
+test('renders users', async () => {
+  const mockApi = new MockApiService();
+  render(<UserList apiService={mockApi} />);
+  // assertions...
+});
+```
+
+### 4. DI Container (Advanced)
+
+```javascript
+// di/container.js
+class Container {
+  constructor() {
+    this.services = new Map();
+  }
+  
+  register(name, factory) {
+    this.services.set(name, { factory, instance: null });
+  }
+  
+  get(name) {
+    const service = this.services.get(name);
+    if (!service) throw new Error(`Service ${name} not found`);
+    
+    if (!service.instance) {
+      service.instance = service.factory(this);
+    }
+    return service.instance;
+  }
+}
+
+export const container = new Container();
+
+// Register services
+container.register('logger', () => new Logger());
+container.register('api', (c) => new ApiService(c.get('logger')));
+container.register('auth', (c) => new AuthService(c.get('api')));
+
+// context/DIContext.jsx
+import { createContext, useContext } from 'react';
+import { container } from '../di/container';
+
+const DIContext = createContext(container);
+
+export function useService(name) {
+  const container = useContext(DIContext);
+  return useMemo(() => container.get(name), [container, name]);
+}
+
+// components/UserList.jsx
+function UserList() {
+  const api = useService('api');
+  const auth = useService('auth');
+  
+  // Use services...
+}
+```
+
+### 5. Real-World Example
+
+```javascript
+// services/index.js
+export class AuthService {
+  constructor(apiService) {
+    this.api = apiService;
+  }
+  
+  async login(credentials) {
+    return this.api.post('/auth/login', credentials);
+  }
+}
+
+export class UserService {
+  constructor(apiService, authService) {
+    this.api = apiService;
+    this.auth = authService;
+  }
+  
+  async getCurrentUser() {
+    const token = this.auth.getToken();
+    return this.api.get('/users/me', { token });
+  }
+}
+
+// context/AppContext.jsx
+const AppContext = createContext(null);
+
+export function AppProvider({ children }) {
+  const services = useMemo(() => {
+    const api = new ApiService();
+    const auth = new AuthService(api);
+    const user = new UserService(api, auth);
+    
+    return { api, auth, user };
+  }, []);
+  
+  return (
+    <AppContext.Provider value={services}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useAppServices() {
+  return useContext(AppContext);
+}
+
+// components/Profile.jsx
+function Profile() {
+  const { user } = useAppServices();
+  const [profile, setProfile] = useState(null);
+  
+  useEffect(() => {
+    user.getCurrentUser().then(setProfile);
+  }, [user]);
+  
+  return <div>{profile?.name}</div>;
+}
+```
+
+**Recommendation:** Start with Context API for most projects. Use props injection for highly reusable components. Only introduce a DI container if you have complex dependency graphs.
 
 # React Server Components (RSC)
 
