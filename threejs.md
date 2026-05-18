@@ -1,3 +1,57 @@
+- [Getting started](#getting-started)
+  - [Initialize a project](#initialize-a-project)
+  - [Establishing a scene](#establishing-a-scene)
+    - [Creating a scene](#creating-a-scene)
+    - [Creating objects](#creating-objects)
+    - [Creating a camera](#creating-a-camera)
+    - [Creating a renderer](#creating-a-renderer)
+    - [Render the scene](#render-the-scene)
+- [Transform objects](#transform-objects)
+  - [Move objects](#move-objects)
+    - [Methods of `position`](#methods-of-position)
+      - [`.length()`](#length)
+      - [`.distanceTo(target: Vector3)`](#distancetotarget-vector3)
+      - [`.normalize()`:](#normalize)
+      - [`.set(x: number, y: number, z: number)`:](#setx-number-y-number-z-number)
+    - [`AxesHelper` class](#axeshelper-class)
+  - [Scale objects](#scale-objects)
+    - [Methods of `scale`:](#methods-of-scale)
+      - [`.set(x: number, y: number, z: number)`](#setx-number-y-number-z-number-1)
+  - [Rotate objects](#rotate-objects)
+    - [Using `rotation`](#using-rotation)
+      - [`.lookAt(target: Vector3)`](#lookattarget-vector3)
+  - [Groups](#groups)
+- [Animation](#animation)
+  - [The `.requestAnimationFrame()` method of `window`](#the-requestanimationframe-method-of-window)
+  - [The animation speed problem](#the-animation-speed-problem)
+    - [Time difference between ticks](#time-difference-between-ticks)
+    - [Three `Clock` class](#three-clock-class)
+  - [The `gsap` library](#the-gsap-library)
+    - [GSAP tools](#gsap-tools)
+      - [`gsap.to()`](#gsapto)
+- [Cameras](#cameras)
+  - [`ArrayCamera`](#arraycamera)
+  - [`StereoCamera`](#stereocamera)
+  - [`CubeCamera`](#cubecamera)
+  - [`OrthographicCamera`](#orthographiccamera)
+  - [`PerspectiveCamera`](#perspectivecamera)
+- [Controlling cameras](#controlling-cameras)
+  - [ThreeJS controls](#threejs-controls)
+    - [`OrbitControls`](#orbitcontrols)
+      - [Damping](#damping)
+- [Going full-screen](#going-full-screen)
+  - [Handling resize](#handling-resize)
+  - [Handling pixel ratio](#handling-pixel-ratio)
+  - [Handle full-screen](#handle-full-screen)
+- [Geometries](#geometries)
+  - [`BoxGeometry`](#boxgeometry)
+  - [Creating a geometry](#creating-a-geometry)
+  - [Indices (:plural \<- index)](#indices-plural---index)
+- [Debug UI](#debug-ui)
+  - [Setting up `lil-gui`](#setting-up-lil-gui)
+  - [Different types of tweaks](#different-types-of-tweaks)
+    - [Range](#range)
+
 # Getting started
 
 ## Initialize a project
@@ -106,10 +160,10 @@ scene.add(mesh);
 
 ### Creating a camera
 
-Here we will use the `PerspectiveCamera` class to create a camera object. This class needss 2 essential parameters to be instantiated:
+Here we will use the `PerspectiveCamera` class to create a camera object. This class needs 2 essential parameters to be instantiated:
 
-1. Field of view: Detemines how large your view angle is. It is expresses in **degrees** and corresponds to the vertical vision angle.
-2. Aspect ratio: The width of the canvas divided by its height.
+1. **Field of view:** Detemines how large your view angle is. It is expressed in **degrees** and corresponds to the vertical vision angle.
+2. **Aspect ratio:** The width of the canvas divided by its height.
 
 ```js
 /**
@@ -148,7 +202,7 @@ const canvas = document.querySelector("canvas.webgl");
 // Remember there was a <canvas> element with class "webgl" in the index.html file
 ```
 
-Then do this to create a renderer use `WebGLRenderer` class which receives the canvas as named paramter:
+Then to create a renderer, use `WebGLRenderer` class which receives the canvas as named paramter:
 
 ```js
 /**
@@ -172,10 +226,10 @@ renderer.render(scene, camera);
 
 In order to be able to **animate** objects, you first need to know how to **transform** objects. There are 4 properties used to transform objects:
 
-1. Position
-2. Scale
-3. Rotaion
-4. Quaternion
+1. **Position**
+2. **Scale**
+3. **Rotaion**
+4. **Quaternion**
 
 First of all it is useful to know that all objects that are extended from the `Object3D` class inherit and have access to all the transformation properties listed above. These include `PerspectiveCamera` class which is extended from the `Camera` class, and further, from the `Object3D` class. `Mesh` class is also extended from the `Object3D` class.
 
@@ -189,7 +243,7 @@ mesh.position.y = -0.6;
 mesh.position.z = 1;
 ```
 
-> Note that it is not necessary to apply position transforms before adding the object to the scene. So the three transforms above could either be placed before `scene.add(mesh)` or after it. However, all transforms should be applied before the scene is **rendered**; so before `renderer.render(scene, camera)`. It is a good convention to place transforms after creating the object and before adding it to the scene.
+> Note that it is not necessary to apply position transforms before adding the object to the scene. So three transforms above could either be placed before `scene.add(mesh)` or after it. However, all transforms should be applied before the scene is **rendered**; so before `renderer.render(scene, camera)`. It is a good convention to place transforms after creating the object and before adding it to the scene.
 
 It is important to know that when using transforms, the unit of the values used are arbitrary. You should think of your values based on what you are building; it could be 1 kilometer, 1 centimeter, etc.
 
@@ -209,7 +263,7 @@ mesh.position.length();
 
 #### `.distanceTo(target: Vector3)`
 
-`.distanceTo()` method returns the length from the center of the object that calls the method to the `position` object given to the method as parameter.
+`.distanceTo()` method returns the length from the center of the object that calls the method to the `position` of the object given to the method as parameter.
 
 ```js
 mesh.position.distanceTo(camera.position);
@@ -229,7 +283,7 @@ mesh.position.distanceTo(new THREE.Vector3(1, 4, -1));
 mesh.position.normalize();
 ```
 
-> This method will be discusses later. #yetToCome-normalize
+> This method will be discussed later. #yetToCome-normalize
 
 #### `.set(x: number, y: number, z: number)`:
 
@@ -290,7 +344,7 @@ mesh.rotation.y = 3.14159;
 
 **IMPORTANT**
 
-You must be careful of the rotation axes order that you are applying. When you rotate an object around the `x` axis, the object's `y` and `z` axes are also rotated with the object. So rotation around `y` after rotaion around `x` will result in a different rotation compared to before rotation around `x`, because after rotation around `x`, the `y` axis is now pointing to a different direction. If you are not carefull with this matter, you might end up in a **gimball lock**.
+You must be careful with the rotation axes order that you are applying. When you rotate an object around the `x` axis, the object's `y` and `z` axes are also rotated with the object. So rotation around `y` after rotation around `x` will result in a different rotation compared to before rotation around `x`, because after rotation around `x`, the `y` axis is now pointing to a different direction. If you are not carefull with this matter, you might end up in a **gimball lock**.
 
 To go around this, you can use the `.reorder()` method of the `rotation` object. This reordering is used based on the type of movements you are going to implement for your project. For instance, if you are going to create an FPS game you need to reorder your rotations.
 
@@ -313,7 +367,7 @@ camera.lookAt(mesh.position);
 
 ## Groups
 
-It is often really useful to have several related objects in a group so they can be scaled, positioned and rotated in as a whole entity. For instance, if you are building a hous, you would probably want to have the objects of the kitchen in one group, probably called `kitchen`. To do this you can use the `Group` class. A `Group` class inhertis from the `Object3D` class, so all transform proerties and methods are available to it.
+It is often really useful to have several related objects in a group so they can be scaled, positioned and rotated as a whole entity. For instance, if you are building a house, you would probably want to have the objects of the kitchen in one group, probably called `kitchen`. To do this you can use the `Group` class. A `Group` class inherits from the `Object3D` class, so all transform proerties and methods are available to it.
 
 To do this, first create the group and add it to the scene:
 
@@ -503,11 +557,11 @@ const orthographicCamera = new THREE.OrthographicCamera(
 
 So instead of defining the field of view with a single numeric value as in `PerspectiveCamera`, here you define the field of view with four numeric values. Notice the shape of the field of view in this camera is not like a cone, but like a rectangle.
 
-Afterwards, there 2 other parameters defining the `near` and `far` values. Refer to `PerspectiveCamera` description on these two parameters.
+Afterwards, there are 2 other parameters defining the `near` and `far` values. Refer to `PerspectiveCamera` description on these two parameters.
 
 **IMPORTANT**
 
-If values (`-1`, `1`, `1`, `-1`) are used as (`left`, `right`, `top`, `bottom`), and the render scene dimensions are not square, your objects would appear distorted. Also, changing the render dimensions will change the type of distortion on your objects. To fix this, you need to account for the scene aspect ratio. For instance, if your scene is going to be `width x height`, multiply values of one direction of the field view, for instance, left and right:
+If values (`-1`, `1`, `1`, `-1`) are used as (`left`, `right`, `top`, `bottom`), and the render scene dimensions are not square, your objects would appear distorted. Also, changing the render dimensions will change the type of distortion on your objects. To fix this, you need to account for the scene aspect ratio. For instance, if your scene is going to be `width x height`, multiply values of one direction of the field of view, for instance, left and right:
 
 ```js
 const aspectRatio = width / height;
@@ -535,10 +589,10 @@ const perspectiveCamera = new THREE.PerspectiveCamera(
 );
 ```
 
-1. First parameter: Field of view, also called "fov", is expressed in **angles**. It defines the vertical vision angle. Be careful with really high values, since objects at the edge of the render frame will appear distorted.
-2. Aspect ratio: The width of the render divided by the height.
-3. Near: Defines how close the camera can see. Any object (or part of the object) closer than this value will not show up in the scene.
-4. Far: Defines how far the camera can see. Any object (or part of the object) further than this value will not show up in the scene.
+1. **Field of view:** also called "fov", is expressed in **angles**. It defines the vertical vision angle. Be careful with really high values, since objects at the edge of the render frame will appear distorted.
+2. **Aspect ratio:** The width of the render divided by the height.
+3. **Near:** Defines how close the camera can see. Any object (or part of the object) closer than this value will not show up in the scene.
+4. **Far:** Defines how far the camera can see. Any object (or part of the object) further than this value will not show up in the scene.
 
 **IMPORTANT**
 
@@ -630,7 +684,7 @@ So you can import it by doing:
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 ```
 
-Then instantiate the class by giving it, as first paramtere, the camera object, and as second parameter, a DOM element that would act as a refernce to which the mouse movements are measured by the controlling class.
+Then instantiate the class by giving it, as first parameter, the **camera** object, and as second parameter, a DOM element that would act as a **refernce** to which the mouse movements are measured by the controlling class.
 
 ```js
 const controls = new OrbitControls(camera, canvas);
@@ -688,7 +742,7 @@ tick();
 
 # Going full-screen
 
-In order to provide an immersive experience for the user, try and make your WebGL canvas full-screen. You can simple change the `sizes` object from past, and make it like this:
+In order to provide an immersive experience for the user, try and make your WebGL canvas full-screen. You can simply change the `sizes` object from past, and make it like this:
 
 ```js
 const sizes = {
@@ -720,7 +774,7 @@ body {
 
 ## Handling resize
 
-Until now, the canvas is initiated with the viewport size, but the size will not be updated if the screen size is changed. To do this you should listen to the `resize` event on the `window` object. In the callback provided to the event listener there are basically 3 things to do:
+Until now, the canvas is initiated with the viewport size, but the size will not be updated if the screen size is changed. To do this you should listen to the `resize` event on the `window` object. In the callback provided to the event listener, there are basically 3 things to do:
 
 1. Update canvas sizes
 2. Update camera's aspect ratio and call `.updateProjectionMatrix()` on the camera
@@ -866,7 +920,7 @@ The number of subdivisions on each axis determines how many triangles will compo
 
 ## Creating a geometry
 
-Before creating a geometry, you need to understand how to store buffer geomtery data. You first need to create the data that would then be used as vertices data. To do this, you should use `Float32Array`, which is **typed array** which can only store `float`s. It has a fixed length and therefore, it is easier for the computer to handle.
+Before creating a geometry, you need to understand how to store **buffer geomtery data**. You first need to create the data that would then be used as vertices data. To do this, you should use `Float32Array`, which is **typed array** which can only store `float`s. It has a fixed length and therefore, it is easier for the computer to handle.
 
 There are 2 ways of creating and filling a `Float32Array`:
 
@@ -940,7 +994,7 @@ const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3);
 geometry.setAttribute("position", positionsAttribute);
 ```
 
-## Indeices
+## Indices (:plural <- index)
 
 There are some vertices in any object that are used commonly by multiple triangles. When creating a `BufferGeometry`, you can specify a bunch of vertices and then the indices to create the faces and reuse vertices multiple times. This will cause less data to be processed for rendering and therefore improves performance.
 
@@ -950,7 +1004,7 @@ This matter is not covered yet in this document.
 
 An essential aspect of every creative project is for the developer, the designers, and also for the client to be able to tweak things easily. This might even surprise you by exposing unexpected results which could lead to new ideas.
 
-There various libraries available to use as a debug UI for ThreeJS:
+There are various libraries available to use as a debug UI for ThreeJS:
 
 1. `dat.GUI`
 2. `lil-gui`
@@ -984,12 +1038,12 @@ const gui = new GUI();
 
 There are different types of tweaks that `lil-gui` can handle for you:
 
-1. Range: for numbers with min and max values
-2. Color: for colors with various formats
-3. Text: for simple texts
-4. Checkbox: for booleans
-5. Select: for a choice from a list of values
-6. Button: for triggering a function
+1. **Range:** for numbers with min and max values
+2. **Color:** for colors with various formats
+3. **Text:** for simple texts
+4. **Checkbox:** for booleans
+5. **Select:** for a choice from a list of values
+6. **Button:** for triggering a function
 
 We are now going to try some of these. Notice that most of the tweaks can be implemented using:
 
