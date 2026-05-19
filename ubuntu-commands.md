@@ -791,6 +791,18 @@ zip -er myfolder.zip myfolder/
 
 You will be prompted for password interactively.
 
+To unzip a folder that is already zipped you can use:
+
+```
+unzip myfolder.zip -d /path/to/destination/
+```
+
+Also, to view the content of the zipped folder before unzipping it:
+
+```
+unzip -l myfolder.zip
+```
+
 # Terminal helper commands
 
 ## Command manual

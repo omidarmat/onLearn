@@ -51,6 +51,21 @@
   - [Setting up `lil-gui`](#setting-up-lil-gui)
   - [Different types of tweaks](#different-types-of-tweaks)
     - [Range](#range)
+      - [Tweaking the geometry](#tweaking-the-geometry)
+    - [Checkbox](#checkbox)
+    - [Colors](#colors)
+      - [Colors issue](#colors-issue)
+        - [Retreiving the modified color](#retreiving-the-modified-color)
+        - [Deal only with non-modified color](#deal-only-with-non-modified-color)
+    - [Functions/Buttons](#functionsbuttons)
+    - [Folders](#folders)
+  - [`lil-gui` setup](#lil-gui-setup)
+    - [Width](#width)
+    - [Title](#title)
+    - [Folders default state](#folders-default-state)
+    - [Close the UI](#close-the-ui)
+    - [Hide the UI](#hide-the-ui)
+- [Textures](#textures)
 
 # Getting started
 
@@ -1032,6 +1047,7 @@ You can then import it into your project and instantiate it:
 import GUI from "lil-gui";
 
 const gui = new GUI();
+// instantiate right at the beginning
 ```
 
 ## Different types of tweaks
@@ -1066,8 +1082,245 @@ gui.add(mesh.position, "y", -3, 3, 0.01);
 
 > Notice that if you don't provide minimum, maximum and the preceision parameters, the tweak would appear in the form of text input. But if you do provide the parameters, it will become a dragger.
 
-Since this method of passing paramters can be a bit ugly in your code, you can use method chaining like this:
+Since this pattern of passing paramters can be a bit ambigious in your code, you can use method chaining like this:
 
 ```js
 gui.add(mesh.position, "y").min(-3).max(3).step(0.01);
 ```
+
+#### Tweaking the geometry
+
+First of all, you are not supposed to tweak the geometry itself. You can, however, tweak the geometry subdivisions. In order to do this, you have access to `widthSegments`, `heightSegments` and `depthSegments` properties in the `BoxGeometry` class. But this does not mean that you can simply do this:
+
+```js
+gui.add(geometry, "widthSegments");
+```
+
+This is because the `widthSegments` among others mentioned above, **are used to generate the whole geometry only once,** and once the geometry is rendered, the properties are not useful anymore. So, you can use the `debugObject` again.
+
+```js
+debugObject.subdivision = 2;
+
+gui.add(debugObject, "subdivision").min(1).max(20).step(1);
+```
+
+Up until now the `subdivision` property is in no way related to the geometry that is being renderd. So now as the tweak value changes, you should destroy the old geometry and build a new one. You might think of using the `.onChange()` method here, but that is not recommended. Building a geometry can be a rather **heavy process for the CPU.** So instead, go on and use `.onFinishChange()` method:
+
+```js
+debugObject.subdivision = 2;
+
+gui
+  .add(debugObject, "subdivision")
+  .min(1)
+  .max(20)
+  .step(1)
+  .onFinishChange(() => {
+    mesh.geometry.dispose();
+
+    mesh.geometry = new THREE.BoxGeometry(
+      1,
+      1,
+      1,
+      debugObject.subdivision,
+      debugObject.subdivision,
+      debugObject.subdivision,
+    );
+  });
+```
+
+> Doing this, you should always remember that the **old geometries are still somewhere in the GPU memory which can create a memory leak**. So you need to dispose old geometries. #yetToCome-dispose
+
+### Checkbox
+
+To use the checkbox tweak of `lil-gui` you can pass it a boolean property of an object.
+
+```js
+gui.add(mesh, "visible");
+```
+
+> Object `mesh` has a `visible` property
+
+### Colors
+
+To use the color picker tweak, you can use the `.addColor()` method of the `gui` object. Remember that you must pass an object of type `Color` class from the ThreeJS library.
+
+```js
+gui.addColor(material, "color");
+```
+
+#### Colors issue
+
+If you try to take the color value from the tweak and put in your material code, you will end up with the wrong color. That is because ThreeJS applies some color management in order to optimise the rendering. The color value that is being displayed in the tweak is not the same value as the one being used internally.
+
+There are some fixes for this:
+
+##### Retreiving the modified color
+
+The `color` object which is an instance of the `Color` class has access to the `.getHexString()` method. Here is the method signature:
+
+```js
+color.getHexString(colorSpace: string = "SRGBColorSpace")
+```
+
+The method returns the hexadecimal value of `this` color as a string. The point is that we want the Hexadecimal string of the color after it is changed (modified) by ThreeJS. So you would have to use the `.onChange()` method of the `gui` object. The method receives a callback as parameter, and the callback has access to a `value` parameter which is exactly the same as `material.color` object.
+
+```js
+gui.addColor(material, "color").onChange((value) => {
+  console.log(value.getHexString());
+});
+```
+
+It works, but it is not a very handy solution.
+
+##### Deal only with non-modified color
+
+In this solution, you first need to store the color somewhere outside of ThreeJS. To do this, go on and create an object whose purpose is to hold some properties. You can call this object `global`, `parameters`, `debugObject` by convention. Also, you would want to place the object right after instantiating the `GUI` class in your code:
+
+```js
+const gui = new GUI();
+const debugObject = {};
+```
+
+Then before before the code that is responsible for creating your `material`, go on and add a `color` property to the `debugObject`, and then pass it to the `MeshBasicMaterial` class to instantiate the material.
+
+```js
+debugObject.color = "#3a6ea6";
+const material = new THREE.MeshBasicMaterial({ color: debugObject.color });
+```
+
+Then, you can go back to the `gui.addColor()` tweak where you can now utilize the `.onChange()` method to set the material color to the `color` property of `debugObject`.
+
+```js
+gui.addColor(debugObject, "color").onChange(() => {
+  material.color.set(debugObject.color);
+});
+```
+
+### Functions/Buttons
+
+This is to trigger some instructions on demand. For instance, you want to make the cube perform a spin animation when we click somewhere in the debug UI.
+
+Since `lil-gui` must always receive an object to be able to create some tweaks, you would need to add the spinning function to the `debugObject`.
+
+```js
+debugObject.spin = () => {
+  gsap.to(mesh.rotation, {
+    y: mesh.rotation.y + Math.PI * 2,
+  });
+};
+
+gui.add(debugObject, "spin");
+```
+
+### Folders
+
+Since the debug UI can get crowded with tweaks, you can separate them into folders by using the `.addFolder()` method of the `gui` object. Here is wrap up of all the previous tweaks:
+
+```js
+const cubeTweaks = gui.addFolder("Awesome cube");
+
+cubeTweaks.add(mesh.position, "y").min(-3).max(3).step(0.01).name("elevation");
+cubeTweaks.add(mesh, "visible");
+cubeTweaks.add(material, "wireframe");
+cubeTweaks.addColor(debugObject, "color").onChange(() => {
+  material.color.set(debugObject.color);
+});
+
+debugObject.spin = () => {
+  gsap.to(mesh.rotation, {
+    y: mesh.rotation.y + Math.PI * 2,
+  });
+};
+
+cubeTweaks.add(debugObject, "spin");
+
+debugObject.subdivision = 2;
+
+cubeTweaks
+  .add(debugObject, "subdivision")
+  .min(1)
+  .max(20)
+  .step(1)
+  .onFinishChange(() => {
+    mesh.geometry.dispose();
+
+    mesh.geometry = new THREE.BoxGeometry(
+      1,
+      1,
+      1,
+      debugObject.subdivision,
+      debugObject.subdivision,
+      debugObject.subdivision,
+    );
+  });
+```
+
+> You can also have nested folders.
+
+## `lil-gui` setup
+
+You can setup the debug UI graphical user interface to make it match your needs.
+
+### Width
+
+You can set the width of the UI by passing the `width` property to the `GUI` instantiation:
+
+```js
+const gui = new GUI({
+  width: 300,
+});
+```
+
+### Title
+
+You can change the title with the `title` property:
+
+```js
+const gui = new GUI({
+  width: 300,
+  title: "Nice debug UI",
+});
+```
+
+### Folders default state
+
+You can set the open/close default state of the folders:
+
+```js
+const gui = new GUI({
+  width: 300,
+  title: "Nice debug UI",
+  closeFolders: false,
+});
+```
+
+### Close the UI
+
+You can close the UI by using the `.close()` method on the `gui` object:
+
+```js
+const gui = new GUI({
+  width: 300,
+  title: "Nice debug UI",
+  closeFolders: false,
+});
+gui.close();
+```
+
+### Hide the UI
+
+You can hide the UI by using the `.hide()` method on the `gui` object. Then you can listen for some events to make a toggle for the UI to appear back or disappear again.
+
+```js
+gui.hide();
+
+window.addEventListener("keydown", (event) => {
+  if (event.key == "h") gui.show(gui._hidden);
+});
+```
+
+> Tip: Try to add the tweaks as you develop the project; don't leave them for the end.
+
+# Textures
+
+Textures are basically images that covers the surface of the geometries.
