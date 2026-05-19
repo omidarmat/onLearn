@@ -66,6 +66,8 @@
     - [Close the UI](#close-the-ui)
     - [Hide the UI](#hide-the-ui)
 - [Textures](#textures)
+  - [PBR principles](#pbr-principles)
+  - [Loading textures](#loading-textures)
 
 # Getting started
 
@@ -1323,4 +1325,24 @@ window.addEventListener("keydown", (event) => {
 
 # Textures
 
-Textures are basically images that covers the surface of the geometries.
+Textures are basically images that covers the surface of the geometries. But the image is not actually one simple image. The image will consist of multiple layers of images.
+
+1. **Color**: The color image is simply going to be applied to the geometry as a color.
+2. **Alpha**: It is a grayscale image. Anywhere on this image that is white, will be visible and anywhere that is black, will not be visible. Something between black and white will correspond to a visibility portion.
+3. **Height**: Also called **displacement**, which again is a grayscale image. With this image you can move the vertices to create some relief. This requires enough subdivisions on the geometry. For instance, anywhere on the image that is white, might move the corresponding vertices up, and anywhere that is black, will move the vertices down.
+4. **Normals**: It adds details regarding to things like light. Does not need subdivisions and vertices won't move. Better performance than adding a height texture with a lot of subdivisions. It lures the light about the face orientation.
+5. **Ambient occlusion**: It is a grayscale image which adds fake shadows in crevices. It is not physically accurate, but helps to create contrast and see details.
+6. **Metallness**: It is a grayscale image in which white will be metallic, and black will be non-metallic. It is used mostly for reflactions.
+7. **Roughness**: Again, a grayscale image used in duo with the metallness. White willbe rough, black will be smooth. It is used mostly for light dissipation.
+
+There are many other types of texture images by these are the main ones and this document is focused on them.
+
+## PBR principles
+
+All the texture images mentioned above (especially the metallness and the roughness) follow PBR principles (Physically Based Rendering):
+
+- Techniques that tend to follow real-life directions to get realistic results
+- These techniques are becoming the standard for realistic renders
+- Many software, engines, and libraries are using it
+
+## Loading textures
