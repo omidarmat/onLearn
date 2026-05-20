@@ -68,6 +68,10 @@
 - [Textures](#textures)
   - [PBR principles](#pbr-principles)
   - [Loading textures](#loading-textures)
+    - [Native JavaScript](#native-javascript)
+    - [Using `TextureLoader` class](#using-textureloader-class)
+    - [Using `LoadingManager` class](#using-loadingmanager-class)
+  - [UV unwrapping](#uv-unwrapping)
 
 # Getting started
 
@@ -1346,3 +1350,137 @@ All the texture images mentioned above (especially the metallness and the roughn
 - Many software, engines, and libraries are using it
 
 ## Loading textures
+
+There are multiple ways of importing images:
+
+### Native JavaScript
+
+You can use JavaScript's `Image` class, then listen to the `onload` event and set a callback for it. Then set the `src` attribute of the image.
+
+```js
+const image = new Image();
+image.onload = () => {
+  const texture = new THREE.
+
+};
+image.src = "/textures/door/color.jpg";
+// image is located in the project's "static/" folder
+```
+
+But you cannot simply use this image as a texture; you must transform it into a `Texture` class of ThreeJS. The conversion can be done once the image is loaded (`onload`):
+
+```js
+const image = new Image();
+image.onload = () => {
+  const texture = new THREE.Texture(image);
+  console.log(texture);
+};
+image.src = "/textures/door/color.jpg";
+```
+
+You can now use this texture in the `material` object, but since it is scoped to the arrow function's block, you actually need to create the `Texture` instance outside, and then _update_ the texture once the image is loaded (`onload`):
+
+```js
+const image = new Image();
+const texture = new THREE.Texture(image);
+
+image.onload = () => {
+  texture.needsUpdate = true;
+};
+
+image.src = "/textures/door/color.jpg";
+```
+
+Then you can use it in the creation of your `material`:
+
+```js
+const material = new THREE.MeshBasicMaterial({ map: texture });
+```
+
+### Using `TextureLoader` class
+
+It is much easier to use the ThreeJS class `TextureLoader` to load the texture. Here is the general syntax:
+
+```js
+const textureLoader = new THREE.TextureLoader();
+const texture = textureLoader.load("/textures/door/color.jpg");
+```
+
+Behind the scenes, it is doing the same operations as we implemented using native JavaScript.
+
+> One instance of `TextureLoader` can load multiple textures
+
+The `.load()` method of the `TextureLoader` instance can receive 3 more arguments, each being a callback called in specific cases:
+
+1. `load`: when the image loaded successfully
+2. `progress`: when the loading is in progress
+3. `error`: if something went wrong
+
+```js
+const texture = textureLoader.load(
+  "/textures/door/color.jpg",
+  () => {
+    console.log("loaded");
+    // This callback is called when the image is successfully loaded
+  },
+  () => {
+    console.log("progress");
+  },
+  () => {
+    console.log("error");
+    // This callback might be called due to any error in loading the file; for example, wrong image url
+  },
+);
+```
+
+### Using `LoadingManager` class
+
+You can use the `LoadingManager` class of ThreeJS to mutualize the events. It is useful when you want to know the global loading progress or be informed when everything is loaded.
+
+To use this class, you must first create an instance, and then pass the instance to the `TextureLoader` instance:
+
+```js
+const loadingManager = new THREE.LoadingManager();
+const textureLoader = new THREE.TextureLoader(loadingManager);
+const texture = textureLoader.load("/textures/door/color.jpg");
+```
+
+Using the `loadingManager`, you can now listen to various useful events:
+
+1. `onStart`
+2. `onLoad`
+3. `onProgress`
+4. `onError`
+
+```js
+const loadingManager = new THREE.LoadingManager();
+
+loadingManager.onStart = () => {};
+loadingManager.onLoad = () => {};
+loadingManager.onProgress = () => {};
+loadingManager.onError = () => {};
+// Before using the loadingManager in the textureLoader instance
+```
+
+Now go on and import all texture files you need for your material:
+
+```js
+const textureLoader = new THREE.TextureLoader(loadingManager);
+const colorTexture = textureLoader.load("/textures/door/color.jpg");
+const alphaTexture = textureLoader.load("/textures/door/alpha.jpg");
+const heightTexture = textureLoader.load("/textures/door/height.jpg");
+const normalTexture = textureLoader.load("/textures/door/normal.jpg");
+const ambientOcclusionTexture = textureLoader.load(
+  "/textures/door/ambientOcclusion.jpg",
+);
+const metalnessTexture = textureLoader.load("/textures/door/metalness.jpg");
+const roughnessTexture = textureLoader.load("/textures/door/roughness.jpg");
+```
+
+## UV unwrapping
+
+UV unwrapping is about the texture being stretched or squeezed in different ways to cover each different types of geometry. The word "unwrapping" related to the concept of unwrapping the paper cover around a chocolate.
+
+Make a cube using a flat paper. Now open the cube and go back to the **flat paper**. Take a single vertex. It will always have a 2D coordinate on a flat plane.
+
+In a 3D model, you have a 3D coordinate for each vertex, and each vertex also has a UV coordinate which is 2D.
