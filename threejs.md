@@ -1565,3 +1565,9 @@ When preparing your textures, keep these 3 things in mind:
 3. The data (that we put in the texture): Textures support transparency but we cannot have transparency in `.jpg` files. If you want to have only one texture that combine color and alpha, you'd better use `.png` file format. If you are using a _normal_ texture you want to have the exact values (since these values are going to be used for the movement of vertices) which is why you should not apply lossy compression and you had better use `.png` file format.
 
 > The difficulty is to find the right combination of texture formats and resolutions
+
+Checkout these links to find texture files:
+
+1. poliigon.com
+2. 3dtextures.me
+3. arroway-textures.ch
