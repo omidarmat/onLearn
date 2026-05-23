@@ -77,6 +77,7 @@
     - [Offset](#offset)
     - [Rotation](#rotation)
     - [Filtering and Mipmapping](#filtering-and-mipmapping)
+  - [Texture format and optimization](#texture-format-and-optimization)
 
 # Getting started
 
@@ -1534,3 +1535,33 @@ colorTexture.center.y = 0.5;
 ```
 
 ### Filtering and Mipmapping
+
+If you look at the cube's top face while this face is almost hidden in zoom, you will see a blurry texture due to the filtering and the mipmapping. **Mipmapping** is a technique that consists of creating half smaller version of a texture again and again until we get a 1x1 texture. All those texture variations are sent to the GPU and the GPU will choose the most appropriate version of the texture.
+
+All of this is already handled by ThreeJS and the GPU but we can choose different algorithms. There are 2 types of algorithms:
+
+1. **Minification filter:** happens when the pixels of texture are smaller than the pixels of the render. In other words, the texture is too big for the surface it covers. For instance, when you zoom out your render very small, the texture file that you are using, should be rendered into a really small area and that is when minification happens. You can change the minification filter of the texture using the `minFilter` property with these 6 values:
+   - `THREE.NearestFilter`
+   - `THREE.LinearFilter`
+   - `THREE.NearestMipmapNearestFilter`
+   - `THREE.NearestMipmapLinearFilter`
+   - `THREE.LinearMipmapNearestFilter`
+   - `THREE.LinearMipmapLinearFilter` (default)
+
+2. **Magnification filter:** happens when the pixels of the texture are bigger than the pixels of the render. In other words, texture is too small for the surface that it should cover. You can change the magnification filter of the texture using the `magFilter` property with these 2 values:
+   - `THREE.NearestFilter`
+   - `THREE.LinearFilter` (default)
+
+> Notice that `THREE.NearestFilter` is cheaper than the other ones and if the result is fine with your, just use it
+
+> Notice that if you are using `THREE.NearestFilter` on `minFilter`, you don't need the mipmaps. So you can deactivate the mipmaps generation with `colorTexture.generateMipmaps = false`.
+
+## Texture format and optimization
+
+When preparing your textures, keep these 3 things in mind:
+
+1. The weight: Users will have to download texture files. So choose the right type of file. `.jpg` is a lossy compression but usually lighter, while `.png` is lossless compression but usually heavier. You can also use compression websites and softwares like _TinyPNG_.
+2. The size (or the resolution): Each pixel of the texture will have to be stored on the GPU regardless of the image's weight. GPU has storage limitations. It is even worse because mipmapping increases the number of pixels to be stored. So try to reduce the size of your images as much as possible. Also, since the mipmapping will produce a half smaller version of the texture repeatedly until 1x1, the texture width and height must be a **power of 2** like 512x512 or 1024x1024 or 512x2048.
+3. The data (that we put in the texture): Textures support transparency but we cannot have transparency in `.jpg` files. If you want to have only one texture that combine color and alpha, you'd better use `.png` file format. If you are using a _normal_ texture you want to have the exact values (since these values are going to be used for the movement of vertices) which is why you should not apply lossy compression and you had better use `.png` file format.
+
+> The difficulty is to find the right combination of texture formats and resolutions
