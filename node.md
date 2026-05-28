@@ -141,6 +141,9 @@
     - [Optimistic Locking — Version Column](#optimistic-locking--version-column)
     - [Advisory Locks](#advisory-locks)
     - [Choosing the Right Strategy](#choosing-the-right-strategy)
+  - [Applying migrations on a running server](#applying-migrations-on-a-running-server)
+    - [Changes needed](#changes-needed)
+    - [To apply now](#to-apply-now)
 
 # **Back-end theory**
 
@@ -3231,3 +3234,63 @@ await db.transaction(async (tx) => {
 | Shared read, block writes                   | `FOR SHARE`              |
 
 The golden rule: always wrap locks inside a transaction. A lock without a transaction boundary is meaningless — PostgreSQL releases row locks at transaction end, not statement end.
+
+## Applying migrations on a running server
+
+To implement migrations, update your schema and use `drizzle-kit generate` command to create a migration file.
+
+If your setup already has a `docker-entrypoint.sh` that runs `db:push` before starting, you need to switch from `db:push` to `db:migrate` and make sure the migration files are available in the container.
+
+### Changes needed
+
+**1. `Dockerfile` — copy the migrations folder**
+
+Add this line after `COPY src/db ./src/db`:
+
+```dockerfile
+COPY drizzle ./drizzle
+```
+
+**2. `docker-entrypoint.sh` — replace `db:push` with `db:migrate`**
+
+```sh
+echo "Running migrations..."
+npm run db:migrate
+```
+
+**3. `package.json` — make sure `db:migrate` script exists**
+
+```json
+"db:migrate": "drizzle-kit migrate"
+```
+
+---
+
+### To apply now
+
+Since the bot is already running, you have two options:
+
+**Option A — Rebuild and redeploy (recommended)**
+
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+The entrypoint will run migrations automatically before starting the bot.
+
+**Option B — Apply migration without downtime (if the change is safe)**
+
+```bash
+docker compose exec myfinbot-backend npm run db:migrate
+```
+
+This runs the migration inside the running container without restarting anything.
+
+---
+
+> **Before doing either**, back up your database:
+>
+> ```bash
+> docker compose exec myfinbot-db pg_dump -U $DATABASE_USERNAME $DATABASE_NAME_PROD > backup.sql
+> ```
