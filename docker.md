@@ -95,6 +95,18 @@
   - [Why Kubernetes?](#why-kubernetes)
   - [What is Kubernetes?](#what-is-kubernetes)
 - [Modyfing Docker registry URL](#modyfing-docker-registry-url)
+- [Troubleshoot deployment with Docker](#troubleshoot-deployment-with-docker)
+  - [Docker cannot resolve metadata for an image](#docker-cannot-resolve-metadata-for-an-image)
+    - [First Thing to Check](#first-thing-to-check)
+    - [Another Important Issue: BuildKit](#another-important-issue-buildkit)
+    - [Quick Test](#quick-test)
+    - [Easiest Fix: Disable BuildKit](#easiest-fix-disable-buildkit)
+    - [Better Solution: Pre-pull the Base Image](#better-solution-pre-pull-the-base-image)
+    - [Another Good Solution: Use a Different Mirror](#another-good-solution-use-a-different-mirror)
+      - [Huawei Cloud](#huawei-cloud)
+      - [Aliyun](#aliyun)
+      - [DaoCloud](#daocloud)
+    - [Another Option: Use a Different Base Image](#another-option-use-a-different-base-image)
 
 # What is Docker?
 
@@ -2685,3 +2697,208 @@ And then you need to restart Docker:
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
+
+# Troubleshoot deployment with Docker
+
+## Docker cannot resolve metadata for an image
+
+Mirror configuration is very likely related to the problem.
+
+The important part of the error is:
+
+```txt
+failed to resolve source metadata for docker.io/library/node:22-alpine
+```
+
+and especially:
+
+```txt
+dial tcp ... i/o timeout
+```
+
+This means Docker could not fetch metadata for the base image from the registry within the timeout period.
+
+Your mirror configuration may be:
+
+- slow
+- incomplete
+- temporarily down
+- incompatible with Docker BuildKit
+- not properly serving the `node:22-alpine` manifest
+
+because Docker is still attempting to access:
+
+```txt
+https://registry-1.docker.io
+```
+
+instead of fully using the mirror.
+
+---
+
+### First Thing to Check
+
+Run:
+
+```bash
+docker info
+```
+
+Look for:
+
+```txt
+Registry Mirrors:
+ https://mirror-docker.runflare.com/
+```
+
+If you do not see it, Docker daemon did not reload the config.
+
+After editing `/etc/docker/daemon.json`, you must run:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+---
+
+### Another Important Issue: BuildKit
+
+Modern `docker compose build` uses BuildKit by default.
+
+BuildKit sometimes bypasses registry mirrors or behaves differently from classic Docker pulls.
+
+That is why:
+
+```bash
+docker pull node:22-alpine
+```
+
+may work,
+
+but:
+
+```bash
+docker compose build
+```
+
+fails.
+
+---
+
+### Quick Test
+
+Try pulling manually:
+
+```bash
+docker pull node:22-alpine
+```
+
+If this ALSO fails:
+
+- your mirror/network is the problem.
+
+If this succeeds:
+
+- the problem is probably BuildKit.
+
+---
+
+### Easiest Fix: Disable BuildKit
+
+Try:
+
+```bash
+DOCKER_BUILDKIT=0 docker compose build
+```
+
+or:
+
+```bash
+export DOCKER_BUILDKIT=0
+docker compose build
+```
+
+If that fixes it, then the issue is BuildKit + mirror interaction.
+
+---
+
+### Better Solution: Pre-pull the Base Image
+
+On the server:
+
+```bash
+docker pull node:22-alpine
+```
+
+Then build:
+
+```bash
+docker compose build
+```
+
+Docker will reuse the local image cache.
+
+---
+
+### Another Good Solution: Use a Different Mirror
+
+Some unofficial mirrors are unreliable.
+
+Commonly used mirrors:
+
+#### Huawei Cloud
+
+```json
+{
+  "registry-mirrors": ["https://<your-id>.mirror.swr.myhuaweicloud.com"]
+}
+```
+
+#### Aliyun
+
+```json
+{
+  "registry-mirrors": ["https://<your-id>.mirror.aliyuncs.com"]
+}
+```
+
+#### DaoCloud
+
+```json
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io"]
+}
+```
+
+Then restart Docker:
+
+```bash
+sudo systemctl restart docker
+```
+
+---
+
+### Another Option: Use a Different Base Image
+
+Sometimes Alpine manifests are slower through mirrors.
+
+Try changing:
+
+```dockerfile
+FROM node:22-alpine
+```
+
+to:
+
+```dockerfile
+FROM node:22
+```
+
+or:
+
+```dockerfile
+FROM node:20-alpine
+```
+
+Then rebuild.
