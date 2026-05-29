@@ -2682,5 +2682,6 @@ Put this content in the file:
 And then you need to restart Docker:
 
 ```
-systemctl restart docker
+sudo systemctl daemon-reload
+sudo systemctl restart docker
 ```
