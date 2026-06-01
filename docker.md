@@ -60,6 +60,10 @@
   - [Docker compose up and down](#docker-compose-up-and-down)
   - [Fresh-clearing all Docker system](#fresh-clearing-all-docker-system)
   - [Opening a shell inside a container](#opening-a-shell-inside-a-container)
+  - [Ispect containers using a docker network](#ispect-containers-using-a-docker-network)
+  - [Inspecting volumes](#inspecting-volumes)
+  - [Filtering containers using a given volume](#filtering-containers-using-a-given-volume)
+  - [List containers of a given compose](#list-containers-of-a-given-compose)
 - [Utility containers and executing commands in containers](#utility-containers-and-executing-commands-in-containers)
   - [Why use utility conatiners](#why-use-utility-conatiners)
   - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
@@ -2161,6 +2165,42 @@ You can then ping for a specific service to see if docker network is working fin
 ```
 ping <service-name>
 nslookup <service-name>
+```
+
+## Ispect containers using a docker network
+
+```
+docker network inspect <network-name>
+```
+
+Then to disconnect a specific container from that network:
+
+```
+docker network disconnect gibidoo-backend_default <container_id>
+```
+
+## Inspecting volumes
+
+```
+docker volume inspect gibidoo-backend_gibidoo-dev-data
+```
+
+## Filtering containers using a given volume
+
+```
+docker ps -a --filter volume=<volume-name>
+```
+
+Then to remove a container you can:
+
+```
+docker rm -f <container-id>
+```
+
+## List containers of a given compose
+
+```
+docker compose -f docker-compose.dev.yaml ps -a
 ```
 
 # Utility containers and executing commands in containers
