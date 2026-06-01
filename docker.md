@@ -59,6 +59,7 @@
     - [Container names by Docker compose](#container-names-by-docker-compose)
   - [Docker compose up and down](#docker-compose-up-and-down)
   - [Fresh-clearing all Docker system](#fresh-clearing-all-docker-system)
+  - [Opening a shell inside a container](#opening-a-shell-inside-a-container)
 - [Utility containers and executing commands in containers](#utility-containers-and-executing-commands-in-containers)
   - [Why use utility conatiners](#why-use-utility-conatiners)
   - [Different ways of running commands in conatiners](#different-ways-of-running-commands-in-conatiners)
@@ -2147,6 +2148,19 @@ docker-compose down -v
 ```
 docker builder prune -af
 docker system prune -af
+```
+
+## Opening a shell inside a container
+
+```
+docker compose exec <container-name> sh
+```
+
+You can then ping for a specific service to see if docker network is working fine.
+
+```
+ping <service-name>
+nslookup <service-name>
 ```
 
 # Utility containers and executing commands in containers
