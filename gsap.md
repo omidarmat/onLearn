@@ -481,6 +481,88 @@ gsap.registerPlugin(MotionPathPlugin, ScrollTrigger, MorphSVGPlugin);
 
 # ScrollTrigger
 
+Here is a simple example:
+
+```js
+gsap.to(".box", {
+  scrollTrigger: ".box", // start the animation when ".box" enters the viewport (once)
+  x: 500,
+});
+```
+
+Here is an advanced example:
+
+```js
+let tl = gsap.timeline({
+  // yes, we can add it to an entire timeline!
+  scrollTrigger: {
+    trigger: ".container",
+    pin: true, // pin the trigger element while active
+    start: "top top", // when the top of the trigger hits the top of the viewport
+    end: "+=500", // end after scrolling 500px beyond the start
+    scrub: 1, // smooth scrubbing, takes 1 second to "catch up" to the scrollbar
+    snap: {
+      snapTo: "labels", // snap to the closest label in the timeline
+      duration: { min: 0.2, max: 3 }, // the snap animation should be at least 0.2 seconds, but no more than 3 seconds (determined by velocity)
+      delay: 0.2, // wait 0.2 seconds from the last scroll event before doing the snapping
+      ease: "power1.inOut", // the ease of the snap animation ("power3" by default)
+    },
+  },
+});
+
+// add animations and labels to the timeline
+tl.addLabel("start")
+  .from(".box p", { scale: 0.3, rotation: 45, autoAlpha: 0 })
+  .addLabel("color")
+  .from(".box", { backgroundColor: "#28a92b" })
+  .addLabel("spin")
+  .to(".box", { rotation: 360 })
+  .addLabel("end");
+```
+
+And here is a standalone/custome example. You don't need to put ScrollTriggers directly into animations (though that's probably the most common use case). Use the callbacks for anything...
+
+```js
+ScrollTrigger.create({
+  trigger: "#id",
+  start: "top top",
+  endTrigger: "#otherID",
+  end: "bottom 50%+=100px",
+  onToggle: (self) => console.log("toggled, isActive:", self.isActive),
+  onUpdate: (self) => {
+    console.log(
+      "progress:",
+      self.progress.toFixed(3),
+      "direction:",
+      self.direction,
+      "velocity",
+      self.getVelocity(),
+    );
+  },
+});
+```
+
+Here are some general good-to-know tips:
+
+- Link any animation to a particular element so that it only plays when that element is in the viewport. This improves performance and ensures that your beautiful animations actually get seen!
+
+- ScrollTriggers can perform an actions on an animation (play, pause, resume, restart, reverse, complete, reset) when entering/leaving the defined area or link it directly to the scrollbar so that it acts like a scrubber (`scrub: true`).
+- Soften the link between the animation and the the scrollbar so that takes a certain amount of time to "catch up", like `scrub: 1` would take one second to catch up.
+- Snap to certain points in the animation based on velocity. In fact, you can `getVelocity()` of the scrolling anytime. Snap to the closest label in a timeline or progress value in an Array, or run your own custom function-based logic for snapping.
+- Embed scroll triggers directly into any GSAP animation (including timelines) or create standalone instances and tap into the rich callback system to do anything you want.
+- Advanced pinning capabilities can lock an element in place between certain scroll positions. Padding is automatically added to push other elements down accordingly, so they catch up when the element gets unpinned (disable this with `pinSpacing: false`). You can even pin the same element multiple times at different points.
+- Incredible flexibility for defining scroll positions - like "start when the center of this element hits the center of the viewport, and end when the bottom of that other element hits the bottom of the viewport", use keywords (top, center, bottom, left, right), percentages, pixels, or even relative values like `"+=300px"`. Once you get the hang of the syntax, it's remarkably intuitive.
+- Rich callback system including `onEnter`, `onLeave`, `onEnterBack`, `onLeaveBack`, `onToggle`, `onUpdate`, `onScrubComplete`, and `onRefresh`.
+- Automatically recalculates positions when the window resizes.
+- Enable visual markers during development to see exactly where the start/end/trigger points are. Customization options abound, like `markers: {startColor:"green", endColor:"red", fontSize:"12px"}`.
+- Toggle a CSS class. For example, `toggleClass: "active"` adds the "active" class to the trigger element while the ScrollTrigger is active. You can affect other elements too.
+- Responsive - use the `matchMedia()` method to create different setups for various screen sizes using standard media queries.
+- Custom containers - you don't need to use the viewport; define a custom scroller like a `<div>` instead.
+
+## Config object
+
+`scrollTrigger` can be used as either a shorthand for the `trigger` (described below) or as a configuration object with any of the following properties:
+
 ## Tips
 
 ### Nesting ScrollTriggers inside multiple timeline tweens
