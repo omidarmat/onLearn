@@ -753,6 +753,8 @@ uvicorn main:app --reload
 
 ## Authentication endpoints
 
+### Creating a user (+ password hash)
+
 To be able to implement password hashing, you need some dependencies: `passlib` and `bcrypt`:
 
 ```
@@ -799,6 +801,254 @@ async def create_user(create_user_request: CreateUserRequest):
     is_active = True,
   )
 ```
+
+You now need to save the new user data in the database. To do this, you need to get you database dependency once again. Go on and get it from your other router file and copy it here in your `auth.py` file:
+
+```py
+# /routers/auth.py
+# Remember to import what you need for this code
+def get_db():
+  db = SessionLocal()
+
+  try:
+    yield db
+  finally:
+    db.close()
+
+db_dependency = Annotated[Session, Depends(get_db)]
+```
+
+Then your route handler will be updated as:
+
+```py
+@router.post("/auth", status_code = status.HTTP_201_CREATED)
+async def create_user(db = db_dependency, create_user_request: CreateUserRequest):
+
+  create_user_model = Users(
+    email = create_user_request.email,
+    username = create_user_request.username,
+    first_name = create_user_request.first_name,
+    last_name = create_user_request.last_name,
+    role = create_user_request.role,
+    hashed_password = bcrypt_context.hash(create_user_request.password),
+    is_active = True,
+  )
+
+  db.add(create_user_model)
+  db.commit()
+```
+
+### Authenticate a user
+
+To enable users to get authenticated in your system, you first need to define an endpoint where this is going to be processed:
+
+```py
+# routers/auth.py
+
+@router.post("/login")
+async def login():
+  return token
+```
+
+To be able to get user input for this part, you are going to need a python package called `python-multipart`. So in your activated virtual environment:
+
+```
+pip install python-multipart
+```
+
+We can now submit forms to our application, but we're are not going to use a normal FastAPI form. Instead, we use "OAuth to password request form". It is a special kind of form that is slightly more secure and will have its own portal on Swagger. Now go on and import in your `auth.py` file:
+
+```py
+from fastapi.security import OAuth2PasswordRequestForm
+```
+
+You can now use it with dependency injection for your API endpoint, and then check your database to see if user exists and if the submitted credentials match:
+
+```py
+def authenticate_user(username: str,
+                      password: str,
+                      db):
+    user = db.query(Users).filter(Users.username == username).first()
+
+    if not user:
+      return False
+
+    if not bcrypt_context.verify(password, user.hashed_password):
+      return False
+
+    return user
+
+@router.post("/login")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                db: db_dependency):
+
+    user = authenticate_user(form_data.username, form_data.password, db)
+
+    if not user:
+      return "Failed authentication"
+
+    return 'Successful authentication'
+```
+
+Now swagger will request information for this endpoint.
+
+Now we actually need to create and sign a JWT and return it to the user. To be able to create a JWT you are going to need another package:
+
+```
+pip install "python-jose[cryptography]"
+```
+
+Then import it in your `auth.py` file:
+
+```py
+from jose import jwt
+```
+
+To be able to create a JWT, you are going to need a secret and an algorithm.
+
+You can use `openssl` CLI to generate a secret string for you:
+
+```
+openssl rand -hex 32
+<!-- copy the returned secret string -->
+```
+
+Go on and add these under your router initiation in `auth.py`:
+
+```py
+# /routers/auth.py
+router = APIRouter()
+
+SECRET_KEY = "PASTE_SECRET_HERE"
+ALGORITHM = "HS256"
+```
+
+The secret and the algorithm together will add a signature to the JWT to make sure the token is secure.
+
+Go on and create another function to create the access token in your `auth.py` file:
+
+```py
+# /routers/auth.py
+from datetime import timedelta, datetime, timezone
+
+def create_access_token(username: str, user_id: int, expires_delta: timedelta):
+  encode = {
+    "sub": username,
+    "id": user_id
+  }
+
+  expires = datetime.now(timezone.utc) + expires_delta
+
+  encode.update({"exp": expired})
+
+  return jwt.encode(encode, SECRET_KEY, algorithm = ALGORITHM)
+```
+
+And now use it in your `/login` route handler:
+
+```py
+@router.post("/login")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                db: db_dependency):
+
+    user = authenticate_user(form_data.username, form_data.password, db)
+
+    if not user:
+      return "Failed authentication"
+
+    token = create_access_token(user.username, user.id, timedelta(minutes = 20))
+
+    return token
+```
+
+But it is a good practice to, instead of just returning the token, define a `Token` class in your `auth.py` file, and use it in your endpoint handler decorator as `response_model` which kind of means the handler's _return type_:
+
+```py
+# /routers/auth.py
+
+class Token(BaseModel):
+  access_token: str
+  token_type: str
+
+
+@router.post("/login", response_model = Token)
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                db: db_dependency):
+
+    user = authenticate_user(form_data.username, form_data.password, db)
+
+    if not user:
+      raise HTTPException(
+      status_code = status.HTTP_401_UNAUTHORIZED,
+      detail = "Could not validate user."
+    )
+
+    token = create_access_token(user.username, user.id, timedelta(minutes = 20))
+
+    return {
+      "access_token": token,
+      "token_type": "bearer"
+    }
+```
+
+## Authorize a user
+
+When you give a user a JWT, you later need to be able to decode and verify it. Each API endpoint that needs to be protected against un-authorized users, will need to receive the JWT, decode and verify it.
+
+For this purpose, we are goint to import `OAuth2PasswordBearer` from `fastapi.security`:
+
+```py
+from fastapi.security import OAuth2PasswordBearer
+```
+
+We would then need to implement a dependency on which protected API endpoints will rely on. We do it in the same `auth.py` file:
+
+```py
+# /routes/auth.py
+from jose import JWTError
+
+oauth2_bearer = OAuth2PasswordBearer(tokenURL = "auth/login" )
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+  try:
+    payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
+
+    username: str = payload.get("sub")
+    user_id: int = payload.get("id")
+
+    if username is None or user_id is None:
+      raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED,
+      detail = "Could not validate user." )
+
+    return {"username": username, "id": user_id}
+
+  except JWTError:
+    raise HTTPException(
+      status_code = status.HTTP_401_UNAUTHORIZED,
+      detail = "Could not validate user."
+    )
+```
+
+**NOTE: Improve Swagger docs**
+
+To make your Swagger docs more organized and separate endpoints related to different resources, you can add `prefix` to the router initiation:
+
+```py
+router = APIRouter(
+  prefix = "/auth",
+  tags = ['auth']
+)
+```
+
+Now our `/login` endpoint will be accessible at `/auth/login`.
+
+> Notice that we have already mentioned the login path in:
+
+```py
+oauth2_bearer = OAuth2PasswordBearer(tokenURL = "auth/login" )
+```
+
+So from now on, on every protected endpoint, we are first going to call this `get_current_user()` function to verify the token that is coming with the request.
 
 # FastAPI real-world project setup
 
