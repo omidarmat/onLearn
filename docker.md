@@ -112,6 +112,7 @@
       - [Aliyun](#aliyun)
       - [DaoCloud](#daocloud)
     - [Another Option: Use a Different Base Image](#another-option-use-a-different-base-image)
+  - [Entryfile problem](#entryfile-problem)
 
 # What is Docker?
 
@@ -2956,3 +2957,27 @@ FROM node:20-alpine
 ```
 
 Then rebuild.
+
+## Entryfile problem
+
+Sometimes when you run your development docker setup, you get this error about your entrypoint file:
+
+```
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "docker-entrypoint.dev.sh": executable file not found in $PATH
+```
+
+That happens because `docker-entrypoint.dev.sh` is not in the container's `$PATH`.
+
+If you are already copying everything from your local machine into your docker image using `COPY . .`, than you probably have this:
+
+```
+ENTRYPOINT ["docker-entrypoint.dev.sh"]
+```
+
+You need to change this to:
+
+```
+ENTRYPOINT ["./docker-entrypoint.dev.sh"]
+```
+
+assuming that you `WORKDIR` is set to `/app`
