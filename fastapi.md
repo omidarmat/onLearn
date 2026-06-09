@@ -931,10 +931,11 @@ Go on and create another function to create the access token in your `auth.py` f
 # /routers/auth.py
 from datetime import timedelta, datetime, timezone
 
-def create_access_token(username: str, user_id: int, expires_delta: timedelta):
+def create_access_token(username: str, user_id: int, role: str, expires_delta: timedelta):
   encode = {
     "sub": username,
-    "id": user_id
+    "id": user_id,
+    "role": role
   }
 
   expires = datetime.now(timezone.utc) + expires_delta
@@ -956,7 +957,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     if not user:
       return "Failed authentication"
 
-    token = create_access_token(user.username, user.id, timedelta(minutes = 20))
+    token = create_access_token(user.username, user.id, user.role timedelta(minutes = 20))
 
     return token
 ```
@@ -983,7 +984,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
       detail = "Could not validate user."
     )
 
-    token = create_access_token(user.username, user.id, timedelta(minutes = 20))
+    token = create_access_token(user.username, user.id, user.role, timedelta(minutes = 20))
 
     return {
       "access_token": token,
@@ -1015,12 +1016,13 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
 
     username: str = payload.get("sub")
     user_id: int = payload.get("id")
+    user_role: str = payload.get("role")
 
     if username is None or user_id is None:
       raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED,
       detail = "Could not validate user." )
 
-    return {"username": username, "id": user_id}
+    return {"username": username, "id": user_id, "user_role": user_role}
 
   except JWTError:
     raise HTTPException(
@@ -1050,9 +1052,223 @@ oauth2_bearer = OAuth2PasswordBearer(tokenURL = "auth/login" )
 
 So from now on, on every protected endpoint, we are first going to call this `get_current_user()` function to verify the token that is coming with the request.
 
+## Authenticating requests
+
+Now that you're able to authenticate a JWT coming with a request, you can use the `get_current_user()` function that you defined previously in your `auth.py` file, and get username and user ID.
+
+### POST a new todo
+
+For instance, in your `todos.py` file, to create a todo:
+
+```py
+# routers/todos.py
+
+from .auth import get_current_user
+
+# previous code
+db_dependency = Annotated[Session, Depends(get_db)]
+
+# new code
+user_dependency = Annotated[dict, Depends(get_current_user)]
+
+@router.post("/todos", status_code = status.HTTP_201_CREATED)
+async def create_todo(user: user_dependency,
+                      db: db_dependency,
+                      todo_request: TodoRequest):
+  if user is None:
+    raise HTTPException(status_code = 401, detail = 'Authentication failed')
+
+  todo_model = Todos(**todo_request,dict(), owner_id = user.get("id"))
+
+  db.add(todo_model)
+  db.commit()
+```
+
+Notice that introducing the `user_dependency` to the route handler will make Swagger provide an authentication modal for this specific endpoint in its docs. This is how your request will be authenticated via Swagger.
+
+### GET all todos
+
+You can now filter all todos based on the authenticated user:
+
+```py
+# /routeres/todos.py
+@router.get("/", status_code = status.HTTP_200_OK):
+async def get_all_todos(user: user_dependency,
+                        db: db_dependency):
+    if user is None:
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+    return db.query(Todos).filter(Todos.owner_id == user.get("id")).all()
+```
+
+### GET todo by ID
+
+You can now get a specific todo based on the authenticated user:
+
+```py
+# /routeres/todos.py
+@router.get("/todos/{todo_id}", status_code = status.HTTP_200_OK)
+async def get_todo_by_id( user: user_dependency,
+                          db: db_dependency,
+                          todo_id: int = Path(gt = 0) ):
+    if user is None:
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+    todo_model = db.query(Todos)
+                   .filter(Todos.id == todo_id)
+                   .filter(Todos.owner_id == user.get("id"))
+                   .first()
+
+    if todo_model is not None:
+      return todo_model
+
+    raise HTTPException(status_code = 404, detail = "Todo not found")
+```
+
+### PUT todo
+
+```py
+@router.put("/todos/{todo_id}", status_code = status.HTTP_204_NO_CONTENT)
+async def update_todo( user: user_dependency,
+                       db: db_dependency,
+                       todo_request: TodoRequest,
+                       todo_id: int = Path(gt = 0) ):
+    if user is None:
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+    todo_model = db.query(Todos)
+                   .filter(Todos.id == todo_id)
+                   .filter(Todos.owner_id == user.get("id"))
+                   .first()
+
+    if todo_model is None:
+      raise HTTPException(status_code = 404, detail = "Todo not found")
+
+    todo_model.title = todo_request.title
+    todo_model.description = todo_request.description
+    todo_model.priority = todo_request.priority
+    todo_model.complete = todo_request.complete
+
+    db.add(todo_model)
+    db.commit()
+```
+
+### DELETE todo
+
+```py
+@app.delete("/todo/{todo_id}", status_code = status.HTTP_204_NO_CONTENT)
+async def delete_todo(user: user_dependency,
+                      db: db_dependency,
+                      todo_id: int = Path(gt = 0)):
+  if user is None:
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+  todo_model = db.query(Todos)
+                 .filter(Todos.id == todo_id)
+                 .filter(Todos.owner_id == user.get("id"))
+                 .first()
+
+  if todo_model is None:
+    raise HTTPException(status_code = 404, detail = "Todo not found.")
+
+  db.query(Todos)
+    .filter(Todos.id == todo_id)
+    .filter(Todos.owner_id == user.get("id"))
+    .delete()
+
+  db.commit()
+```
+
+### Admin router
+
+Normally, in an API, you would need an admin area. An admin area is actually a set of routes specifically designed for admin access. So go on and create a new router called `admin.py`:
+
+```py
+# /routers/admin.py
+
+# copy these from other router files
+router = APIRouter(
+  prefix: "/admin",,
+  tags = ["admin"]
+)
+
+def get_db():
+  db = SessionLocal()
+  try:
+    yield db
+  finally:
+    db.close()
+
+db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
+
+# new code
+@router.get("/todos", status_code = status.HTTP_200_OK)
+async def get_all_todos(user: user_dependency,
+                        db: db_dependency):
+    if user is None or user.get("user_role") != "admin":
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+    return db.query(Todos).all()
+
+@router.delete("/todos/{todo_id}", status_code = status.HTTP_204_NO_CONTENT)
+async def delete_todo(user: user_dependency,
+                      db: db_dependency,
+                      todo_id: int = Path(gt = 0)):
+
+    if user is None or user.get("user_role") != "admin":
+      raise HTTPException(status_code = 401, detail = "Authentication failed")
+
+    todo_mode = db.query(Todos)
+                  .filter(Todos.id == todo_id)
+                  .first()
+
+    if todo_model is None:
+      raise HTTPException(status_code = 404, detail = "Todo not found")
+
+    db.query(Todos).filter(Todos.id == todo_id).delete()
+    db.commit()
+```
+
+Then go back to your `main.py` to include the new router:
+
+```py
+# main.py
+from routers import auth, todos, admin
+
+# code from before...
+
+# new code
+app.include_router(admin.router)
+```
+
+# Production database
+
+## FastAPI-Postgresql connection
+
 # FastAPI real-world project setup
 
-Create a directory for your project. Then create and activate a virtual environment for your project. Select The VC code's Python interpretter if necessary.
+Create a directory for your project. Then create and activate a virtual environment for your project. Select The VC code's Python interpretter if necessary. To be able to setup Postgresql database connection and interact with it you are goin to need `psycopg2-binary` package:
+
+```
+pip install psycopg2-binary
+```
+
+Now back to your `database.py` file:
+
+```py
+# database.py
+
+SQLALCHEMY_DATABASE_URL = "postgresql://[postgres]:[hotb]@[localhost]/[todos-db-py]"
+# remove "[]"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# Notice the "connect_args" property is removed since it is not needed for postgresql
+
+SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine)
+
+Base = declarative_base()
+```
 
 ## Create `main.py`
 
