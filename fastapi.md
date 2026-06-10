@@ -1246,8 +1246,6 @@ app.include_router(admin.router)
 
 ## FastAPI-Postgresql connection
 
-# FastAPI real-world project setup
-
 Create a directory for your project. Then create and activate a virtual environment for your project. Select The VC code's Python interpretter if necessary. To be able to setup Postgresql database connection and interact with it you are goin to need `psycopg2-binary` package:
 
 ```
@@ -1269,6 +1267,109 @@ SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine
 
 Base = declarative_base()
 ```
+
+## Alembic data migration
+
+Alembic is used with SQLAlchemy as a database migration tool. Alembic provides the creation and invocation of change management scripts. This allows you to create migration environments and change data the way you like.
+
+To install Alembic you can do:
+
+```
+pip install alembic
+```
+
+Once installed, you now have access to some commands:
+
+```bash
+alembic init [folder-name]
+# initializes a new, generic environment
+
+alembic revision -m [message]
+# creates a new revision of the environment
+# this is where you can write your database scripts to change and migrate your database
+# this command will create a revision with a specific ID
+
+alembic upgrade [revision-id]
+# runs migration and upgrades your database
+
+alembic downgrade -1
+# downgrade database to previous state before the applied migration
+```
+
+After initializing Alembic, you will notice two items appear in your project's directory:
+
+1. `alembic.ini`: Alembic looks for this file when it is invoked. Contains configuration information for Alembic that we can change to match them with our project.
+2. `alembic/` directory: Contains all the environmental properties for alembic. Holds all the revisions of your application.
+
+### Using Alembic
+
+After installing Alembic and initiating it, go on into the `alembic.ini` file in your project and find the line where `sqlalchemy.url` configuration is listed, and update it as:
+
+```
+sqlalchemy.url = sqlit:///./todos.db
+```
+
+Just take the same URL you used in your `database.py` file.
+
+Next, go into your `alembic/env.py` file and import your models:
+
+```py
+import models
+```
+
+Then in the same file, find this code:
+
+```py
+if config.config_file_name is not None:
+  fileConfig(config.config_file_name)
+```
+
+Go on and remove the condition check:
+
+```py
+fileConfig(config.config_file_name)
+```
+
+Next, find the comment saying "add your model's MetaData object here".
+
+```py
+# since you imported "Base" at the top of this file, you can:
+target_metadata = models.Base.metadata
+```
+
+Go on and create a migration script in the terminal:
+
+```
+alembic revision -m "create phone_number column for user table"
+```
+
+This will create a file in your `/alembic/versions/` directory. The filename starts with an ID and then followed by the revision message your provided in the command above. Within this file, you are going to see the file ID and some imports that are needed for writing migration scripts. There are also two python functions called `upgrade` and `downgrade`. Implement this code:
+
+```py
+def upgrade() -> None:
+  op.add_column("users", sa.Column("phone_number", sa.String(), nullable = True))
+
+def downgrade() -> None:
+  pass
+```
+
+Go on and apply the migration by, first stopping your server, and then applying the migration:
+
+```
+alembic upgrade [migration-id]
+```
+
+Then run your server again.
+
+If you have not yet updated your User model, you can now go into your `models.py` file and update the model definition for users:
+
+```py
+class User(BaseModel):
+  # previous properties
+  phone_number = Column(String)
+```
+
+# FastAPI real-world project setup
 
 ## Create `main.py`
 
