@@ -563,6 +563,317 @@ Here are some general good-to-know tips:
 
 `scrollTrigger` can be used as either a shorthand for the `trigger` (described below) or as a configuration object with any of the following properties:
 
+- `animation`: Tween | Timeline - A GSAP Tween or Timeline instance that should be controlled by the ScrollTrigger. Only one animation is controlled per ScrollTrigger, but you can wrap all your animations in a single Timeline (recommended) or create multiple ScrollTriggers if you prefer.
+- `anticipatePin`: Number - If you pin large sections/panels you may notice what looks like a slight delay in pinning when you scroll quickly. That's caused by the fact that most modern browsers handle scroll repaints on a separate thread, so at the moment of pinning the browser may have already painted the pre-pinned content, making it visible for perhaps 1/60th of a second. The only way to counteract that is to have ScrollTrigger monitor the scroll velocity and anticipate the pin, applying it slightly early to avoid that flash of unpinned content. A value of anticipatePin: 1 is typically fine, but you can reduce or increase that number to control how early it does the pinning. In many cases, however, you don't need any anticipatePin (the default is 0).
+- `containerAnimation`: Tween | Timeline Easily trigger animations inside 'horizontally' scrolling sections that are controlled by vertical scrolling
+- `end`: String | Number | Function - Determines the ending position of the ScrollTrigger.
+- `endTrigger`: String | Element - The element (or selector text for the element) whose position in the normal document flow is used for calculating where the ScrollTrigger ends. You don't need to define an endTrigger unless it's DIFFERENT than the trigger element because that's the default.
+
+For more properties visit: https://gsap.com/docs/v3/Plugins/ScrollTrigger#config-object
+
+### `.animation`
+
+```
+.animation : Tween | Timeline | undefined
+[read-only] The Tween or Timeline associated with the ScrollTrigger instance (if any).
+Returns : Tween | Timeline | undefined
+```
+
+[read-only] The Tween or Timeline associated with the ScrollTrigger instance (if any). ScrollTriggers don't have to have any animation associated with them, of course, in which case animation will be undefined.
+
+Here is an example:
+
+```js
+let tween = gsap.to(".class", {
+  x: 100,
+  id: "example",
+  scrollTrigger: ".trigger",
+});
+
+console.log(ScrollTrigger.getById("example").animation); // tween
+```
+
+### `.direction`
+
+```
+.direction : Number
+[read-only] Reflects the moment-by-moment direction of scrolling where 1 is forward and -1 is backward.
+```
+
+[read-only] Reflects the moment-by-moment direction of scrolling where 1 is forward and -1 is backward.
+
+```js
+ScrollTrigger.create({
+  trigger: ".trigger",
+  start: "top center",
+  end: "+=500",
+  onUpdate: (self) => console.log("direction:", self.direction),
+});
+```
+
+### `.end`
+
+```
+.end : Number
+[read-only] The ScrollTrigger's ending scroll position (numeric, in pixels).
+```
+
+[read-only] The ScrollTrigger's ending scroll position (numeric, in pixels). This value gets calculated when the ScrollTrigger is refreshed, so anytime the window/scroller gets resized it'll be recalculated.
+
+For example, if the trigger element is 100px below the bottom of the viewport (out of view), and the ScrollTrigger's vars had `end: "top bottom"`, then the ScrollTrigger's calculated end property would be 100 (meaning it'd have to scroll 100px to hit the ending point).
+
+The ScrollTrigger's start and end properties will always be numeric and reflect the scroll position in pixels.
+
+### `.isActive`
+
+```
+.isActive : Boolean
+[read-only] Only true if the scroll position is between the start and end positions of the ScrollTrigger instance.
+```
+
+[read-only] Only true if the scroll position is between the start and end positions of the ScrollTrigger instance.
+
+Here is an example:
+
+```js
+ScrollTrigger.create({
+  trigger: ".trigger",
+  start: "top center",
+  end: "+=500",
+  onToggle: (self) => console.log("toggled. active?", self.isActive),
+});
+```
+
+### `ScrollTrigger.isTouch`
+
+```
+ScrollTrigger.isTouch : Number
+A way to discern the touch capabilities of the current device - 0 is mouse/pointer only (no touch), 1 is touch-only, 2 accommodates both.
+```
+
+A way to discern the touch capabilities of the device:
+
+- `0` - no touch (pointer/mouse only)
+- `1` - touch-only device (like a phone)
+- `2` - device can accept touch input and mouse/pointer (like Windows tablets)
+
+```js
+if (ScrollTrigger.isTouch) {
+  // any touch-capable device...
+}
+
+// or get more specific:
+if (ScrollTrigger.isTouch === 1) {
+  // touch-only device
+}
+```
+
+### `.pin`
+
+```
+.pin : Element | undefined
+[read-only] The pin element (if one was defined). If selector text was used, like ".pin", the pin will be the element itself (not selector text)
+```
+
+[read-only] The pin element (if one was defined). If selector text was used, like ".pin", the pin will be the element itself (not selector text)
+
+Here is an example:
+
+```js
+let st = ScrollTrigger.create({
+  trigger: ".trigger",
+  pin: ".pin",
+  start: "top center",
+  end: "+=500",
+});
+
+console.log(st.pin); // pin element (not selector text)
+```
+
+### `.progress`
+
+```
+progress : Number
+[read-only] The overall progress of the ScrollTrigger instance where 0 is at the start, 0.5 is in the middle, and 1 is at the end.
+```
+
+[read-only] The overall progress of the ScrollTrigger instance where 0 is at the start, 0.5 is in the middle, and 1 is at the end.
+
+```js
+ScrollTrigger.create({
+  trigger: ".trigger",
+  start: "top center",
+  end: "+=500",
+  onUpdate: (self) => console.log("progress:", self.progress),
+});
+```
+
+### `scroller`
+
+```
+scroller : Element | window
+[read-only] The scroller element (or window) associated with the ScrollTrigger. It's the thing whose scrollbar is linked to the ScrollTrigger. By default, it's the window (viewport).
+Returns : Element | window
+```
+
+The element (or window) associated with the ScrollTrigger instance.
+
+[read-only] The scroller element (or window) associated with the ScrollTrigger. It's the thing whose scrollbar is linked to the ScrollTrigger. By default, it's the window (viewport).
+
+### `.start`
+
+```
+start : Number
+[read-only] The ScrollTrigger's starting scroll position (numeric, in pixels).
+```
+
+[read-only] The ScrollTrigger's starting scroll position (numeric, in pixels). This value gets calculated when the ScrollTrigger is refreshed, so anytime the window/scroller gets resized it'll be recalculated.
+
+For example, if the trigger element is 100px below the bottom of the viewport (out of view), and the ScrollTrigger's vars had `start: "top bottom"`, then the ScrollTrigger's calculated `start` property would be 100 (meaning it'd have to scroll 100px to hit the starting point).
+
+The ScrollTrigger's `start` and `end` properties will always be numeric and reflect the scroll position in pixels.
+
+### `.trigger`
+
+```
+.trigger : Element | undefined
+[read-only] The trigger element (if one was defined). If selector text was used, like ".trigger", the trigger will be the element itself (not selector text)
+Returns : Element | undefined
+```
+
+The trigger element (if one was defined)
+
+[read-only] The trigger element (if one was defined). If selector text was used, like ".trigger", the `trigger` will be the element itself (not selector text). Also note that it is possible to define a ScrollTrigger without a trigger because `start` and `end` can be `numbers` which are specific scroll values that aren't based on where a trigger element is in the document flow.
+
+```js
+let st = ScrollTrigger.create({
+  trigger: ".trigger",
+  start: "top center",
+  end: "+=500",
+});
+
+console.log(st.trigger); // trigger element (not selector text)
+```
+
+### `.vars`
+
+```
+.vars : Object
+[read-only] The vars configuration object used to create the ScrollTrigger instance
+```
+
+[read-only] The vars configuration object used to create the ScrollTrigger instance.
+
+```js
+let st = ScrollTrigger.create({
+  trigger: ".trigger",
+  start: "top center",
+  end: "+=500",
+});
+
+console.log(st.vars); // {trigger: ".trigger", start: "top center", end: "+=500"}
+```
+
+You can store arbitrary data in the vars object if you want; ScrollTrigger will just ignore the properties it doesn't recognize. So, for example, you could add a "group" property so that you could group your ScrollTriggers and then later to kill() all the ScrollTrigger instances from a particular group, you could do:
+
+```js
+// helper function (reusable):
+let getGroup = (group) =>
+  ScrollTrigger.getAll().filter((t) => t.vars.group === group);
+
+// then, to kill() anything with a group of "my-group":
+getGroup("my-group").forEach((t) => t.kill());
+```
+
+### `.disable()`
+
+```
+.disable( revert:boolean, allowAnimation:Boolean )
+Disables the ScrollTrigger instance, immediately unpinning and restoring any pin-related changes made to the DOM by ScrollTrigger.
+```
+
+Parameters:
+
+- `revert: boolean`: Determines whether or not the elements should be reverted to their pre-ScrollTriggered state after the ScrollTrigger is disabled. true by default.
+- `allowAnimation: boolean`: By default, any associated scrub animation will be paused but if allowAnimation is true, it won't `pause()` the animation.
+
+Disables the ScrollTrigger instance, immediately unpinning and restoring any pin-related changes made to the DOM by ScrollTrigger. It also reverts the animation (if one is defined), although you can skip that using the first parameter.
+
+### `.enable()`
+
+```
+.enable( reset:Boolean )
+Enables the ScrollTrigger instance
+```
+
+Parameters:
+
+- `reset: boolean`: If `true`, the progress will be reset back to 0.
+
+Enables the ScrollTrigger instance
+
+### `getTween()`
+
+```
+.getTween( snap:Boolean ) : Tween
+Returns the scrub tween (default) or the snapping tween (getTween(true))
+Returns : Tween - the scrub (or snap) Tween instance
+```
+
+Parameters:
+
+- `snap: boolean`: If `true`, the current snap tween will be returned (if snapping is in-progress) instead of the scrub tween.
+
+Returns the `**scrub**` tween (default) which is what gradually makes the animation catch up with the scrollbar position. Or if you call `getTween(true)`, the `**snap**` Tween will be returned instead (if there's a snap in-progress). This allows you to, for example, force the `scrub` or `snap` to its end or kill it, like:
+
+```js
+let st = ScrollTrigger.create({
+  animation: myTween,
+  scrub: 1,
+  trigger: ".panel-1",
+});
+
+// then later...
+st.getTween().progress(1); // force the scrub to its end to make it catch up with the current scroll position immediately
+```
+
+Or to interrupt a snap...
+
+```js
+let anim = gsap.to(panels, {
+  x: () => (panels.length - 1) * window.innerWidth,
+  scrollTrigger: {
+    trigger: ".container",
+    snap: 1 / (panels.length - 1),
+    pin: true,
+    end: "+=3000",
+  },
+});
+
+// then later...
+let snap = anim.scrollTrigger.getTween(true);
+if (snap) {
+  snap.progress(1).kill(); // force the snap to its end and kill it
+}
+```
+
+### `.kill`
+
+```
+.kill( revert:boolean, allowAnimation:Boolean )
+
+Kills the ScrollTrigger instance, immediately unpinning and restoring any pin-related changes made to the DOM by ScrollTrigger and removing all scroll-related listeners, etc. so that the instance is eligible for garbage collection. If you only want to temporarily disable the ScrollTrigger, use the disable() method instead.
+```
+
+Parameters:
+
+- `revert: boolean`: Determines whether or not the elements should be reverted to their pre-ScrollTriggered state after the ScrollTrigger is killed. `true` by default.
+- `allowAnimation: Boolean`: By default, any associated animation will be killed but if `allowAnimation` is `true`, it won't `kill()` the animation.
+
+Kills the ScrollTrigger instance, immediately unpinning and restoring any pin-related changes made to the DOM by ScrollTrigger and removing all scroll-related listeners, etc. so that the instance is eligible for garbage collection. If you only want to temporarily disable the ScrollTrigger, use the disable() method instead.
+
+To prevent the animation from being reverted when it is killed, simply pass false as the parameter. For example ST.kill(false).
+
 ## Tips
 
 ### Nesting ScrollTriggers inside multiple timeline tweens
