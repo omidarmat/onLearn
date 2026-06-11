@@ -10,6 +10,7 @@
   - [Get system time](#get-system-time)
   - [Working with bluetooth](#working-with-bluetooth)
   - [Changing hostname](#changing-hostname)
+  - [Observing resources](#observing-resources)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -318,6 +319,17 @@ Then to change the `Static hostname` you can do:
 ```
 sudo hostnamectl set-hostname [new-hostname]
 ```
+
+## Observing resources
+
+To observe that usage of your hardware resources you can use many tools:
+
+1. `top`: Ubuntu's default tool for monitoring hardware resource usage (CPU, RAM, disk, etc.)
+2. `htop`: Can be installed using `sudo apt install htop`. Provides a more user-friendly interface.
+3. `lscpu`: Ubuntu's default tool for detailed monitoring of CPU.
+4. `nload`: Can be installed using `sudo apt install nload`. Used to monitor network input/output state.
+5. `bmon`: Can be installed using `sudo apt install bmon`. Used to monitor network input/output with more interfaces.
+6. `btop`: Can be installed using `sudo apt install btop`. Used to monitor network input/output with more interfaces.
 
 # Filesystem commands
 
