@@ -10,6 +10,7 @@
   - [Get system time](#get-system-time)
   - [Working with bluetooth](#working-with-bluetooth)
   - [Changing hostname](#changing-hostname)
+  - [Copying a directory to remote server](#copying-a-directory-to-remote-server)
   - [Observing resources](#observing-resources)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
@@ -32,6 +33,7 @@
   - [Deleting files or directories](#deleting-files-or-directories)
   - [Creating command pipelines](#creating-command-pipelines)
   - [Opening file explorer](#opening-file-explorer)
+  - [Installing a series of `.deb` packages in a directory](#installing-a-series-of-deb-packages-in-a-directory)
 - [3rd-party packages](#3rd-party-packages)
   - [WGET](#wget)
   - [Wireguard](#wireguard)
@@ -318,6 +320,12 @@ Then to change the `Static hostname` you can do:
 
 ```
 sudo hostnamectl set-hostname [new-hostname]
+```
+
+## Copying a directory to remote server
+
+```
+scp -r path/to/directory [user]@[hostname]:[path/to/destination]
 ```
 
 ## Observing resources
@@ -664,6 +672,16 @@ nautilus .
 ```
 
 This will engage terminal in a running process and you won't be able to work with it, unless you exit the process using `^c`.
+
+## Installing a series of `.deb` packages in a directory
+
+First navigate your terminal into the directory where your `.deb` files exist. Then use:
+
+```
+sudo apt install ./*.deb
+```
+
+This way, Ubuntu will try to figure out dependencies between the packages and install them all.
 
 # 3rd-party packages
 
