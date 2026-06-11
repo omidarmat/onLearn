@@ -9,6 +9,7 @@
   - [Get System architecture](#get-system-architecture)
   - [Get system time](#get-system-time)
   - [Working with bluetooth](#working-with-bluetooth)
+  - [Changing hostname](#changing-hostname)
 - [Filesystem commands](#filesystem-commands)
   - [Understanding relative and absolute paths](#understanding-relative-and-absolute-paths)
   - [Listing all directories and files](#listing-all-directories-and-files)
@@ -283,6 +284,39 @@ If your headset doesn't connect, make sure it's in pairing mode and that `blueto
 
 ```bash
 sudo systemctl status bluetooth
+```
+
+## Changing hostname
+
+To see the current hostname of your Ubuntu machine, use:
+
+```
+hostnamectl
+```
+
+You will see this output:
+
+```
+Static hostname: [hostname]
+       Icon name: computer-vm
+         Chassis: vm 🖴
+      Machine ID: 6c6c6ec40096407b8b0dd7a6a55994c0
+         Boot ID: a7277545a9a845bbbe3bd4358799a548
+  Virtualization: kvm
+Operating System: Ubuntu 24.04.1 LTS
+          Kernel: Linux 6.8.0-117-generic
+    Architecture: x86-64
+ Hardware Vendor: OpenStack Foundation
+  Hardware Model: OpenStack Nova
+Firmware Version: 1.16.0-4.module_el8+603+e0ca2c01
+   Firmware Date: Tue 2014-04-01
+    Firmware Age: 12y 2month 1w 3d
+```
+
+Then to change the `Static hostname` you can do:
+
+```
+sudo hostnamectl set-hostname [new-hostname]
 ```
 
 # Filesystem commands
