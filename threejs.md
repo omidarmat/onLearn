@@ -107,6 +107,9 @@
     - [`.iridescence`](#iridescence)
     - [`.transmission`](#transmission)
   - [Other types of materials](#other-types-of-materials)
+- [3D Text](#3d-text)
+  - [Adding matcap material to text](#adding-matcap-material-to-text)
+  - [Adding more objects to the scene](#adding-more-objects-to-the-scene)
 
 # Getting started
 
@@ -2131,3 +2134,293 @@ Other types of materials will be covered later as they need more knowledge:
 - `ShaderMaterial` and `RawShaderMaterial`: Used to create your own materials using a special language named GSSL.
 
 > Materials can have a drastic impact on performance. As a nice guide, remember that if the camera is not going to rotate around your object, use a matcap.
+
+# 3D Text
+
+We are now going to use the `TextBufferGeometry` class but we need a particular font format called **typeface**.
+
+You can convert a font fila that you have with tools like `https://gero3.github.io/facetype.js`. You can also use fonts provided by ThreeJS. Go to `/node_modules/three/examples/fonts` folder. You can take fonts from there and put them in the `/static/` folder or you can import them directly into your project.
+
+We are going to manually copy/paste the typeface json file into the project's `static` folder and then load it using the ThreeJS `FontLoader` function.
+
+So first import it:
+
+```js
+import { FontLoader } from "three/examples/jsm/Addons.js";
+```
+
+And then instantiate and use it:
+
+```js
+const fontLoader = new FontLoader();
+
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  console.log("Font loaded: ", font);
+});
+```
+
+Now its time to use the `TextBufferGeometry` class. First import it:
+
+```js
+import { TextGeometry } from "three/examples/jsm/Addons.js";
+```
+
+And then use it in the callback of the `fontLoader.load()` function:
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 12,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 5,
+  });
+
+  const textMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+
+  scene.add(text);
+});
+```
+
+You have the text in your scene and now you need to think about performance. Creating a text geometry is long and hard for the computer. Avoid doing it too many times and keep the geometry as low poly as poissble by reducing the `curveSegments` and `bevelSegments`. Also remember to remove the wireframe once you're happy with the level of details. In letters that have lots of curves, you get lots of triangles and that is bad for performance.
+
+After optimizing the text render, you might probably need to center your view on the center of the text. To do this, you need to create an axis helper to visualize the center of the scene, so you can adjust it more easily afterwards:
+
+```js
+const axesHelper = new THREE.AxesHelper();
+scene.add(axesHelper);
+```
+
+To center the text, you have multiple solutions:
+
+1. **Using the bounding:** It is an information associated with the geometry that tells about the space that is taken by that geometry. It can be a box or a sphere tightly surrounding an object (each letter). Each letter has this bounding information. This information helps ThreeJS calculate if the object is on the screen (**frustum culling** - to render or not to render the object). We can use the bounding measures to re-center the geometry. To use this method, you first need to know that ThreeJS uses, by default, the sphere bounding, which you have to change by using `computeBoundingBox()`.
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 5,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+
+  textGeometry.computeBoundingBox();
+  // This will now give you access to `textGeometry.boundingBox` which is of type `Box3`, with `min` and `max` properties. The `min` property is not at `0` because of the `bevelThikness` and `bevelSize`.
+
+  const textMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+  scene.add(text);
+});
+```
+
+Right now, if you inspect the `textGeometry.boundingBox` in the console, you can see that the `min.x` property is at about `-0.02`. This is because of the bevel settings applied to the text geometry as you can see in the scene if you zoom enough on the axis helper origin.
+
+Now back to re-centering the geometry, we are not going to move the mesh, but we are going to move the whole geometry using the `translate` method. Notice that you have access to this method because the inheritance chain is: `BufferGeometry -> ExtrudeBufferGeometry -> TextBufferGeometry`:
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 5,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+
+  textGeometry.computeBoundingBox();
+  textGeometry.translate(
+    -textGeometry.boundingBox.max.x * 0.5,
+    -textGeometry.boundingBox.max.y * 0.5,
+    -textGeometry.boundingBox.max.z * 0.5,
+  );
+
+  const textMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+
+  scene.add(text);
+});
+```
+
+Now the text seems to be centered, although it is actually not because of the `bevelThickness` and `bevelSize` that is set on the text geometry. You can account for the corresponding bevel values by doing:
+
+```js
+textGeometry.translate(
+  -(textGeometry.boundingBox.max.x - 0.02) * 0.5,
+  -(textGeometry.boundingBox.max.y - 0.02) * 0.5,
+  -(textGeometry.boundingBox.max.z - 0.03) * 0.5,
+);
+```
+
+...since you have set `bevelThickness: 0.03` and `bevelSize: 0.02`. This was a long way to re-center the text in your scene and there is a much faster and efficient way of doing this.
+
+2. Using `textGeometry.center()`: The `center` method will simply center the geometry based on the bounding box:
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 5,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+
+  textGeometry.center();
+
+  const textMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+
+  scene.add(text);
+});
+```
+
+## Adding matcap material to text
+
+We are going to use `MeshMatcapMaterial`.
+
+> You can download matcaps from `https://github.com/nidorx/matcaps`
+
+Let's load a matcap texture with `TextureLoader`:
+
+```js
+const textureLoader = new THREE.TextureLoader();
+const matcapTexture = textureLoader.load("/textures/matcaps/1.png");
+```
+
+You can now replace your `MeshBasicMaterial` by the `MeshMatcapMaterial` and use your loaded `matcapTexture` with the `matcap` property:
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 5,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+
+  textGeometry.center();
+
+  const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture });
+
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+
+  scene.add(text);
+});
+```
+
+## Adding more objects to the scene
+
+We want to add some randomly scattered donuts around the text. Let's first see what is the wrong way of doing this:
+
+```js
+fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
+  const textGeometry = new TextGeometry("Omid Armat Portfolio", {
+    font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 5,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 4,
+  });
+
+  textGeometry.center();
+
+  const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture });
+
+  const text = new THREE.Mesh(textGeometry, textMaterial);
+
+  scene.add(text);
+
+  console.time("donuts");
+
+  for (let i = 0; i < 100; i++) {
+    const donutGeometery = new THREE.TorusGeometry(0.3, 0.2, 20, 45);
+    const donutMaterial = new THREE.MeshMatcapMaterial({
+      matcap: matcapTexture,
+    });
+    const donut = new THREE.Mesh(donutGeometery, donutMaterial);
+
+    donut.position.x = (Math.random() - 0.5) * 10;
+    donut.position.y = (Math.random() - 0.5) * 10;
+    donut.position.z = (Math.random() - 0.5) * 10;
+
+    donut.rotation.x = Math.random() * Math.PI;
+    donut.rotation.y = Math.random() * Math.PI;
+
+    const scale = Math.random();
+    donut.scale.set(scale, scale, scale);
+
+    scene.add(donut);
+  }
+
+  console.timeEnd("donuts");
+});
+```
+
+As you can see in your console, the `console.time` shows that generating the donuts takes about `52` milli seconds. But there is an optimization we can do: We can use the same material and the same geometry on multiple meshes. Currently, we are creating these two for each donut separately.
+
+```js
+console.time("donuts");
+
+const donutGeometery = new THREE.TorusGeometry(0.3, 0.2, 20, 45);
+const donutMaterial = new THREE.MeshMatcapMaterial({
+  matcap: matcapTexture,
+});
+
+for (let i = 0; i < 100; i++) {
+  const donut = new THREE.Mesh(donutGeometery, donutMaterial);
+
+  donut.position.x = (Math.random() - 0.5) * 10;
+  donut.position.y = (Math.random() - 0.5) * 10;
+  donut.position.z = (Math.random() - 0.5) * 10;
+
+  donut.rotation.x = Math.random() * Math.PI;
+  donut.rotation.y = Math.random() * Math.PI;
+
+  const scale = Math.random();
+  donut.scale.set(scale, scale, scale);
+
+  scene.add(donut);
+}
+
+console.timeEnd("donuts");
+```
+
+Look how much time and performance you have saved just by moving two lines of code out of the loop! There is one more thing you can optimize. As you can see we are using the same code for both text and donut materials:
+
+```js
+const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture });
+const donutMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture });
+```
+
+Use it once and you see we have now reduced the time difference from about 50 to about 2-3 milliseconds.
