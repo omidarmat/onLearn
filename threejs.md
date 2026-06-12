@@ -78,6 +78,35 @@
     - [Rotation](#rotation)
     - [Filtering and Mipmapping](#filtering-and-mipmapping)
   - [Texture format and optimization](#texture-format-and-optimization)
+- [Materials](#materials)
+  - [`MeshBasicMaterial`](#meshbasicmaterial)
+    - [`.map()`](#map)
+    - [`.color`](#color)
+    - [`.wireframe`](#wireframe)
+    - [`.opacity`](#opacity)
+    - [`.alphaMap`](#alphamap)
+    - [`.side`](#side)
+  - [`MeshNormalMaterial`](#meshnormalmaterial)
+    - [`.flatShading`](#flatshading)
+  - [`MeshMatcapMeterial`](#meshmatcapmeterial)
+  - [`MeshDepthMaterial`](#meshdepthmaterial)
+  - [`MeshLambertMaterial`](#meshlambertmaterial)
+  - [`MeshPhongMaterial`](#meshphongmaterial)
+  - [`MeshToonMaterial`](#meshtoonmaterial)
+  - [`MeshStandardMaterial`](#meshstandardmaterial)
+    - [Adding environment map](#adding-environment-map)
+    - [`.map`](#map-1)
+    - [`.aoMap`](#aomap)
+    - [`.displacementMap`](#displacementmap)
+    - [`.metalnessMap` and `.roughnessMap`](#metalnessmap-and-roughnessmap)
+    - [`.normalMap`](#normalmap)
+    - [`.alphaMap`](#alphamap-1)
+  - [`MeshPhysicalMaterial`](#meshphysicalmaterial)
+    - [`.clearcoat`](#clearcoat)
+    - [`.sheen`](#sheen)
+    - [`.iridescence`](#iridescence)
+    - [`.transmission`](#transmission)
+  - [Other types of materials](#other-types-of-materials)
 
 # Getting started
 
@@ -1571,3 +1600,532 @@ Checkout these links to find texture files:
 1. poliigon.com
 2. 3dtextures.me
 3. arroway-textures.ch
+
+# Materials
+
+Materials are used to put a color on each visible pixel of the geometries. Algorithms that decide on that color of each pixel are written in programs called **shaders**. ThreeJS has many built-in materials with pre-made shaders.
+
+> We will discover how to create our own shaders which is fairly difficult.
+
+For this learning project we are going to setup some geometries along with some texture files:
+
+```js
+const material = new THREE.MeshBasicMaterial();
+
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), material);
+
+sphere.position.x = -1.5;
+
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+
+const torus = new THREE.Mesh(
+  new THREE.TorusGeometry(0.3, 0.2, 16, 32),
+  material,
+);
+
+torus.position.x = 1.5;
+
+scene.add(sphere, plane, torus);
+```
+
+And we are going to load some texture files:
+
+```js
+const textureLoader = new THREE.TextureLoader();
+
+const doorColorTexture = textureLoader.load("./textures/door/color.jpg");
+const doorAlphaTexture = textureLoader.load("./textures/door/alpha.jpg");
+const doorAmbientOcclustionTexture = textureLoader.load(
+  "./textures/door/ambientOcclusion.jpg",
+);
+const doorHeightTexture = textureLoader.load("./textures/door/height.jpg");
+const doorNormalTexture = textureLoader.load("./textures/door/normal.jpg");
+const doorMetalnessTexture = textureLoader.load(
+  "./textures/door/metalness.jpg",
+);
+const doorRoughnessTexture = textureLoader.load(
+  "./textures/door/roughness.jpg",
+);
+
+const matcapTexture = textureLoader.load("./textures/matcaps/1.png");
+
+const gradientTexture = textureLoader.load("./textures/gradients/3.jpg");
+```
+
+Also, for the purpose of this learning project which is experimenting with the effects of light on materials and textures, we are going to add some additional animation to the `tick` function as:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  //   Update objects
+  sphere.rotation.y = 0.1 * elapsedTime;
+  plane.rotation.y = 0.1 * elapsedTime;
+  torus.rotation.y = 0.1 * elapsedTime;
+
+  sphere.rotation.x = -0.15 * elapsedTime;
+  plane.rotation.x = -0.15 * elapsedTime;
+  torus.rotation.x = -0.15 * elapsedTime;
+
+  // Update controls
+  controls.update();
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+Textures used as `map` and `matcap` are supposed to be encoded in `sRGB` space. This is done by setting their `colorSpace` to `THREE.SRGBColorSpace`.
+
+```js
+const doorColorTexture = textureLoader.load("./textures/door/color.jpg");
+doorColorTexture.colorSpace = THREE.SRGBColorSpace;
+
+const matcapTexture = textureLoader.load("./textures/matcaps/1.png");
+matcapTexture.colorSpace = THREE.SRGBColorSpace;
+```
+
+You can then test the textures on the material with the `map` property:
+
+```js
+const material = new THREE.MeshBasicMaterial({ map: doorColorTexture });
+```
+
+You can now see how the texture sits on the material.
+
+There are many different materials available in ThreeJS. Let's now inspect a bit into the `MeshBasicMaterial`.
+
+## `MeshBasicMaterial`
+
+There are many useful properties available on this class.
+
+### `.map()`
+
+You can do either:
+
+```js
+const material = new THREE.MeshBasicMaterial({ map: doorColorTexture });
+```
+
+or
+
+```js
+const material = new THREE.MeshBasicMaterial();
+material.map = doorColorTexture;
+```
+
+### `.color`
+
+Applies a uniform color on the surface of the geometry. When changing the `color` property directly, you must instantiate a `Color` class. You can set color like this:
+
+```js
+const material = new THREE.MeshBasicMaterial({ color: "green" });
+```
+
+But you cannot simply do:
+
+```js
+const material = new THREE.MeshBasicMaterial();
+material.color = "green";
+```
+
+This will not work. The first syntax will automatically set the `color` property to a `Color` object. The second syntax, however, is setting it to a simple string which is not acceptible in ThreeJS. This is the working syntax:
+
+```js
+const material = new THREE.MeshBasicMaterial();
+material.color = new THREE.Color("green");
+
+// These will work too
+material.color = new THREE.Color("#F00");
+material.color = new THREE.Color("0xff0000");
+```
+
+> If you use both `color` and `map` a texture to the material, the applied color will tint the texture.
+
+### `.wireframe`
+
+This property shows the triangles that compose the geometry with a thin line of `1px` width.
+
+```js
+material.wireframe = true;
+```
+
+### `.opacity`
+
+Before being able to tweak opacity, you need to set `transparent` property to `true`.
+
+```js
+material.transparent = true;
+material.opacity = 0.5;
+```
+
+### `.alphaMap`
+
+Similar to opacity, but you can actually set this property to a loaded texture. For instance:
+
+```js
+material.alphaMap = doorAlphaTexture;
+```
+
+What this does bascially is that wherever the texture is white the material will be visible (`opacity = 1`), and wherever it is black it will be unvisible (`opacity = 0`).
+
+### `.side`
+
+This property decides which side of the face is visible. It can be set to these values:
+
+- `FrontSide`: default value
+- `BackSide`
+- `DoubleSide`
+
+For example:
+
+```js
+material.side = THREE.DoubleSide;
+```
+
+> Avoid using `DoubleSide` since it requires more resources when rendering.
+
+> Some of the mentioned properties like `wireframe` and `opacity` can be used with most other types of ThreeJS materials.
+
+## `MeshNormalMaterial`
+
+This type of material displays a nice purpel, bluish color that looks like the normal texture we saw in the `Texture` lessons. "Normals" are information encoded in each vertex that contains the direction toward the outside of the face. The color displays the normal orientation relative to the camera. In other words, the normal directions toward x, y and z axes are relative to the camera. This is the actual reason that when you rotate around a `MeshNormalMaterial`, you see that the colors remain the same no matter how much you rotate.
+
+This type of material is used for things like calculating how to illuminate the face or how the environment should reflect or refract on the geometry's surface.
+
+This type of material is usually used to debug the normals.
+
+> Portfolio: `https://www.ilithya.rocks`
+
+### `.flatShading`
+
+Flat shading can be used to display flat faces on the material.
+
+```js
+material.flatShading = true;
+```
+
+## `MeshMatcapMeterial`
+
+DEFINITION
+
+This type of material usually requires a reference texture that looks like a sphere. The material will pick colors from the texture according to the normal orientation relative to the camera.
+
+> With this type of material, when you rotate aroud an object, it seems that a light source exists right behind the camera toward the object (there is no actual light source, but it seems so). Notice that this can reveal a conflict between the direction of this light and direction of shadows if you implement some shadows in your scene.
+
+```js
+const material = new THREE.MeshMatcapMaterial();
+material.matcap = matcapTexture;
+```
+
+> Portfolio: `https://bruno-simon.com`
+
+You can get a vast list of matcaps at `https://github.com/nidorx/matcaps`, or you can create your own matcaps using:
+
+1. 3D software by rendering a sphere in front of the camera in a square image.
+2. With a 2D software like photoshop
+3. With online tools like `kchapelier.com/matcap-studio`
+
+## `MeshDepthMaterial`
+
+This special type of material colors the geometry in white if it is close to the camera's `near` value and in black if it is close to the `far` value.
+
+```js
+const material = new THREE.MeshDepthMaterial();
+```
+
+We are not much going to use this type of metarial directly since ThreeJS already uses this internally to render scenes.
+
+However, It can also be used for post-processing and also for shadows. It is used to save the depth in a texture, which can be used for later complex computations like shadows.
+
+## `MeshLambertMaterial`
+
+This type of material requires light to be seen. So just by doing this:
+
+```js
+const material = new THREE.MeshLambertMaterial();
+```
+
+You won't be able to see any of your geomteries. You are going to need to place some lights. You can start by adding an ambient light:
+
+```js
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+scene.add(ambientLight);
+```
+
+But this does not resemble even close to the reality. Let's add a point light also:
+
+```js
+const pointLight = new THREE.PointLight(0xffffff, 30);
+scene.add(pointLight);
+```
+
+By default, the point light will be located at the center of the scene, which is porbably never what you want. So:
+
+```js
+const pointLight = new THREE.PointLight(0xffffff, 30);
+pointLight.position.x = 2;
+pointLight.position.y = 3;
+pointLight.position.z = 4;
+scene.add(pointLight);
+```
+
+`MeshLambertMaterial` supports the same properties as the `MeshBasicMaterial` but also some properties related to lights.
+
+`MeshLambertMaterial` is the most performant type of meterial that uses light. The parameters are not convenient, and you can see strange patterns in the geometry if you look closely at rounded geometries like the sphere.
+
+## `MeshPhongMaterial`
+
+With this type of material, which needs light similar to lambert, you can use properties like `shininess` and `specular`:
+
+```js
+const material = new THREE.MeshPhongMaterial();
+// shininess controls the light reflection intensity
+material.shininess = 100;
+
+// specular controls the light reflection color
+material.specular = new THREE.Color(0x1188ff);
+```
+
+Getting realistic results with this type of material is hard and often impossible.
+
+## `MeshToonMaterial`
+
+This type of material also needs light sources. By default, you only get a two-part coloration (one for the shadow and one for light). To add more gradient steps, you can use a loaded gradient texture on the `gradientMap` property.
+
+```js
+const material = new THREE.MeshToonMaterial();
+material.gradientMap = gradientTexture;
+```
+
+Notice that if you deliberately create your gradient texture file small enough to make only 3 steps, ThreeJS, by default, tries to make the gradient smooth (mipmapping). But you don't want it. To get rid of this default setting, you need to alter `minFilter` and `magFilter` on the gradient texture that you loaded into your program, and deactivate the default mipmapping:
+
+```js
+const gradientTexture = textureLoader.load("./textures/gradients/3.jpg");
+gradientTexture.minFilter = THREE.NearestFilter;
+gradientTexture.magFilter = THREE.NearestFilter;
+gradientTexture.generateMipmaps = false;
+```
+
+## `MeshStandardMaterial`
+
+This type of material uses physically-based rendering principles like in the textures lesson. It supports lights but with a more realistic algorithm and better paramters like roughness and metalness. It is called "standard" since the PBR has become the standard in many software, engines and libraries.
+
+You can get a realistic output with realistic parameters, and similar result regardless of the technology you are using. So go on and play with the `roughness` and `metalness` properties:
+
+```js
+const material = new THREE.MeshStandardMaterial();
+material.metalness = 0.95;
+material.roughness = 0.25;
+```
+
+### Adding environment map
+
+Experimenting with the propeties mentioned above can be done better if your obejcts are placed in a natural revealing surrounding environment. To do this, you can add an environment map. An environment map is like an image of what is surrounding the scene.
+
+> You can find environement map `.hdr` files at `https://polyhaven.com`
+
+An environment map will help you add reflection, refraction and also lighting to your objects, in addition to the current `DirectionalLight` and `AmbientLight` objects used in code.
+
+To implement environment map, you should first import it:
+
+```js
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+```
+
+Then conventionally after you add lights in your code, you do:
+
+```js
+const rgbeLoader = new RGBELoader();
+
+// The `load` method receives as its second parameter a callback the has access to the loaded environment map.
+rgbeLoader.load("./textures/environmentMap/2k.hdr", (envMap) => {
+  // we will learn about this later
+  envMap.mapping = THREE.EquirectangularReflectionMapping;
+
+  // to apply the environment map to the scene, you need to apply it to the background
+  scene.background = envMap;
+  // and also to the environment, since this will be handling the lighting effects on the objects
+  scene.environment = envMap;
+});
+```
+
+The environment map is also compatible with `MeshLambertMaterial` and `MeshPhongMaterial`.
+
+> Since an environment map provides for lighting qualities of the objects in your scene, you might not need any manual light setup in your code.
+
+### `.map`
+
+### `.aoMap`
+
+This property (stands for "ambient occlusion map"), when set to an ambient occlusion loaded texture, will add shadows where the texture pattern is dark. This will only affect the lights created by `AmbientLight`, the environment map and also the `HemisphereLight`.
+
+You can also set the intensity at which the ambient occlusion map impacts the lighting properties:
+
+```js
+const material = new THREE.MeshStandardMaterial();
+material.map = doorColorTexture;
+material.aoMap = doorAmbientOcclustionTexture;
+material.aoMapIntensity = 1;
+```
+
+### `.displacementMap`
+
+This property, when set to a loaded height texture moves the vertices to create true relief.
+
+```js
+material.displacementMap = doorHeightTexture;
+```
+
+A height map, used as `displacementMap`, will move a vertex up if the corresponding pixel in the map is white, and moves down if the pixel is black. For this to work properly, the material to which you are appling the map should have enough details, meaning that you should increase the subdivisions of your geometries:
+
+```js
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 64), material);
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 100, 100), material);
+```
+
+Usually, the default displacement scale is too much and you would want to tweak it:
+
+```js
+material.displacementMap = doorHeightTexture;
+material.displacementScale = 0.2;
+```
+
+The downside of this is that you need to use a lot of subdivisions and this is bad for performance.
+
+### `.metalnessMap` and `.roughnessMap`
+
+Instead of setting a uniform `metalness` and `roughness` for the whole geometry, you can load map texture files and set them to `.metalnessMap` and `.roughnessMap`:
+
+```js
+material.metalnessMap = doorMetalnessTexture;
+material.roughnessMap = doorRoughnessTexture;
+```
+
+In the metalness map file, pixels with white color represent metallic surfaces, and pixels with black color represent non-metalic surfaces.
+
+In the roughness map file, pixels with white color represent rough surfaces, and pixels with black color represent smooth surfaces.
+
+Also notice that to make these work fine, you need to set the `metalness` and `roughness` properties to `1`:
+
+```js
+material.metalness = 1;
+material.roughness = 1;
+material.metalnessMap = doorMetalnessTexture;
+material.roughnessMap = doorRoughnessTexture;
+```
+
+### `.normalMap`
+
+This property, if set to a loaded normal texture, fakes the normal orientation and add details to the surface regardless of the subdivisions:
+
+```js
+material.normalMap = doorNormalTexture;
+```
+
+> The small details that you notice are added now is not caused by the `.displacementMap`. With `.normalMap` you can add some important details to your objects by affecting light behavior without adding vertices.
+
+You can also tweak the intensity at which the `.normalMap` works by using `.normalScale` and apply `.set()` on it:
+
+```js
+material.normalScale.set(0.5, 0.5);
+```
+
+### `.alphaMap`
+
+Controls the alpha using `alphaMap` property. Don't forget to set the `.transparent` property to `true`:
+
+```js
+material.transparent = true;
+material.alphaMap = doorAlphaTexture;
+```
+
+## `MeshPhysicalMaterial`
+
+This is the worst type of material regarding performance. You can create one using:
+
+```js
+const material = new THREE.MeshPhysicalMaterial();
+```
+
+It is more physically realisitc. Same as `MeshStandardMaterial` but with support of additional effects:
+
+- `clearcoat`
+- `sheen`
+- `iridescence`
+- `transmission`
+
+### `.clearcoat`
+
+It simulates a thin layer of varnish on top of the actual material. It has its own reflective properties while you can still see the default material behind it, like putting a layer of glass on your main material.
+
+> Be careful using this type of material since it can impact performance.
+
+```js
+material.clearcoat = 1;
+material.clearcoatRoughness = 0;
+```
+
+### `.sheen`
+
+The `sheen` property will make the clearcoat more apparent as a separate varnish layer covering the main material right on top.
+
+```js
+material.sheen = 1;
+material.sheenRoughness = 0.25;
+material.sheenColor.set(1, 1, 1);
+```
+
+### `.iridescence`
+
+Creates color artifacts like a fuel puddle, soap bubbles, or even laser disks.
+
+```js
+material.iridescence = 1;
+material.iridescenceIOR = 1;
+material.iridescenceThicknessRange = [100, 800];
+```
+
+Notice that if you need to add tweaks for these properties to `lil-gui` you should follow:
+
+```js
+gui.add(material, "iridescence").min(0).max(1).step(0.0001);
+gui.add(material, "iridescenceIOR").min(1).max(2.333).step(0.0001);
+gui.add(material.iridescenceThicknessRange, "0").min(1).max(1000).step(1);
+gui.add(material.iridescenceThicknessRange, "1").min(1).max(1000).step(1);
+```
+
+> Notice you should not exceed `2.333` as the maximum value for `iridescenceIOR` since it generates effects that are not realistic.
+
+### `.transmission`
+
+Enables light to go through the material. It is more than just transparency with `opacity`, because the image behind the objects get deformed with `transmission`:
+
+```js
+material.transmission = 1;
+material.ior = 1.5;
+material.thickness = 0.5;
+
+// lil-gui
+gui.add(material, "transmission").min(0).max(1).step(0.0001);
+gui.add(material, "ior").min(0).max(10).step(0.0001);
+gui.add(material, "thickness").min(0).max(10).step(0.0001);
+```
+
+With `transmission` the objects feel translucent. `ior` stands for index of refraction and depends on the type of material you want to simulate. Here is a small guide:
+
+- Diamond: `ior = 2.417`
+- Water: `ior = 1.333`
+- Air: `ior = 1.000293`
+
+> You can find a complete guide on this on Wikipedia `https://en.wikipedia.org/wiki/List_of_refractive_indices`
+
+## Other types of materials
+
+Other types of materials will be covered later as they need more knowledge:
+
+- `PointsMaterial`: For particles, their size, color, etc.
+- `ShaderMaterial` and `RawShaderMaterial`: Used to create your own materials using a special language named GSSL.
