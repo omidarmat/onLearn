@@ -2129,3 +2129,5 @@ Other types of materials will be covered later as they need more knowledge:
 
 - `PointsMaterial`: For particles, their size, color, etc.
 - `ShaderMaterial` and `RawShaderMaterial`: Used to create your own materials using a special language named GSSL.
+
+> Materials can have a drastic impact on performance. As a nice guide, remember that if the camera is not going to rotate around your object, use a matcap.
