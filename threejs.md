@@ -110,6 +110,21 @@
 - [3D Text](#3d-text)
   - [Adding matcap material to text](#adding-matcap-material-to-text)
   - [Adding more objects to the scene](#adding-more-objects-to-the-scene)
+- [Lights](#lights)
+  - [`AmbientLight`](#ambientlight)
+  - [`DirectionalLight`](#directionallight)
+  - [`HemisphereLight`](#hemispherelight)
+  - [`PointLight`](#pointlight)
+  - [`RectAreaLight`](#rectarealight)
+  - [`SpotLight`](#spotlight)
+  - [Performance](#performance)
+  - [Baking](#baking)
+  - [Helpers](#helpers)
+  - [`HemisphereLightHelper`](#hemispherelighthelper)
+  - [`DirectionLightHelper`](#directionlighthelper)
+  - [`PointLightHelper`](#pointlighthelper)
+  - [`SpotLightHelper`](#spotlighthelper)
+  - [`ReactAreaLightHelper`](#reactarealighthelper)
 
 # Getting started
 
@@ -2424,3 +2439,223 @@ const donutMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture });
 ```
 
 Use it once and you see we have now reduced the time difference from about 50 to about 2-3 milliseconds.
+
+# Lights
+
+Adding lights to a scene is as simple as adding meshes. You just need to instantiate your lights with the right class and add it to the scene. There are many types of lights.
+
+## `AmbientLight`
+
+Ambient light applies omni-directional lighting to your scene. To instantiate an ambient light do:
+
+```js
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+// or
+const ambientLight = new THREE.AmbientLight();
+ambientLight.color = new THREE.Color(0xffffff);
+ambientLight.intensity = 0.5;
+scene.add(ambientLight);
+```
+
+The first paramtere of the `AmbientLight` constructor is the **color** of the light, and the second parameter is the **intensity** of the light.
+
+`AmbientLight` is used to simulate light bouncing.
+
+## `DirectionalLight`
+
+It has a sun-like effect as if the sun rays were traveling in parallel. Again, you need **color** and **intensity** to instantiate a directional light:
+
+```js
+const directionalLight = new THREE.DirectionalLight(0x00fffc, 0.3);
+scene.add(directionalLight);
+```
+
+You can obviously change the direction of this light:
+
+```js
+const directionalLight = new THREE.DirectionalLight(0x00fffc, 0.3);
+directionalLight.position.set(1, 0.25, 0);
+scene.add(directionalLight);
+```
+
+Remember that the directional light will always direct light toward the center of the scene. If you're not using shadows, it makes no difference to put the light far or close. But there is a slight difference if you are implemening shadows. [later...]
+
+## `HemisphereLight`
+
+This is similar to the `AmbientLight` but with a different color from the **sky** than the color coming from the **ground**. To instantiate this type of light you are going to need:
+
+1. `color` or `skyColor` as first parameter
+2. `groundColor` as second parameter
+3. `intensity` as third parameter
+
+```js
+const hemisphereLight = new THREE.HemisphereLight(0xff0000, 0x0000ff, 0.3);
+scene.add(hemisphereLight);
+```
+
+## `PointLight`
+
+This is almost like a lighter. The light starts at an infinitely small point and spreads uniformly in every direction. You need **color** and **intensity** to instantiate this light:
+
+```js
+const pointLight = new THREE.PointLight(0xff9000, 0.5);
+scene.add(pointLight);
+```
+
+By default, the light is placed at the center of the scene, but you can re-position it:
+
+```js
+const pointLight = new THREE.PointLight(0xff9000, 0.5);
+pointLight.position.set(1, -0.5, 1);
+scene.add(pointLight);
+```
+
+Also, by default, the light intensity does not fade. You can control the fade distance and how fast it fades with `distance` as the third parameter of instantiation and `decay` as the forth parameter. The `distance` paramter sets the distance by which the light effect is terminated and objects farther than that distance will not get illuminated by that light. `decay` determines how fast the light dims.
+
+## `RectAreaLight`
+
+Tis works like the big rectangle lights you can see on the photoshoot sets. It is a mix between a directional light and a diffuse light. To instantiate this light you are going to need:
+
+1. `color`
+2. `intensity`
+3. `width`
+4. `height`
+
+```js
+const rectAreaLight = new THREE.RectAreaLight(0x4e00ff, 2, 3, 1);
+scene.add(rectAreaLight);
+```
+
+> Remember that the `RectAreaLight` only works with `MeshStandardMaterial` and `MeshPhysicalMaterial`
+
+By default, the light is positioned at the center of the scene, which is most probably not what you want. You can move the light and rotate it, and you can also use `.lookAt()` method on it:
+
+```js
+const rectAreaLight = new THREE.RectAreaLight(0x4e00ff, 2, 3, 1);
+rectAreaLight.position.set(-1.5, 0, 1.5);
+rectAreaLight.lookAt(new THREE.Vector3());
+scene.add(rectAreaLight);
+```
+
+## `SpotLight`
+
+It is like a flashlight. It is a cone of light starting at a specific point and oriented in a specific direction (you will see a circle of light on objects illuminated by this type of light). To instantiate this type of light you are going to need:
+
+1. `color`
+2. `intensity`
+3. `distance`
+4. `angle`: Determines how wide your light is. `Math.PI * 0.1` means `0.1` of `180deg`
+5. `penumbra`: Determines how sharp is the border of the circle of light. The lower, the sharper. If set to completely sharp (`0`), part of an object within the lighting circle will be illuminated, and part of it outside will not.
+6. `decay`
+
+```js
+const spotLight = new THREE.SpotLight(0x78ff00, 1, 10, Math.PI * 0.1, 0.25, 1);
+spotLight.position.set(0, 2, 3);
+scene.add(spotLight);
+```
+
+To rotate the spot light, you need to add its `target` property to the scene and then move it. The `target` property of the spot light is actually an object of type `Object3D`. It is not a vector. The `target` is what the spot light always looks at. So in order to rotate the spot light, you need to move its `target`:
+
+```js
+const spotLight = new THREE.SpotLight(0x78ff00, 1, 10, Math.PI * 0.05, 0.25, 1);
+spotLight.position.set(0, 2, 3);
+scene.add(spotLight);
+
+// Notice that you can position the `target` and then add it to the scene
+spotLight.target.position.x = -0.75;
+scene.add(spotLight.target);
+```
+
+## Performance
+
+Lights can cost a lot when it comes to performance issues. Try to add as few lights as possible and try to use the lights that cost less.
+
+The lights with the minimal cost are:
+
+- `AmbientLight`
+- `HemisphereLight`
+
+The lights with moderate cost are:
+
+- `DirectionalLight`
+- `PointLight`
+
+And the lights with high cost are:
+
+- `SpotLight`
+- `RectAreaLight`
+
+## Baking
+
+When you need to use a lot of lights and the lights should look perfect, you may not be able to do it in ThreeJS and need to use baking. The idea is to **bake** the lights into the texture. This can be done in a 3D software. The drawback of this technique is that you cannot move the lights anymore and you will have to load huge textures.
+
+> Portfolio: https://threejs-journey.xyz
+
+## Helpers
+
+Helpers can assist with positioning lights. You can use:
+
+- `HemisphereLightHelper`
+- `DirectionalLightHelper`
+- `PointLightHelper`
+- `RectAreaLightHelper`
+- `SpotLightHelper`
+
+## `HemisphereLightHelper`
+
+To instantiate the helper, you need the actual hemisphere light instance as the first parameter, and a number as the second parameter that determines the size of the helper.
+
+```js
+const hemisphereLightHelper = new THREE.HemisphereLightHelper(
+  hemisphereLight,
+  0.2,
+);
+scene.add(hemisphereLightHelper);
+```
+
+## `DirectionLightHelper`
+
+To instantiate the helper, you need the actual directional light instance as the first parameter, and a number as the second parameter that determines the size of the helper.
+
+```js
+const directionalLightHelper = new THREE.DirectionalLightHelper(
+  directionalLight,
+  0.2,
+);
+scene.add(directionalLightHelper);
+```
+
+## `PointLightHelper`
+
+To instantiate the helper, you need the actual point light instance as the first parameter, and a number as the second parameter that determines the size of the helper.
+
+```js
+const pointLightHelper = new THREE.PointLightHelper(directionalLight, 0.2);
+scene.add(directionalLightHelper);
+```
+
+## `SpotLightHelper`
+
+To instantiate the helper, you only need to pass the actual spot light instance as parameter. Remember that with this helper, you also need to call its `.update()` method on the next frame after moving the `target`.
+
+```js
+const spotlightHelper = new THREE.SpotLightHelper(spotLight);
+scene.add(spotlightHelper);
+```
+
+## `ReactAreaLightHelper`
+
+This helper is not part of the `THREE` variable and you need to import it manually:
+
+```js
+import { RectAreaLightHelper } from "three/examples/jsm/Addons.js";
+```
+
+And then use it by passing in the actual instance of rect area light:
+
+```js
+const rectAreaLightHelper = new RectAreaLightHelper(rectAreaLight);
+scene.add(rectAreaLightHelper);
+```
