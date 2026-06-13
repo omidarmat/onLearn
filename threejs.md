@@ -125,6 +125,10 @@
   - [`PointLightHelper`](#pointlighthelper)
   - [`SpotLightHelper`](#spotlighthelper)
   - [`ReactAreaLightHelper`](#reactarealighthelper)
+- [Shadows](#shadows)
+  - [How ThreeJS handles shadows](#how-threejs-handles-shadows)
+  - [Activate shadows](#activate-shadows)
+  - [Shadow map optimization](#shadow-map-optimization)
 
 # Getting started
 
@@ -2659,3 +2663,61 @@ And then use it by passing in the actual instance of rect area light:
 const rectAreaLightHelper = new RectAreaLightHelper(rectAreaLight);
 scene.add(rectAreaLightHelper);
 ```
+
+# Shadows
+
+When you place some light on one side of an object, you automatically get some **core shadows** on the object's opposite side. Core shadows are created automatically. What we are missing, is called **drop shadows**.
+
+Shadows have always been a challenge for real-time 3D rendering, and developers must find tricks to display realistic shadows at a reasonable frame rate. ThreeJS has a built-in solution for this matter; it is not perfect, but it is convenient.
+
+> In 3D software like Blender, the **ray tracing** feature handles this issue.
+
+## How ThreeJS handles shadows
+
+When you do one render, ThreeJS will do the render for each light supporting shadows. Those renders will simulate what the light sees as it if was a camera. During these lights renders, a `MeshDepthMaterial` replaces all meshes material.
+
+The lights renders are stored as textures and we call those **shadow maps**. They are then used on every materials supposed to receive shadows and projected on the geometry.
+
+## Activate shadows
+
+To activate shadows, you should first go to your renderer and enable `shadowMap`:
+
+```js
+const renderer = new THREE.WebGLRenderer({
+  canvas: canvas,
+});
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+```
+
+You should then go through each object and decide it it can case a shadow with `castShadow` and if it can receive shadow with `receiveShadow`:
+
+```js
+// In the current scene, there is a sphere on a plane
+
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), material);
+// shadow
+sphere.castShadow = true;
+
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), material);
+plane.rotation.x = -Math.PI * 0.5;
+plane.position.y = -0.5;
+// shadow
+plane.receiveShadow = true;
+```
+
+Now you should activate shadows on light sources. Remember that only the following types of light support shadows:
+
+- `PointLight`
+- `DirectionalLight`
+- `SpotLight`
+
+```js
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+directionalLight.castShadow = true;
+```
+
+You can now see shadows in your scene.
+
+## Shadow map optimization
