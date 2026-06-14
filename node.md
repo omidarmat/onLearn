@@ -128,6 +128,7 @@
 - [**HTTP status codes**](#http-status-codes)
   - [✅ 2xx — Success](#-2xx--success)
   - [🔀 3xx — Redirection](#-3xx--redirection)
+  - [5xx - Internal error](#5xx---internal-error)
 - [**Database**](#database)
   - [**MongoDB**](#mongodb)
     - [**MongoDB key features**](#mongodb-key-features)
@@ -2983,6 +2984,40 @@ Here are the HTTP status codes from 400-500:
 **451 Unavailable For Legal Reasons** - The resource is unavailable due to legal reasons
 
 **500 Internal Server Error** - A generic error message when the server encounters an unexpected condition
+
+---
+
+## 5xx - Internal error
+
+The **5xx HTTP status codes** indicate that the server failed to fulfill an apparently valid request. Here's a list of the standard ones you're most likely to encounter:
+
+| Status Code | Name                       | Meaning                                                                                                                                   |
+| ----------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **500**     | Internal Server Error      | A generic server error. Something unexpected happened and the server couldn't complete the request.                                       |
+| **501**     | Not Implemented            | The server does not support the functionality required to fulfill the request (for example, an unsupported HTTP method).                  |
+| **502**     | Bad Gateway                | A server acting as a gateway or proxy received an invalid response from the upstream server. Common with Nginx, CDNs, and load balancers. |
+| **503**     | Service Unavailable        | The server is temporarily unable to handle the request, often due to maintenance or overload.                                             |
+| **504**     | Gateway Timeout            | A gateway or proxy did not receive a response from the upstream server within the expected time.                                          |
+| **505**     | HTTP Version Not Supported | The server does not support the HTTP protocol version used by the client.                                                                 |
+
+Additional, less commonly seen standard 5xx codes include:
+
+| Status Code | Name                            | Meaning                                                                                                                |
+| ----------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **506**     | Variant Also Negotiates         | A server configuration error related to transparent content negotiation. Rarely used.                                  |
+| **507**     | Insufficient Storage            | The server cannot store the representation needed to complete the request. Originally defined for WebDAV.              |
+| **508**     | Loop Detected                   | The server detected an infinite loop while processing the request. Defined by WebDAV.                                  |
+| **510**     | Not Extended                    | Further extensions to the request are required for the server to fulfill it. Rarely used.                              |
+| **511**     | Network Authentication Required | The client must authenticate to gain network access, often seen with captive portals such as public Wi-Fi login pages. |
+
+A practical way to think about the most common ones:
+
+- **500** → "My application crashed or hit an unexpected error."
+- **502** → "I asked another server, and it gave me a bad response."
+- **503** → "I'm temporarily unavailable."
+- **504** → "I waited for another server, but it never responded in time."
+
+In your case, ArvanCloud returned a **502 Bad Gateway** because it forwarded the request to Docker, Docker forwarded it to container port `3006`, and nothing was listening there because your Express app was actually running on `3007`.
 
 # **Database**
 
