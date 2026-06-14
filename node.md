@@ -144,6 +144,14 @@
   - [Applying migrations on a running server](#applying-migrations-on-a-running-server)
     - [Changes needed](#changes-needed)
     - [To apply now](#to-apply-now)
+- [**Security measures**](#security-measures)
+  - [Compromised database](#compromised-database)
+  - [Brute-force attacks](#brute-force-attacks)
+  - [Cross-site scripting attacks](#cross-site-scripting-attacks)
+  - [Denial-of-Service (DOS) attacks](#denial-of-service-dos-attacks)
+  - [NoSQL query injection attacks](#nosql-query-injection-attacks)
+  - [Cross-site request forgery](#cross-site-request-forgery)
+  - [Best security practices](#best-security-practices)
 
 # **Back-end theory**
 
@@ -3294,3 +3302,198 @@ This runs the migration inside the running container without restarting anything
 > ```bash
 > docker compose exec myfinbot-db pg_dump -U $DATABASE_USERNAME $DATABASE_NAME_PROD > backup.sql
 > ```
+
+# **Security measures**
+
+There are some measures that should be taken to protect an application against some types of attacks.
+
+## Compromised database
+
+This is when an attacker has somehow found a way to penetrate our database.
+
+Measures:
+
+- Always encrypt passwords and password reset tokens.
+
+## Brute-force attacks
+
+This is when the attacker tries to guess a password by trying millions of random passwords until they find the right one.
+
+Measures:
+
+- Make the login request slow. The Bcrypt package does that to some extent.
+- Implement rate limiting: limit the number of requests coming from one IP. Rate limiter is usually implemented as a global middleware. NPM package called Express Rate Limit is usually used. This requires NPM installation:
+
+```
+npm install express-rate-limit
+```
+
+And needs to be required into a file:
+
+```js
+const rateLimit = require("express-rate-limit");
+```
+
+The rateLimit variable now holds a function which can be called, and its result can be stored in another variable, and this variables can then be used in a global middleware. The function will receive an object of options where the ‘max’ property determines the number of requests that are acceptable from one IP during a certain amount of time, which should be defined in the ‘windowMs’ property. A ‘message’ property can also be defined, which will be displayed as an error message when an IP exceeds the limit.
+
+```js
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+});
+```
+
+The ‘limiter’ variable can then be used in a global middleware with ‘app.use’.
+
+```js
+app.use(limiter);
+```
+
+It is also possible to apply the limiter to a certain route:
+
+```js
+app.use("<route>", limiter);
+```
+
+This will insert 2 items added to the response headers: RateLimit-Limit displaying the value of ‘max’ property, and Rate-Limit-Remaining displaying the number of remaining requests allowed to be sent from that specific IP. Once this limit is exceeded, a 429 (Too Many Requests) error will be sent back to the client.
+
+> Implement maximum number of login requests and a waiting time.
+
+## Cross-site scripting attacks
+
+This is when the attacker tries to inject scripts into our webpage to run a malicious code.
+
+Measures:
+
+- Never store JWT in local storage. JWT should only be stored in an HTTP-only cookie.
+- Sanitize user input data and set security HTTP headers: helmet package. This package requires NPM installation.
+
+```
+npm install helmet
+```
+
+Needs to be required into a file:
+
+```js
+const helmet = require("helmet");
+```
+
+The functionality should be implemented as a global middleware, usually right after the rate limiter middleware, at the beginning of the App file in order to make sure the security headers would be set. The implementation only involves calling the helmet function, as it is defined by the variable name, in an ‘app.use’.
+
+```js
+app.use(helmet());
+```
+
+Calling helmet will return another function that would sit inside ‘app.use’ waiting to be called. This would then add some fields to the response headers. The browser understands these headers and will act on them.
+
+> Visit Helmet documentation on: https://github.com/helmetjs/helmet
+
+## Denial-of-Service (DOS) attacks
+
+This is when the attacker sends so many requests to a server that it breaks down the application.
+
+Measures:
+
+- Implement rate limiting.
+- Limit the amount of payload data that can be sent in a request body.
+- Avoid using evil regular expressions that take an exponential time to run.
+- This should be set as an option in the Express body parser middleware.
+
+```js
+app.use(express.json({ limit: "10kb" }));
+```
+
+## NoSQL query injection attacks
+
+This is when an attacker tries to inject some query, instead of valid data, in order to create query expressions that will translate to a true Boolean.
+
+Measures:
+
+- Implement a well-defined Mongoose schema
+- Sanitize user input data: this should usually be implemented as a middleware after the Express body parser middleware. To sanitize input data we can use 2 NPM packages: Express Mongo Sanitize, and XSS-Clean. Both require NPM installation.
+
+```
+npm install express-mongo-sanitize
+npm install xss-clean
+```
+
+They should be required into a file:
+
+```js
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+```
+
+and after the Express body parser middleware, we implement the Mongo Sanitize middleware:
+
+```js
+app.use(mongoSanitize());
+```
+
+This would look into the request body, the query string, and request parameters to filter out all the $ signs and dots, since they are used to write MongoDB operators. We then use the XSS-Clean middleware:
+
+```js
+app.use(xss());
+```
+
+This will clean input data from malicious HTML code, by converting all HTML symbols.
+
+## Cross-site request forgery
+
+This is when the attacker forces a user to execute unwanted actions on a web application in which they are logged in.
+
+Measures:
+
+- Use the `csurf` package
+
+## Best security practices
+
+- All communications between server and client has to happen over HTTPS.
+- Always create random password reset tokens, not generated based on dates or anything like that. Always give password reset tokens an expiration limit.
+- Make JWTs invalid after a user changes their password.
+- Never commit a configuration file to version control systems like Git.
+- Never send the entire error object to the client. Always try to hide the stack trace from the client.
+- Require the user to re-authenticate before performing high-value actions, like payments or deleting documents.
+- Implement a blacklist functionality that tracks untrusted tokens.
+- Confirm the email address when an account is first created.
+- Implement refresh tokens to remember users in order to keep them logged in forever or until they choose to log out.
+- Implement two-factor authentication.
+- Prevent parameter pollution: the HPP package can be used to implement this. It requires NPM installation:
+
+```
+npm install hpp
+```
+
+needs to be required into a file:
+
+```js
+const hpp = require("hpp");
+```
+
+it should be implemented as a global middleware, usually after the XSS-clean middleware.
+
+```js
+app.use(hpp());
+```
+
+Now if the client hits this route, on which our API might not be ready to act:
+
+```
+https://api.exprezz.com/api/v1/tours?sort=duration&sort=price
+```
+
+Duplicate parameters will trigger the HPP middleware and it will only act on the last parameter. However, with a similar route like this:
+
+```
+https://api.exprezz.com/api/v1/tours?duration=5&duration=9
+```
+
+We actually want the application to work for this and other document fields. To do this, we can define the whitelist option in the hpp method. This option can receive an array of field names that should be allowed to be inserted as duplicates into the route.
+
+```js
+app.use(
+  hpp({
+    whitelist: ["duration", "<field-name2>", "<field-name3>"],
+  }),
+);
+```
