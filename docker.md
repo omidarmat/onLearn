@@ -113,6 +113,7 @@
       - [DaoCloud](#daocloud)
     - [Another Option: Use a Different Base Image](#another-option-use-a-different-base-image)
   - [Entryfile problem](#entryfile-problem)
+  - [Getting into a container with terminal](#getting-into-a-container-with-terminal)
 
 # What is Docker?
 
@@ -2981,3 +2982,23 @@ ENTRYPOINT ["./docker-entrypoint.dev.sh"]
 ```
 
 assuming that you `WORKDIR` is set to `/app`
+
+## Getting into a container with terminal
+
+To get an interactive shell inside a running container:
+
+```bash
+docker compose exec <service-name> bash
+```
+
+Notes:
+
+- `<service-name>` is the name from your `docker-compose.yml` (not the container name), e.g. `docker compose exec web bash`.
+- If the image has no `bash` (e.g. Alpine-based), use `sh`:
+  ```bash
+  docker compose exec <service-name> sh
+  ```
+- To run as a specific user: `docker compose exec -u root <service-name> bash`
+- To find service names: `docker compose ps`
+
+Alternatively, with plain Docker: `docker exec -it <container-name> bash`.
