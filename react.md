@@ -151,8 +151,8 @@
     - [Filling in a form with default values](#filling-in-a-form-with-default-values)
   - [React Hot Toast](#react-hot-toast)
   - [Styled Component library](#styled-component-library)
-      - [Introducing global styles](#introducing-global-styles)
-      - [Styled Component props and CSS function](#styled-component-props-and-css-function)
+    - [Introducing global styles](#introducing-global-styles)
+    - [Styled Component props and CSS function](#styled-component-props-and-css-function)
   - [JSON Web Server](#json-web-server)
 - [Optimization and advanced useEffect](#optimization-and-advanced-useeffect)
   - [Performance optimization and wasted renders](#performance-optimization-and-wasted-renders)
@@ -272,6 +272,20 @@
       - [Defining server actions in server component module](#defining-server-actions-in-server-component-module)
         - [Display loading indicators: `useFormStatus`](#display-loading-indicators-useformstatus)
         - [Display loading indicators: `useTransition`](#display-loading-indicators-usetransition)
+- [Project optimization techniques](#project-optimization-techniques)
+  - [`useMemo` and `useCallback`](#usememo-and-usecallback)
+    - [Why they're often unnecessary](#why-theyre-often-unnecessary)
+    - [Real use cases for `useMemo`](#real-use-cases-for-usememo)
+      - [1. Expensive UI-only transformations](#1-expensive-ui-only-transformations)
+      - [2. Large table column definitions](#2-large-table-column-definitions)
+      - [3. Derived lookup structures](#3-derived-lookup-structures)
+      - [4. Preparing chart data](#4-preparing-chart-data)
+      - [5. Stabilizing context values](#5-stabilizing-context-values)
+    - [Real use cases for `useCallback`](#real-use-cases-for-usecallback)
+      - [1. Memoized child components](#1-memoized-child-components)
+      - [2. Event handlers passed deep into component trees](#2-event-handlers-passed-deep-into-component-trees)
+      - [3. Dependency arrays](#3-dependency-arrays)
+    - [What I see in mature React codebases](#what-i-see-in-mature-react-codebases)
 - [Project deployment](#project-deployment)
   - [First, build the application](#first-build-the-application)
   - [Second, deploy to Netlify](#second-deploy-to-netlify)
@@ -8041,29 +8055,29 @@ Here's how to use DI in React:
 // services/ApiService.js
 export class ApiService {
   async fetchUsers() {
-    const res = await fetch('/api/users');
+    const res = await fetch("/api/users");
     return res.json();
   }
 }
 
 export class MockApiService {
   async fetchUsers() {
-    return [{ id: 1, name: 'Test User' }];
+    return [{ id: 1, name: "Test User" }];
   }
 }
 
 // context/ServiceContext.jsx
-import { createContext, useContext } from 'react';
-import { ApiService } from '../services/ApiService';
+import { createContext, useContext } from "react";
+import { ApiService } from "../services/ApiService";
 
 const ServiceContext = createContext(null);
 
 export function ServiceProvider({ children, services }) {
   const defaultServices = {
     apiService: new ApiService(),
-    ...services  // Allow override for testing
+    ...services, // Allow override for testing
   };
-  
+
   return (
     <ServiceContext.Provider value={defaultServices}>
       {children}
@@ -8074,13 +8088,13 @@ export function ServiceProvider({ children, services }) {
 export function useServices() {
   const context = useContext(ServiceContext);
   if (!context) {
-    throw new Error('useServices must be used within ServiceProvider');
+    throw new Error("useServices must be used within ServiceProvider");
   }
   return context;
 }
 
 // App.jsx
-import { ServiceProvider } from './context/ServiceContext';
+import { ServiceProvider } from "./context/ServiceContext";
 
 function App() {
   return (
@@ -8091,20 +8105,22 @@ function App() {
 }
 
 // components/UserList.jsx
-import { useServices } from '../context/ServiceContext';
-import { useEffect, useState } from 'react';
+import { useServices } from "../context/ServiceContext";
+import { useEffect, useState } from "react";
 
 function UserList() {
   const { apiService } = useServices();
   const [users, setUsers] = useState([]);
-  
+
   useEffect(() => {
     apiService.fetchUsers().then(setUsers);
   }, [apiService]);
-  
+
   return (
     <ul>
-      {users.map(user => <li key={user.id}>{user.name}</li>)}
+      {users.map((user) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
     </ul>
   );
 }
@@ -8114,8 +8130,8 @@ function UserList() {
 
 ```javascript
 // hooks/useApi.js
-import { useMemo } from 'react';
-import { ApiService } from '../services/ApiService';
+import { useMemo } from "react";
+import { ApiService } from "../services/ApiService";
 
 export function useApi() {
   return useMemo(() => new ApiService(), []);
@@ -8125,11 +8141,11 @@ export function useApi() {
 function UserList() {
   const api = useApi();
   const [users, setUsers] = useState([]);
-  
+
   useEffect(() => {
     api.fetchUsers().then(setUsers);
   }, [api]);
-  
+
   return <ul>{/* ... */}</ul>;
 }
 ```
@@ -8140,26 +8156,26 @@ function UserList() {
 // components/UserList.jsx
 function UserList({ apiService }) {
   const [users, setUsers] = useState([]);
-  
+
   useEffect(() => {
     apiService.fetchUsers().then(setUsers);
   }, [apiService]);
-  
+
   return <ul>{/* ... */}</ul>;
 }
 
 // App.jsx
 function App() {
   const apiService = useMemo(() => new ApiService(), []);
-  
+
   return <UserList apiService={apiService} />;
 }
 
 // Testing
-import { render } from '@testing-library/react';
-import { MockApiService } from '../services/ApiService';
+import { render } from "@testing-library/react";
+import { MockApiService } from "../services/ApiService";
 
-test('renders users', async () => {
+test("renders users", async () => {
   const mockApi = new MockApiService();
   render(<UserList apiService={mockApi} />);
   // assertions...
@@ -8174,15 +8190,15 @@ class Container {
   constructor() {
     this.services = new Map();
   }
-  
+
   register(name, factory) {
     this.services.set(name, { factory, instance: null });
   }
-  
+
   get(name) {
     const service = this.services.get(name);
     if (!service) throw new Error(`Service ${name} not found`);
-    
+
     if (!service.instance) {
       service.instance = service.factory(this);
     }
@@ -8193,13 +8209,13 @@ class Container {
 export const container = new Container();
 
 // Register services
-container.register('logger', () => new Logger());
-container.register('api', (c) => new ApiService(c.get('logger')));
-container.register('auth', (c) => new AuthService(c.get('api')));
+container.register("logger", () => new Logger());
+container.register("api", (c) => new ApiService(c.get("logger")));
+container.register("auth", (c) => new AuthService(c.get("api")));
 
 // context/DIContext.jsx
-import { createContext, useContext } from 'react';
-import { container } from '../di/container';
+import { createContext, useContext } from "react";
+import { container } from "../di/container";
 
 const DIContext = createContext(container);
 
@@ -8210,9 +8226,9 @@ export function useService(name) {
 
 // components/UserList.jsx
 function UserList() {
-  const api = useService('api');
-  const auth = useService('auth');
-  
+  const api = useService("api");
+  const auth = useService("auth");
+
   // Use services...
 }
 ```
@@ -8225,9 +8241,9 @@ export class AuthService {
   constructor(apiService) {
     this.api = apiService;
   }
-  
+
   async login(credentials) {
-    return this.api.post('/auth/login', credentials);
+    return this.api.post("/auth/login", credentials);
   }
 }
 
@@ -8236,10 +8252,10 @@ export class UserService {
     this.api = apiService;
     this.auth = authService;
   }
-  
+
   async getCurrentUser() {
     const token = this.auth.getToken();
-    return this.api.get('/users/me', { token });
+    return this.api.get("/users/me", { token });
   }
 }
 
@@ -8251,15 +8267,11 @@ export function AppProvider({ children }) {
     const api = new ApiService();
     const auth = new AuthService(api);
     const user = new UserService(api, auth);
-    
+
     return { api, auth, user };
   }, []);
-  
-  return (
-    <AppContext.Provider value={services}>
-      {children}
-    </AppContext.Provider>
-  );
+
+  return <AppContext.Provider value={services}>{children}</AppContext.Provider>;
 }
 
 export function useAppServices() {
@@ -8270,11 +8282,11 @@ export function useAppServices() {
 function Profile() {
   const { user } = useAppServices();
   const [profile, setProfile] = useState(null);
-  
+
   useEffect(() => {
     user.getCurrentUser().then(setProfile);
   }, [user]);
-  
+
   return <div>{profile?.name}</div>;
 }
 ```
@@ -10373,6 +10385,224 @@ export default DeleteReservation;
 ```
 
 > Behind the scenes NextJS uses `Suspense` boundaries for all of this. And also remember that in NextJS all navigations are wrapped into transitions.
+
+# Project optimization techniques
+
+## `useMemo` and `useCallback`
+
+Even in a well-designed React application where:
+
+- Filtering is done on the server.
+- Sorting is done on the server.
+- Pagination is done on the server.
+- Aggregations are done on the server.
+- Joins are done on the server.
+- Data fetching is handled by tools like React Query.
+
+there are still valid use cases for `useMemo` and `useCallback`, although they are much less common than many tutorials suggest.
+
+### Why they're often unnecessary
+
+Many developers learn React from examples like:
+
+```tsx
+const filteredUsers = useMemo(() => users.filter((u) => u.active), [users]);
+```
+
+But in a production app, that filtering often happens in the API:
+
+```http
+GET /users?active=true
+```
+
+So the expensive client-side computation disappears.
+
+Similarly:
+
+```tsx
+const sortedProducts = useMemo(() => sortProducts(products), [products]);
+```
+
+becomes:
+
+```http
+GET /products?sort=price
+```
+
+and no memoization is needed.
+
+This is one reason modern React codebases often contain far fewer `useMemo` calls than people expect.
+
+---
+
+### Real use cases for `useMemo`
+
+#### 1. Expensive UI-only transformations
+
+Sometimes the server returns raw data, but the UI needs a complex structure.
+
+Example:
+
+```tsx
+const treeData = useMemo(() => {
+  return buildTree(categories);
+}, [categories]);
+```
+
+Building nested trees, graphs, maps, lookup tables, or calendar structures can be expensive.
+
+---
+
+#### 2. Large table column definitions
+
+With libraries like:
+
+- TanStack Table
+- AG Grid
+
+you often see:
+
+```tsx
+const columns = useMemo(
+  () => [...],
+  []
+);
+```
+
+Not because computing columns is expensive, but because the library treats a new array reference as a configuration change.
+
+Without memoization:
+
+```tsx
+const columns = [...];
+```
+
+every render creates a new array.
+
+---
+
+#### 3. Derived lookup structures
+
+Example:
+
+```tsx
+const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+```
+
+Then lookups become:
+
+```tsx
+userMap.get(id);
+```
+
+instead of repeatedly searching arrays.
+
+---
+
+#### 4. Preparing chart data
+
+For charting libraries:
+
+```tsx
+const chartData = useMemo(() => {
+  return transformSalesData(data);
+}, [data]);
+```
+
+Transforming thousands of records into chart series can be expensive.
+
+---
+
+#### 5. Stabilizing context values
+
+```tsx
+const value = useMemo(
+  () => ({
+    user,
+    logout,
+  }),
+  [user, logout],
+);
+```
+
+Without this, every render creates a new object and all context consumers re-render.
+
+---
+
+### Real use cases for `useCallback`
+
+#### 1. Memoized child components
+
+Suppose:
+
+```tsx
+const UserRow = memo(UserRowComponent);
+```
+
+Then:
+
+```tsx
+const handleDelete = useCallback((id: string) => {
+  deleteUser(id);
+}, []);
+```
+
+prevents a new function reference every render.
+
+---
+
+#### 2. Event handlers passed deep into component trees
+
+```tsx
+<MyTable onRowClick={handleRowClick} />
+```
+
+Some third-party components optimize based on prop identity.
+
+A stable callback can avoid unnecessary work.
+
+---
+
+#### 3. Dependency arrays
+
+Sometimes you need a stable function because another hook depends on it:
+
+```tsx
+const fetchData = useCallback(async () => {
+  ...
+}, [id]);
+
+useEffect(() => {
+  fetchData();
+}, [fetchData]);
+```
+
+Although in many cases you can move the function directly into the effect and avoid `useCallback` entirely.
+
+---
+
+### What I see in mature React codebases
+
+In applications like the ones you've described (Next.js + React Query + server-side filtering/sorting), most performance issues are **not** solved by `useMemo` or `useCallback`.
+
+The biggest wins usually come from:
+
+- Better API design
+- Server-side filtering/pagination
+- React Query caching
+- Component splitting
+- Virtualized lists
+- Avoiding unnecessary state
+- Proper React key usage
+- Using `memo()` only where profiling proves it helps
+
+Many experienced React developers now follow a rule similar to:
+
+> Don't add `useMemo` or `useCallback` unless profiling shows a problem or you specifically need referential stability.
+
+It's very common in modern React code to remove dozens of unnecessary `useMemo` and `useCallback` calls because they add complexity while providing no measurable benefit.
+
+For the kind of Next.js applications you've been building with React Query and API-driven filtering/pagination, you can often go days or weeks without needing either hook. When they do appear, it's usually for **referential stability** (memoized children, context values, table configurations) rather than for avoiding expensive calculations.
 
 # Project deployment
 
