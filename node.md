@@ -128,6 +128,7 @@
 - [**HTTP status codes**](#http-status-codes)
   - [✅ 2xx — Success](#-2xx--success)
   - [🔀 3xx — Redirection](#-3xx--redirection)
+  - [4xx - Request errors](#4xx---request-errors)
   - [5xx - Internal error](#5xx---internal-error)
 - [**Database**](#database)
   - [**MongoDB**](#mongodb)
@@ -2922,6 +2923,8 @@ These codes indicate that further action is needed to complete the request.
 ---
 
 > **Note:** Code **306** is unused and reserved, and **305** is deprecated due to security concerns.
+
+## 4xx - Request errors
 
 Here are the HTTP status codes from 400-500:
 
