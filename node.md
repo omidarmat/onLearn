@@ -55,6 +55,7 @@
       - [`bcrypt.hash`](#bcrypthash)
       - [`bcrypt.compare`](#bcryptcompare)
     - [**Nodemon module**](#nodemon-module)
+    - [**PgBoss (`pg-boss`)**](#pgboss-pg-boss)
   - [**Streams**](#streams)
     - [**Streams in practice**](#streams-in-practice)
       - [**The best solution**](#the-best-solution)
@@ -146,6 +147,42 @@
   - [Applying migrations on a running server](#applying-migrations-on-a-running-server)
     - [Changes needed](#changes-needed)
     - [To apply now](#to-apply-now)
+- [**Crone jobs**](#crone-jobs)
+- [The basic structure](#the-basic-structure)
+  - [Meaning of each field](#meaning-of-each-field)
+  - [The wildcard `*`](#the-wildcard-)
+  - [Specific numbers](#specific-numbers)
+  - [Lists using commas](#lists-using-commas)
+  - [Ranges](#ranges)
+  - [Step values (`*/n`)](#step-values-n)
+  - [Combining ranges and steps](#combining-ranges-and-steps)
+  - [Examples](#examples)
+    - [Every second](#every-second)
+    - [Every minute](#every-minute)
+    - [Every 5 minutes](#every-5-minutes)
+    - [Every hour](#every-hour)
+    - [Every day at midnight](#every-day-at-midnight)
+    - [Every day at 8:30 AM](#every-day-at-830-am)
+    - [Every Monday](#every-monday)
+    - [Weekdays only](#weekdays-only)
+    - [Every weekend](#every-weekend)
+    - [First day of every month](#first-day-of-every-month)
+    - [Every January](#every-january)
+  - [Interval examples](#interval-examples)
+    - [Every 10 seconds](#every-10-seconds)
+    - [Every 15 seconds](#every-15-seconds)
+    - [Every 30 seconds](#every-30-seconds)
+    - [Every 2 minutes](#every-2-minutes)
+    - [Every 10 minutes](#every-10-minutes)
+    - [Every 30 minutes](#every-30-minutes)
+    - [Every 6 hours](#every-6-hours)
+    - [Every 12 hours](#every-12-hours)
+    - [Every day at noon](#every-day-at-noon)
+  - [Using with `node-cron`](#using-with-node-cron)
+  - [Using with `pg-boss`](#using-with-pg-boss)
+  - [Common special characters](#common-special-characters)
+  - [Practice](#practice)
+    - [Tips](#tips)
 - [**Security measures**](#security-measures)
   - [Compromised database](#compromised-database)
   - [Brute-force attacks](#brute-force-attacks)
@@ -1138,6 +1175,177 @@ This will execute our script file and keep watching for any changes that we impl
 > ```
 >
 > This will execute the `start` script implemented in the `package.json` file.
+
+### **PgBoss (`pg-boss`)**
+
+In order to execute database-level cron jobs on a specified interval, you can use a NodeJS library called `pg-boss`.
+
+Here is a detailed implementation example. In a typicall ExpressJS backend application, you will most likely create a `/src/jobs` directory in which you are going to have:
+
+```
+- index.ts
+- expireSubscriptions.ts
+- notifyExpiringUsers.ts
+```
+
+Inside the `index.ts` file:
+
+```ts
+import { PgBoss } from "pg-boss";
+import { config } from "../config/index.js";
+import { registerExpireSubscriptionsJob } from "./expireSubscriptions.js";
+import { registerNotifyExpiringUsersJob } from "./notifyExpiringUsers.js";
+
+const boss = new PgBoss(config.pgBossConnectionString);
+
+boss.on("error", (err) => {
+  console.log("🔴 [PG-BOSS] error: ", err);
+});
+
+export async function registerAllJobs() {
+  await boss.start();
+  console.log("🟢 [PG-BOSS] started.");
+
+  await registerExpireSubscriptionsJob(boss);
+  await registerNotifyExpiringUsersJob(boss);
+
+  console.log("[PG-BOSS] all jobs registered");
+}
+
+export { boss };
+```
+
+And in each job file:
+
+```ts
+// expireSubscriptions.ts
+import { PgBoss } from "pg-boss";
+import { db } from "../db/index.js";
+import { subscriptions } from "../db/schema.js";
+import { and, eq, lt } from "drizzle-orm";
+
+const JOB_NAME = "expire-subscriptions";
+
+export async function registerExpireSubscriptionsJob(boss: PgBoss) {
+  await boss.createQueue(JOB_NAME);
+
+  await boss.work(JOB_NAME, async (job) => {
+    console.log(`🟡 [${JOB_NAME}] strting...`);
+
+    const result = await db
+      .update(subscriptions)
+      .set({ status: "expired" })
+      .where(
+        and(
+          eq(subscriptions.status, "active"),
+          lt(subscriptions.current_period_end, new Date()),
+        ),
+      )
+      .returning({ id: subscriptions.id });
+
+    console.log(`🟢 [${JOB_NAME}] expired ${result.length} subscriptions.`);
+
+    return { expiredCount: result.length };
+  });
+
+  await boss.schedule(
+    JOB_NAME,
+    "5 0 * * *",
+    {},
+    {
+      tz: "Asia/Tehran",
+    },
+  );
+
+  console.log(`🟢 [${JOB_NAME}] registered.`);
+}
+
+// notifyExpiringUsers.ts
+import { PgBoss } from "pg-boss";
+import { db } from "../db/index.js";
+import { subscriptions, users } from "../db/schema.js";
+import { and, eq, gte, isNull, lte } from "drizzle-orm";
+
+const JOB_NAME = "notify-expiring-users";
+
+export async function registerNotifyExpiringUsersJob(boss: PgBoss) {
+  await boss.createQueue(JOB_NAME);
+
+  await boss.work(JOB_NAME, async (job) => {
+    console.log(`🟡 [${JOB_NAME}] starting...`);
+
+    const now = new Date();
+    const warningEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    const expiringSoon = await db
+      .select({
+        subscription_id: subscriptions.id,
+        current_period_end: subscriptions.current_period_end,
+        user_mobile: users.mobile,
+        username: users.username,
+      })
+      .from(subscriptions)
+      .innerJoin(users, eq(subscriptions.user_id, users.id))
+      .where(
+        and(
+          eq(subscriptions.status, "active"),
+          gte(subscriptions.current_period_end, now),
+          lte(subscriptions.current_period_end, warningEnd),
+          isNull(subscriptions.expiry_notified_at),
+        ),
+      );
+
+    console.log(`🟢 [${JOB_NAME}] found ${expiringSoon.length} to notify.`);
+
+    for (const subscription of expiringSoon) {
+      // notify user
+
+      // update subscription record
+      await db
+        .update(subscriptions)
+        .set({ expiry_notified_at: new Date() })
+        .where(eq(subscriptions.id, subscription.subscription_id));
+    }
+
+    console.log(
+      `🟢 [${JOB_NAME}] notified ${expiringSoon.length} expiring users.`,
+    );
+
+    return { notifiedCount: expiringSoon.length };
+  });
+
+  await boss.schedule(
+    JOB_NAME,
+    "0 9 * * *",
+    {},
+    {
+      tz: "Asia/Tehran",
+    },
+  );
+
+  console.log(`🟢 [${JOB_NAME}] registered.`);
+}
+```
+
+And wire it up with the `server.ts` file. You would want to register your jobs in the callback of initializing the server application:
+
+```ts
+https.createServer(httpsOptions, app).listen(config.port, async () => {
+  console.log(`HTTPS Server running on https://localhost:${config.port}`);
+
+  await connectRedis();
+  await registerAllJobs();
+});
+
+// or
+
+const server = app.listen(config.port, async () => {
+  console.log(`HTTP Server running on port ${config.port}`);
+
+  await connectRedis();
+  await registerAllJobs();
+});
+```
 
 ## **Streams**
 
@@ -3340,6 +3548,586 @@ This runs the migration inside the running container without restarting anything
 > ```bash
 > docker compose exec myfinbot-db pg_dump -U $DATABASE_USERNAME $DATABASE_NAME_PROD > backup.sql
 > ```
+
+# **Crone jobs**
+
+Cron expressions are a compact way to describe **when a task should run**. Libraries like **`node-cron`**, **`pg-boss`**, Unix `cron`, and many schedulers use them.
+
+Once you learn the pattern, you can read almost any cron schedule at a glance.
+
+---
+
+# The basic structure
+
+Most JavaScript cron libraries use **6 fields**:
+
+```text
+* * * * * *
+│ │ │ │ │ │
+│ │ │ │ │ └── Day of week (0-7)
+│ │ │ │ └──── Month (1-12)
+│ │ │ └────── Day of month (1-31)
+│ │ └──────── Hour (0-23)
+│ └────────── Minute (0-59)
+└──────────── Second (0-59)
+```
+
+Notice the **seconds** field.
+
+Traditional Linux cron has **5 fields**:
+
+```text
+* * * * *
+│ │ │ │ │
+│ │ │ │ └── Day of week
+│ │ │ └──── Month
+│ │ └────── Day of month
+│ └──────── Hour
+└────────── Minute
+```
+
+`node-cron` supports the optional seconds field.
+
+---
+
+## Meaning of each field
+
+| Field        | Values            |
+| ------------ | ----------------- |
+| Seconds      | 0-59              |
+| Minutes      | 0-59              |
+| Hours        | 0-23              |
+| Day of month | 1-31              |
+| Month        | 1-12 (or Jan-Dec) |
+| Day of week  | 0-7 (Sun-Sat)     |
+
+---
+
+## The wildcard `*`
+
+`*` means:
+
+> every possible value
+
+Example:
+
+```text
+* * * * * *
+```
+
+Runs:
+
+> Every second.
+
+---
+
+Example:
+
+```text
+0 * * * * *
+```
+
+Runs:
+
+> Every minute at second 0.
+
+```
+12:00:00
+12:01:00
+12:02:00
+```
+
+---
+
+## Specific numbers
+
+```text
+0 30 9 * * *
+```
+
+Means:
+
+```
+second = 0
+minute = 30
+hour = 9
+```
+
+Runs every day at
+
+```
+09:30:00
+```
+
+---
+
+## Lists using commas
+
+Comma means:
+
+> any of these values
+
+Example:
+
+```text
+0 0 9,15,21 * * *
+```
+
+Runs at
+
+```
+09:00
+15:00
+21:00
+```
+
+---
+
+Another example:
+
+```text
+0 0 * * * 1,3,5
+```
+
+Runs on
+
+```
+Monday
+Wednesday
+Friday
+```
+
+---
+
+## Ranges
+
+Dash means:
+
+> from X to Y
+
+Example:
+
+```text
+0 0 9-17 * * *
+```
+
+Runs every hour from
+
+```
+9 AM
+10 AM
+11 AM
+...
+5 PM
+```
+
+---
+
+Example:
+
+```text
+0 0 * * 6-8 *
+```
+
+Runs only during
+
+```
+June
+July
+August
+```
+
+---
+
+## Step values (`*/n`)
+
+This is probably the most useful syntax.
+
+General form:
+
+```text
+*/n
+```
+
+means
+
+> every n units
+
+Example:
+
+```text
+*/5 * * * * *
+```
+
+Runs
+
+```
+00
+05
+10
+15
+20
+...
+55
+```
+
+Every **5 seconds**.
+
+---
+
+Example:
+
+```text
+0 */10 * * * *
+```
+
+Runs
+
+```
+00:00
+00:10
+00:20
+00:30
+```
+
+Every **10 minutes**.
+
+---
+
+Example:
+
+```text
+0 0 */3 * * *
+```
+
+Runs every
+
+```
+3 hours
+
+00:00
+03:00
+06:00
+09:00
+...
+```
+
+---
+
+## Combining ranges and steps
+
+You can combine them.
+
+Example:
+
+```text
+0 0 9-17/2 * * *
+```
+
+Meaning:
+
+```
+From 9 AM to 5 PM
+every 2 hours
+```
+
+Runs at
+
+```
+09:00
+11:00
+13:00
+15:00
+17:00
+```
+
+---
+
+## Examples
+
+### Every second
+
+```text
+* * * * * *
+```
+
+---
+
+### Every minute
+
+```text
+0 * * * * *
+```
+
+---
+
+### Every 5 minutes
+
+```text
+0 */5 * * * *
+```
+
+Runs:
+
+```
+10:00
+10:05
+10:10
+```
+
+---
+
+### Every hour
+
+```text
+0 0 * * * *
+```
+
+---
+
+### Every day at midnight
+
+```text
+0 0 0 * * *
+```
+
+---
+
+### Every day at 8:30 AM
+
+```text
+0 30 8 * * *
+```
+
+---
+
+### Every Monday
+
+```text
+0 0 0 * * 1
+```
+
+---
+
+### Weekdays only
+
+```text
+0 0 9 * * 1-5
+```
+
+Runs
+
+```
+Monday-Friday
+9:00 AM
+```
+
+---
+
+### Every weekend
+
+```text
+0 0 10 * * 0,6
+```
+
+Saturday and Sunday at 10 AM.
+
+---
+
+### First day of every month
+
+```text
+0 0 0 1 * *
+```
+
+---
+
+### Every January
+
+```text
+0 0 0 * 1 *
+```
+
+---
+
+## Interval examples
+
+### Every 10 seconds
+
+```text
+*/10 * * * * *
+```
+
+---
+
+### Every 15 seconds
+
+```text
+*/15 * * * * *
+```
+
+---
+
+### Every 30 seconds
+
+```text
+*/30 * * * * *
+```
+
+---
+
+### Every 2 minutes
+
+```text
+0 */2 * * * *
+```
+
+---
+
+### Every 10 minutes
+
+```text
+0 */10 * * * *
+```
+
+---
+
+### Every 30 minutes
+
+```text
+0 */30 * * * *
+```
+
+---
+
+### Every 6 hours
+
+```text
+0 0 */6 * * *
+```
+
+---
+
+### Every 12 hours
+
+```text
+0 0 */12 * * *
+```
+
+---
+
+### Every day at noon
+
+```text
+0 0 12 * * *
+```
+
+---
+
+## Using with `node-cron`
+
+```javascript
+import cron from "node-cron";
+
+cron.schedule("*/10 * * * * *", () => {
+  console.log("Runs every 10 seconds");
+});
+```
+
+---
+
+Every day at 9 AM:
+
+```javascript
+cron.schedule("0 0 9 * * *", () => {
+  console.log("Good morning!");
+});
+```
+
+---
+
+## Using with `pg-boss`
+
+`pg-boss` uses cron expressions to schedule jobs.
+
+```javascript
+await boss.schedule("daily-report", "0 0 9 * * *");
+```
+
+This schedules the `daily-report` job every day at **09:00:00**.
+
+---
+
+## Common special characters
+
+| Symbol | Meaning     | Example |
+| ------ | ----------- | ------- |
+| `*`    | Every value | `*`     |
+| `,`    | List        | `1,3,5` |
+| `-`    | Range       | `9-17`  |
+| `/`    | Step        | `*/10`  |
+
+These four symbols cover the vast majority of cron expressions you'll encounter.
+
+---
+
+## Practice
+
+Can you read these?
+
+1.
+
+```text
+0 */15 * * * *
+```
+
+**Answer:** Every 15 minutes.
+
+---
+
+2.
+
+```text
+0 30 18 * * *
+```
+
+**Answer:** Every day at 6:30 PM.
+
+---
+
+3.
+
+```text
+*/20 * * * * *
+```
+
+**Answer:** Every 20 seconds.
+
+---
+
+4.
+
+```text
+0 0 0 * * 0
+```
+
+**Answer:** Every Sunday at midnight.
+
+---
+
+5.
+
+```text
+0 0 9-17 * * 1-5
+```
+
+**Answer:** Every hour from **9:00 AM through 5:00 PM**, Monday through Friday.
+
+### Tips
+
+- Always remember the field order: **seconds → minutes → hours → day of month → month → day of week** (or omit seconds in 5-field cron).
+- Use `*/n` for recurring intervals, `,` for specific values, `-` for ranges, and combine them as needed.
+- Cron is best for schedules aligned to calendar time (for example, "every hour on the hour" or "every weekday at 9 AM"). If you need a task to run exactly every 10 minutes from when your application starts, a timer such as `setInterval()` may be a better fit than a cron schedule.
 
 # **Security measures**
 

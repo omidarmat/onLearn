@@ -137,6 +137,7 @@
     - [Using point light (`PointLight`)](#using-point-light-pointlight)
     - [Baking shadows](#baking-shadows)
     - [Alternative to baking shadows](#alternative-to-baking-shadows)
+- [Project: Haunted House](#project-haunted-house)
 
 # Getting started
 
@@ -2915,3 +2916,5 @@ tick();
 ```
 
 > Finding the right solution to handle shadows is up to you. It depends on the project, the preformances and the techniques you know. You can also combine your techniques.
+
+# Project: Haunted House

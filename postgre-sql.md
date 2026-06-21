@@ -71,6 +71,7 @@
     - [**Reading archive**](#reading-archive)
       - [**Reading by ID**](#reading-by-id)
   - [**API: Service health check**](#api-service-health-check)
+  - [**Database-level cron jobs**](#database-level-cron-jobs)
 
 # **Concepts**
 
@@ -1061,3 +1062,7 @@ This API is used to check if the system is at a healthy state.
 ```
 
 > There is no body for this API call.
+
+## **Database-level cron jobs**
+
+In order to execute database-level cron jobs on a specified interval, you can use a NodeJS library called `pg-boss`.
