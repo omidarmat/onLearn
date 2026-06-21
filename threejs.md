@@ -137,7 +137,16 @@
     - [Using point light (`PointLight`)](#using-point-light-pointlight)
     - [Baking shadows](#baking-shadows)
     - [Alternative to baking shadows](#alternative-to-baking-shadows)
-- [Project: Haunted House](#project-haunted-house)
+- [Particles](#particles)
+  - [Custom geometry](#custom-geometry)
+  - [Textures](#textures-1)
+    - [Alpha test (`alphaTest`)](#alpha-test-alphatest)
+    - [Depth test (`depthTest`)](#depth-test-depthtest)
+    - [Depth write](#depth-write)
+  - [Blending](#blending)
+  - [Random colors](#random-colors)
+  - [Animation](#animation-1)
+- [Custom shader](#custom-shader)
 
 # Getting started
 
@@ -2917,4 +2926,258 @@ tick();
 
 > Finding the right solution to handle shadows is up to you. It depends on the project, the preformances and the techniques you know. You can also combine your techniques.
 
-# Project: Haunted House
+# Particles
+
+With particles you can create stars, smoke, rain, dust, fire, etc. You can have thousands of them with a reasonable frame rate.
+
+Each particle in ThreeJS is composed of a plane (two triangles) always facing the camera.
+
+Creating particles is like creating a `Mesh`. You are going to need:
+
+- A geometry (`BufferGeometry`)
+- A material (`PointsMaterial`)
+- A `Points` instance (instead of `Mesh`)
+
+So first go on and create a geometry for your particles:
+
+```js
+const particlesGeometry = new THREE.SphereGeometry(1, 32, 32);
+```
+
+Then to create a particle material:
+
+```js
+const particlesMaterial = new THREE.PointsMaterial({
+  size: 0.02,
+  sizeAttenuation: true,
+});
+```
+
+The `sizeAttenuation` parameter determines the appearance size of the particle in relation to its distance from the camera; the less the distance, the bigger the particle appears in the view.
+
+Then to create the particles:
+
+```js
+const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particles);
+```
+
+You will now be able to see a series of particles around a sphere geometry. But you can also implement a custom geometry.
+
+## Custom geometry
+
+To make the particles appear on a custom geometry you need to use `BufferGeometry` instead of `SphereBufferGeometry`, and add a `position` attribute as we did in the Geometries lesson.
+
+```js
+const particlesGeometry = new THREE.BufferGeometry();
+```
+
+To give the `BufferGeometry` a specific shape, you need to give it the position of its vertices. Let's say we now want the geometry to have `500` vertices. You should set the positions of these vertices for the `BufferGeometry` by using a JavaScript `Float32Array` array:
+
+```js
+const count = 500;
+const positions = new Float32Array(count * 3);
+```
+
+`count` is multiplied by `3` because each vertex needs 3 pieces of data: `x`, `y`, `z`. You then need to set the `position` attribute of the `particlesGeometry` to these vertices positions using ThreeJS `BufferAttribute`:
+
+```js
+particlesGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(positions, 3),
+);
+```
+
+With this setup, the particles start from the center of the scene and go further, but we actually want them to spread all around the scene. To do this, you should update the random position generation:
+
+```js
+const particlesGeometry = new THREE.BufferGeometry();
+
+const count = 500;
+const positions = new Float32Array(count * 3);
+
+for (let i = 0; i < count * 3; i++) {
+  // updated random position generation
+  positions[i] = (Math.random() - 0.5) * 10;
+}
+
+particlesGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(positions, 3),
+);
+```
+
+## Textures
+
+You can also use the `map` property to put textures on the particles.
+
+```js
+const textureLoader = new THREE.TextureLoader();
+const particleTexture = textureLoader.load("/textures/particles/11.png");
+
+const particlesMaterial = new THREE.PointsMaterial({
+  size: 0.1,
+  sizeAttenuation: true,
+  color: "#ff88cc",
+});
+particlesMaterial.map = particleTexture;
+```
+
+> Visit `https://www.kenney.nl/assets/particle-pack` for particle textures. Also visit their X account named "Kenny".
+
+Doing this, you are going to notice that each particle has a surrounding edge that covers other particles randomly, irrelevant of their distance from the camera. This is because the particles are drawn in the same order as they are created, and WebGL does not really know which one is in front of the other. There are several ways of fixing this:
+
+```js
+particlesMaterial.transparent = true;
+particlesMaterial.alphaMap = particleTexture;
+```
+
+This solves the problem to some extent, but not completely.
+
+### Alpha test (`alphaTest`)
+
+The `alphaTest` is a value between `0` and `1` that enables WebGL to know when not to render the pixel according to that pixel's transparency. By default, the value is `0` meaning that the pixel will be rendered anyway. Use `0.001`.
+
+```js
+particlesMaterial.transparent = true;
+particlesMaterial.alphaMap = particleTexture;
+particlesMaterial.alphaTest = 0.001;
+```
+
+This solves a major part of the problem, but still, at the very edges of the texture shape, you can still see some bad renders. At this level, if the particles are going to rotate around the scene constantly and the user is not capable of stopping it, this level of fix is fine. But if you need to fix it better, follow the instructions.
+
+### Depth test (`depthTest`)
+
+When drawing, the WebGL tests if what is being drawn is closer than what's already drawn. That is called depth testing and can be deactivated with `depthTest`:
+
+```js
+particlesMaterial.transparent = true;
+particlesMaterial.alphaMap = particleTexture;
+particlesMaterial.depthTest = false;
+```
+
+This seems to have fixed the problem completely, but you should not use this method since it creates bugs if you have other objects in your scene or if you have particles with different colors. For instance, if you place a cube at the center of you particles, you can see the particles behind the cube through the cube. So you need a better fix.
+
+### Depth write
+
+The depth of what is being drawn is stored in what we call a **depth buffer**. Instead of not testing if the particle is closer than what is in this depth buffer, we can tell WebGL not to write particles in that depth buffer with `depthTest`.
+
+```js
+particlesMaterial.transparent = true;
+particlesMaterial.alphaMap = particleTexture;
+particlesMaterial.depthWrite = false;
+```
+
+This solution fixes the cube bug and the particles edges issue. This solution, too, has some bugs in certain situations, but you now have multiple ways to fix this problem and you can choose between them according to your project.
+
+## Blending
+
+The WebGL currently draws pixels one on top of the other. With the `blending` property, we can tell the WebGL to add the color of the pixel to the color of the pixel already drawn. To do this, you can change the `blending` property to `THREE.AdditiveBlending` class:
+
+```js
+particlesMaterial.depthWrite = false;
+particlesMaterial.blending = THREE.AdditiveBlending;
+```
+
+> Notice that the `AdditiveBlending` can impact your project performance.
+
+## Random colors
+
+If you want to apply random colors to each particle in your scene, you can use the `setAttribute` method to add a `color` attribute just like you did it for the positions. Again, since each color is going to be composed of 3 values (RGB), you are going to use `Float32Array` and pass it to `BufferAttribute`:
+
+```js
+const count = 20000;
+const positions = new Float32Array(count * 3);
+// for colors
+const colors = new Float32Array(count * 3);
+
+for (let i = 0; i < count * 3; i++) {
+  positions[i] = (Math.random() - 0.5) * 10;
+  // for colors
+  colors[i] = Math.random();
+}
+
+particlesGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(positions, 3),
+);
+
+// for colors
+particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+const particlesMaterial = new THREE.PointsMaterial({
+  size: 0.1,
+  sizeAttenuation: true,
+  // notice we got rid of the color property here, since it can affect the random colors applied randomly to each particle
+});
+
+particlesMaterial.transparent = true;
+particlesMaterial.alphaMap = particleTexture;
+
+particlesMaterial.depthWrite = false;
+particlesMaterial.blending = THREE.AdditiveBlending;
+
+// for colors
+particlesMaterial.vertexColors = true;
+```
+
+## Animation
+
+The `Points` class of ThreeJS inherits from the `Object3d` class, so you can use it just like any other object to animate it. You can do this:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Update particles
+  particles.rotation.y = elapsedTime * 0.2;
+
+  // Update controls
+  controls.update();
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+This will animate all particles together as a group. We want to animate each particle separately. Remember that the particles positions are stored in the `positions` attribute of the `particlesGeometry`. So you can update each vertex separately in `particlesGeometry.attributes.position.array` since this array contains the particles positions. Again, remember that you would have to go 3 values in each iteration.
+
+> NOTE: This technique imposes too much pressure on the machine and it is not recommended.
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Update particles
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+
+    // Select the x position of each vertex
+    const x = particlesGeometry.attributes.position.array[i3 + 0];
+
+    // Offset the animation of y position property of each vertex relative to its x position property
+    particlesGeometry.attributes.position.array[i3 + 1] = Math.sin(
+      elapsedTime + x,
+    );
+  }
+
+  // ThreeJS needs to be told each time the position atrribute is updated
+  particlesGeometry.attributes.position.needsUpdate = true;
+
+  // Update controls
+  controls.update();
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+The better solution is using a **custom shader**.
+
+# Custom shader
