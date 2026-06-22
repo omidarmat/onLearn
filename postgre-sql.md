@@ -71,7 +71,13 @@
     - [**Reading archive**](#reading-archive)
       - [**Reading by ID**](#reading-by-id)
   - [**API: Service health check**](#api-service-health-check)
-  - [**Database-level cron jobs**](#database-level-cron-jobs)
+- [**Database-level cron jobs**](#database-level-cron-jobs)
+- [**Security measures**](#security-measures)
+  - [**Manual upgrade**](#manual-upgrade)
+  - [**Manual update on migration journal**](#manual-update-on-migration-journal)
+  - [**Reset and re-apply migrations**](#reset-and-re-apply-migrations)
+    - [Backup Postrgesql data](#backup-postrgesql-data)
+    - [Restore Postgresql backup](#restore-postgresql-backup)
 
 # **Concepts**
 
@@ -1063,6 +1069,451 @@ This API is used to check if the system is at a healthy state.
 
 > There is no body for this API call.
 
-## **Database-level cron jobs**
+# **Database-level cron jobs**
 
 In order to execute database-level cron jobs on a specified interval, you can use a NodeJS library called `pg-boss`.
+
+# **Security measures**
+
+It is a recommended practice to create multiple Postgresql users with different levels of access in order to prevent sensitive operations being performed by users that should not actually be able to perform those operations. For instance, the backend application should only be responsible for getting, creating, updating and deleting records. It should not be allowed to create tables or drop them. Also, you are going to need a special user that is responsible for migrations. This user should be allowed to update tables, create new tables and so on.
+
+To implement this in a dockerized Postgresql container you would conventionally have a `docker-compose.yaml` file where you define the database service as:
+
+```yaml
+services:
+  exprezz-db:
+    image: postgres:16-alpine
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: exprezz-db
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      MIGRATION_USERNAME: ${MIGRATION_USERNAME}
+      MIGRATION_PASSWORD: ${MIGRATION_PASSWORD}
+    volumes:
+      - exprezz-data:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
+
+And then define docker initialization files in a `docker/init` directory at the project root, containing 2 files, each responsible for creating a different user. First, a `01-create-app-user.sh` file:
+
+```sh
+#!/bin/bash
+set -e
+
+psql \
+    --username "$POSTGRES_USER" \
+    --dbname "$POSTGRES_DB" <<-EOSQL
+
+DO
+\$do\$
+BEGIN
+    IF NOT EXISTS (
+        SELECT
+        FROM pg_roles
+        WHERE rolname = '${DATABASE_USERNAME}'
+    ) THEN
+        CREATE ROLE ${DATABASE_USERNAME}
+        LOGIN
+        PASSWORD '${DATABASE_PASSWORD}';
+    END IF;
+END
+\$do\$;
+
+GRANT CONNECT
+ON DATABASE "${POSTGRES_DB}"
+TO ${DATABASE_USERNAME};
+
+GRANT USAGE
+ON SCHEMA public
+TO ${DATABASE_USERNAME};
+
+EOSQL
+```
+
+And then a `02-create-migrator.sh` file:
+
+```sh
+#!/bin/bash
+set -e
+
+psql \
+    --username "$POSTGRES_USER" \
+    --dbname "$POSTGRES_DB" <<-EOSQL
+
+DO
+\$do\$
+BEGIN
+    IF NOT EXISTS (
+        SELECT
+        FROM pg_roles
+        WHERE rolname = '${MIGRATION_USERNAME}'
+    ) THEN
+        CREATE ROLE ${MIGRATION_USERNAME}
+        LOGIN
+        PASSWORD '${MIGRATION_PASSWORD}';
+    END IF;
+END
+\$do\$;
+
+GRANT CONNECT ON DATABASE "${POSTGRES_DB}" TO ${MIGRATION_USERNAME};
+
+GRANT CREATE
+ON DATABASE "${POSTGRES_DB}"
+TO ${MIGRATION_USERNAME};
+
+GRANT USAGE, CREATE
+ON SCHEMA public
+TO ${MIGRATION_USERNAME};
+
+ALTER SCHEMA public
+OWNER TO ${MIGRATION_USERNAME};
+
+ALTER DEFAULT PRIVILEGES
+FOR ROLE ${MIGRATION_USERNAME}
+IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON TABLES
+TO ${DATABASE_USERNAME};
+
+ALTER DEFAULT PRIVILEGES
+FOR ROLE ${MIGRATION_USERNAME}
+IN SCHEMA public
+GRANT USAGE, SELECT
+ON SEQUENCES
+TO ${DATABASE_USERNAME};
+
+EOSQL
+```
+
+And you also need to define your environment variables in a `.env` file:
+
+```sh
+# DB APP
+DATABASE_USERNAME=exprezz_db_user
+DATABASE_PASSWORD=hotCheeseChips193844
+
+# DB ADMIN
+POSTGRES_PASSWORD=hotbuttt
+
+# DB MIGRATOR
+MIGRATION_USERNAME=exprezz_migrator
+MIGRATION_PASSWORD=hotButterPopcorn193844
+```
+
+> Notice that usernames must not include `-`, but it is ok to use `_`s.
+
+Notice that the full content of the `docker-compose.yaml` file in a production-level ExpressJS backend application is as:
+
+```yaml
+services:
+  exprezz-db:
+    image: postgres:16-alpine
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: exprezz-db
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      MIGRATION_USERNAME: ${MIGRATION_USERNAME}
+      MIGRATION_PASSWORD: ${MIGRATION_PASSWORD}
+    volumes:
+      - exprezz-data:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  exprezz-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      exprezz-db:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: exprezz-db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: exprezz-db
+      DATABASE_USERNAME: ${MIGRATION_USERNAME}
+      DATABASE_PASSWORD: ${MIGRATION_PASSWORD}
+      NODE_ENV: production
+    command: npm run db:migrate
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8080:3006"
+    depends_on:
+      exprezz-db:
+        condition: service_healthy
+      exprezz-redis:
+        condition: service_healthy
+      exprezz-migrate:
+        condition: service_completed_successfully
+    environment:
+      PORT: 3006
+      DATABASE_HOST: exprezz-db
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: exprezz-db
+      REDIS_HOST: exprezz-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      NODE_ENV: production
+    volumes:
+      - ./logs:/app/logs
+volumes:
+  exprezz-data:
+```
+
+With this Docker setup, once you run your services using `docker compose up --build`, your database will initialize by defining 2 additional users with different levels of access in order to be able to perform only what they are responsible for. You as the superuser will always have access to the `postgres` user with all powers to work on the database.
+
+This setup is good and works fine for a database and backend application that has not yet been deployed and that is going to be deployed for the first time.
+
+However, if the project is already working on a remote server without the mentioned setup, upgrading the database to this setup needs to be applied manually since database initialization tasks (creating 2 additional users) will be skipped by Postgresql as it will notice that database is already there so it assumes that initialization tasks must have already been performed.
+
+## **Manual upgrade**
+
+In order to uprade an already initialized and working database with data volumes stored in the container, you are going to have to apply the security measures manually using SQL commands.
+
+However, you must go on and upgrade your `docker-compose.yaml` file to the setup mentioned above because you are going to need the migrator user to be able to perform migration tasks as you alter your schemas or add to them.
+
+Afterwards, to create different postgresql users and give them privilages and access levels, you are going to have to apply SQL commands directly to the database.
+
+With the `docker-compose.yaml` file that you have upgraded, you now must be able to directly connect to your database container:
+
+```
+docker compose -f docker-compose.yaml exec gibidoo-db \
+  psql -U postgres -d gibidoo-db
+```
+
+Then go on and apply these commands one at a time:
+
+```sh
+# migrator role
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'gibidoo_migrator') THEN
+    CREATE ROLE gibidoo_migrator LOGIN PASSWORD 'hotButter193844';
+  END IF;
+END
+$$;
+```
+
+```sh
+# app user role
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'gibidoo_db_user') THEN
+    CREATE ROLE gibidoo_db_user LOGIN PASSWORD 'hotCheese193844';
+  END IF;
+END
+$$;
+```
+
+```sh
+# migrator grants
+GRANT CONNECT ON DATABASE "gibidoo-db" TO gibidoo_migrator;
+GRANT CREATE ON DATABASE "gibidoo-db" TO gibidoo_migrator;
+GRANT USAGE, CREATE ON SCHEMA public TO gibidoo_migrator;
+ALTER SCHEMA public OWNER TO gibidoo_migrator;
+```
+
+```sh
+# app user grants
+GRANT CONNECT ON DATABASE "gibidoo-db" TO gibidoo_db_user;
+GRANT USAGE ON SCHEMA public TO gibidoo_db_user;
+```
+
+```sh
+# default previleges so future migrator-created tables are usable by the app user
+ALTER DEFAULT PRIVILEGES FOR ROLE gibidoo_migrator IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO gibidoo_db_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE gibidoo_migrator IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO gibidoo_db_user;
+```
+
+One important caveat: `ALTER DEFAULT PRIVILEGES` only applies to tables created after it runs. If your tables already exist (created earlier as postgres), the app user will not get access to them automatically. Grant access to the existing objects too:
+
+```sh
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gibidoo_db_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gibidoo_db_user;
+```
+
+If your existing tables were created by postgres and you want the migrator to own/alter them, you may also need to reassign ownership. But you cannot simply change the ownership of everything using:
+
+```sh
+REASSIGN OWNED BY postgres TO gibidoo_migrator;
+# not allowed
+# ERROR:  cannot reassign ownership of objects owned by role postgres because they are required by the database system
+```
+
+This error occurs because the `postgres` role owns critical system objects (templates, default schemas, system catalogs) that PostgreSQL needs to keep under superuser control.
+
+You can’t transfer ownership of those objects, but you likely don’t need to. What you actually want is to transfer ownership of application tables and objects, not system objects.
+
+So Instead of `REASSIGN OWNED BY`, use selective ownership transfer:
+
+```sh
+ALTER TABLE IF EXISTS tablename1 OWNER TO migrator_role;
+ALTER TABLE IF EXISTS tablename2 OWNER TO migrator_role;
+```
+
+## **Manual update on migration journal**
+
+Applying the security upgrades above, will likely cause your new migrator role to attempt to apply your migration files from the beginning (the migration files starting with `0000` in its name). However, since your database is already running and you have data volumes in the container, Postgresql will not allow the migrations be applied by throwing an error that says something like "type something already exists".
+
+This situation is where you need to mark existing migration files as applied. Drizzle tracks which migrations have run in a table called `__drizzle_migrations`. Since your database already has objects from earlier runs, you need to tell Drizzle those migrations are already applied.
+
+**Step1: Check what is already in the journal**
+
+Try and connect to the database container and query for everything inside the `__drizzle_migrations` table:
+
+```sh
+docker compose -f docker-compose.yaml exec gibidoo-db \
+  psql -U postgres -d gibidoo-db -c "SELECT * FROM __drizzle_migrations;"
+```
+
+If the table doesn’t exist, the migrator never completed successfully before. But in the specific case that we are covering now, you likely have that table, but the table would appear empty. You need to fill it with the already existing migration files.
+
+**Step 2: Manually mark migrations as applied**
+
+Connect to the database:
+
+```
+docker compose -f docker-compose.yaml exec gibidoo-db \
+  psql -U migrator_role -d gibidoo-db
+```
+
+> Notice we are connecting to the database now as `migrator_role`.
+
+Then run:
+
+```sh
+CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+  id SERIAL PRIMARY KEY,
+  hash TEXT NOT NULL,
+  created_at BIGINT
+);
+# which the table already exists, and this command will be skipped
+
+INSERT INTO __drizzle_migrations (hash, created_at) VALUES
+  ('0000_your_first_migration', extract(epoch from now()) * 1000),
+  ('0001_your_second_migration', extract(epoch from now()) * 1000),
+  ('0002_your_third_migration', extract(epoch from now()) * 1000)
+  -- add all migration file names without .sql extension
+ON CONFLICT DO NOTHING;
+```
+
+Then restart your docker stack:
+
+```
+docker compose up --build
+```
+
+This is the only way to upgrade your database without losing your already existing data volume and schema definitions.
+
+## **Reset and re-apply migrations**
+
+If you prefer to reset your migrations and apply them all from the beginning, you need to have backup of your existing data, so after re-applying your migrations, you can restore them.
+
+### Backup Postrgesql data
+
+The recommended way is to use `pg_dump` if you only need application data. Connect to your postgresql conatiner and:
+
+```sh
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  pg_dump -U postgres -d gibidoo-db --clean --if-exists \
+  > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+Let's go over the parameters:
+
+- `-T`: Disables TTY for redirecting the output
+- `-U postgres`: Connecting as the superuser
+- `-d gibidoo-db`: Database name
+- `--clean`: Adds `DROP` commands before `CREATE` commands
+- `--if-exists`: Prevents errors if object does not exist
+- `> backup_*.sql`: Exporting the output to a local file
+
+You can also use `pg_dumpall` which is a full database backup including roles and permissions along with the data:
+
+```sh
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  pg_dumpall -U postgres \
+  > full_backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+You can also just backup your application data and let schemas get created by migrations:
+
+```sh
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  pg_dump -U postgres -d gibidoo-db --data-only \
+  > data_only_backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Restore Postgresql backup
+
+After creating your schemas from ground up using migrations, you can restore your application data by:
+
+```sh
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  psql -U postgres -d gibidoo-db < backup_20260622_143022.sql
+```
+
+Or if you used `pg_dumpall` when getting backup, do:
+
+```sh
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  psql -U postgres < full_backup_20260622_143022.sql
+```
+
+So as a complete flow, you can follow:
+
+```sh
+# 1. Get backup
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  pg_dump -U postgres -d gibidoo-db --clean --if-exists \
+  > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. Shut down containers
+docker compose -f docker-compose.yaml down
+
+# 3. Remove volumes
+docker volume rm gibidoo_gibidoo-data
+
+# 4. Run compose setup -> applies migrations
+docker compose -f docker-compose.yaml up --build
+
+# 5. Restore data
+docker compose -f docker-compose.yaml exec -T gibidoo-db \
+  psql -U postgres -d gibidoo-db < backup_20260622_143022.sql
+```
