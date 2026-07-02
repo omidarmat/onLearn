@@ -146,6 +146,7 @@
   - [Blending](#blending)
   - [Random colors](#random-colors)
   - [Animation](#animation-1)
+  - [Performance considerations](#performance-considerations)
 - [Custom shader](#custom-shader)
 
 # Getting started
@@ -3179,5 +3180,18 @@ const tick = () => {
 ```
 
 The better solution is using a **custom shader**.
+
+## Performance considerations
+
+When you want to create a scene where you need to re-render an object after each GUI tweak, it is a good practice to remove the old object and then render then new object. Refer to practice `18` folder and review this:
+
+```js
+if (points !== null) {
+  geometry.dispose();
+  material.dispose();
+  // you cannot dispose of a mesh, you can just remove them from a scene:
+  scene.remove(points);
+}
+```
 
 # Custom shader
