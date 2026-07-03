@@ -147,7 +147,13 @@
   - [Random colors](#random-colors)
   - [Animation](#animation-1)
   - [Performance considerations](#performance-considerations)
-- [Custom shader](#custom-shader)
+- [Scroll-based animation](#scroll-based-animation)
+  - [White background when page is over-scrolled](#white-background-when-page-is-over-scrolled)
+  - [Positioning your objects](#positioning-your-objects)
+  - [Moveing the camera with scroll](#moveing-the-camera-with-scroll)
+  - [Implementing parallax effect](#implementing-parallax-effect)
+  - [Implement easing/smoothing](#implement-easingsmoothing)
+  - [Triggered animations](#triggered-animations)
 
 # Getting started
 
@@ -3194,4 +3200,385 @@ if (points !== null) {
 }
 ```
 
-# Custom shader
+# Scroll-based animation
+
+In many cases, you would like the 3D interactive experience to be part of a classic website. Therefore, the 3D rendering can be in the background, yet you would like it to integrate well with the HTML content.
+
+In such cases you should:
+
+- Learn how to use Three.js as a background of a classic HTML page
+- Make the camera translate to follow the scroll
+- Know some tricks to make the whole experience more immersive
+- Add a parallax animation based on the cursor position
+- Trigger some animations when arriving at the corresponding sections
+
+> In such projects, you would usually not want to use `OrbitControls` as you have used up until this point and instead, you would let the HTML document to scroll.
+
+## White background when page is over-scrolled
+
+In MacOS laptops or iOS phones, you might notice that when the page is scrolled to the end, if the user tries to scroll more, a white background would appear from underneath the canvas background, that is because normally we don't apply a background color to the HTML document, but only to the canvas itself.
+
+You might be able to find you simple solution, but a better solution is to set the `clearColor` of the webgl renderer to transparent, and then set a background color on the HTML document itself.
+
+So the first step would be to set `alpha` on the renderer to `true`:
+
+```js
+const renderer = new THREE.WebGLRenderer({
+  canvas: canvas,
+  alpha: true,
+});
+```
+
+This would set the webgl renderer background to become completely transparent, since the `clearAlpha` property of the renderer is, by default, set to `0`.
+
+Now you can go to the CSS file and set the background color for the `html` document:
+
+```css
+html {
+  background: #1e1a20;
+}
+```
+
+You now have a seamless background throughout the whole page, no matter how far user scrolls over it.
+
+## Positioning your objects
+
+In ThreeJS, the field of view is vertical. If you put one object on the top, one on the bottom and then resize the window, objects will stay at the top and at the bottom. This is a good thing since you won't have to handle medial queries for the 3D scene. Wherever you position your objects, they will stay where they were set however wide or tight the screen becomes vertically.
+
+Here is an example:
+
+```js
+const objectsDistance = 4;
+
+const mesh1 = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 60), material);
+mesh1.position.y = -objectsDistance * 0;
+
+const mesh2 = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 32), material);
+mesh2.position.y = -objectsDistance * 1;
+
+const mesh3 = new THREE.Mesh(
+  new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
+  material,
+);
+mesh3.position.y = -objectsDistance * 2;
+
+scene.add(mesh1, mesh2, mesh3);
+
+// Store the meshes in an array since you would probably want to use them in the `tick` function to animate them
+const sectionMeshes = [mesh1, mesh2, mesh3];
+```
+
+## Moveing the camera with scroll
+
+You first need to retrieve the scroll value on the window object and also update the variable that you store it into, whenever the user scrolls:
+
+```js
+let scrollY = window.scrollY;
+
+window.addEventListener("scroll", () => {
+  scrollY = window.scrollY;
+});
+```
+
+Now as you scroll further on the page, the value of `scrollY` becomes larger. So inside the `tick` function, you can now update the camera's `y` position as:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Animate camera
+  camera.position.y = -scrollY;
+
+  // Animate meshes
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+However, setting the `y` position of the camera to `-scrollY` will make the camera movement too sensitive when the scroll is happening. You need to reduce the camera movement sensitivity. For this, you should consider that in most cases, you would probably want each of your sections to be as high as the viewport itself. This means that when you scroll the distance of 1 viewport height, the camera should reach the next object. So this would be the calculation to run:
+
+```js
+camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+```
+
+## Implementing parallax effect
+
+Parallax is the action of seeing one object through different observation points. This is done naturally by our eyes and it is how we feel the depth of things.
+
+To simulate this, you can make the camera move horizontally and vertically according to the mouse movements.
+
+```js
+const cursor = {
+  x: 0,
+  y: 0,
+};
+
+window.addEventListener("mousemove", (e) => {
+  // You need to adapt the clientX and clientY values mathematically to create the same experience on every device, so you should get a value between 0 and 1 no matter how much the width of the screen will be. Also, since you want the camera to be able to move up/down and left/right mouse movement values should translate the clientX and clientY values to remain between -0.5 and 0.5.
+  cursor.x = e.clientX / sizes.width - 0.5;
+  cursor.y = e.clientY / sizes.height - 0.5;
+});
+```
+
+You can then continue and position the camera based on the mouse movement in the `tick` function:
+
+```js
+onst tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Animate camera
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+
+  const parallaxX = cursor.x;
+  const parallaxY = cursor.y;
+
+  // but this will disable the previous scroll-based camera movement
+  camera.position.x = parallaxX;
+  camera.position.y = parallaxY;
+
+  // Animate meshes
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+Notice that this will neutralize the previous scroll-based camera movement. To fix this, you need to put the camera in a `Group` with your objects, and apply the parallax effect on the group, not on the camera itself.
+
+```js
+// Group
+const cameraGroup = new THREE.Group();
+scene.add(cameraGroup);
+```
+
+Then add the group to the scene instead of the camera itself:
+
+```js
+// Base camera
+const camera = new THREE.PerspectiveCamera(
+  35,
+  sizes.width / sizes.height,
+  0.1,
+  100,
+);
+camera.position.z = 6;
+cameraGroup.add(camera);
+```
+
+Then in the `tick` function, you move the camera group for the parallax effect, and move the camera itself with the scroll:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Animate camera
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+
+  const parallaxX = cursor.x;
+  const parallaxY = -cursor.y;
+
+  cameraGroup.position.x = parallaxX;
+  cameraGroup.position.y = parallaxY;
+
+  // Animate meshes
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+## Implement easing/smoothing
+
+It is also a good thing to add some easing to the movement animations. You need to add some easing (also called **smoothing** or **lerping**) and you are going to use a well-known formula.
+
+The calculation is basically this: On each frame, instead of moving the camera right to the target, you will move it a 10th closer to the target, then on the next frame, another 10th closer, and so on.
+
+This would be one solution:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+
+  // Animate camera
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+
+  const parallaxX = cursor.x;
+  const parallaxY = -cursor.y;
+
+  cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 0.1;
+  cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 0.1;
+
+  // Animate meshes
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+But the problem with this approach is that on a high-frequency screen, the `tick` function will be called more often and the camera will move faster toward the target. It is a lot better to have the same result and experience across all devices as much as possible.
+
+To be able to handle this, you need to know how much time there is between the current frame and the previous frame.
+
+```js
+const clock = new THREE.Clock();
+let previousTime = 0;
+
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+  const deltaTime = elapsedTime - previousTime;
+  previousTime = elapsedTime;
+
+  // Animate camera
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+
+  const parallaxX = cursor.x;
+  const parallaxY = -cursor.y;
+
+  // then use the deltaTime in the camera position calculation and increase the intensity from 0.01 to 5 to make the position value larger so it can be noticeable, because the deltaTime is in seconds, and the value will be very small (around 0.016) for most common screens running at 60fps
+  cameraGroup.position.x +=
+    (parallaxX - cameraGroup.position.x) * 5 * deltaTime;
+  cameraGroup.position.y +=
+    (parallaxY - cameraGroup.position.y) * 5 * deltaTime;
+
+  // Animate meshes
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  // Render
+  renderer.render(scene, camera);
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+```
+
+## Triggered animations
+
+It would be a nice thing to make your objects do some special animation when the user arrives at a specific section by scrolling.
+
+First, you need to know when the user reaches a specific section. There are plenty of ways of doing that and you could even use a library for it, but in this case, you can use the `scrollY` value and do some math to find the current section.
+
+Start by declaring a variable as:
+
+```js
+let scrollY = window.scrollY;
+let currentSection = 0;
+```
+
+Then inside the `scroll` event handler, calculate the current section by dividing the `scrollY` value by `sizes.height`, since in this specific case and project, each section has the viewport height, just like the webgl canvas:
+
+```js
+window.addEventListener("scroll", () => {
+  scrollY = window.scrollY;
+
+  const newSection = Math.round(scrollY / sizes.height);
+});
+```
+
+You can also compare and check if the `newSection` is different from `currentSection`:
+
+```js
+let scrollY = window.scrollY;
+let currentSection = 0;
+
+window.addEventListener("scroll", () => {
+  scrollY = window.scrollY;
+
+  const newSection = Math.round(scrollY / sizes.height);
+
+  if (newSection != currentSection) {
+    currentSection = newSection;
+  }
+});
+```
+
+You can now use `gsap` to implement your special animation on each object related to each section.
+
+```js
+window.addEventListener("scroll", () => {
+  scrollY = window.scrollY;
+
+  const newSection = Math.round(scrollY / sizes.height);
+
+  if (newSection != currentSection) {
+    currentSection = newSection;
+
+    gsap.to(sectionMeshes[currentSection].rotation, {
+      duration: 1.5,
+      ease: "power2.inOut",
+      x: "+=6",
+      y: "+=3",
+    });
+  }
+});
+```
+
+But this won't work since you are updating the mesh rotations in the `tick` function on each frame:
+
+```js
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+  const deltaTime = elapsedTime - previousTime;
+  previousTime = elapsedTime;
+
+  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
+
+  const parallaxX = cursor.x * 0.5;
+  const parallaxY = -cursor.y * 0.5;
+
+  cameraGroup.position.x +=
+    (parallaxX - cameraGroup.position.x) * 5 * deltaTime;
+  cameraGroup.position.y +=
+    (parallaxY - cameraGroup.position.y) * 5 * deltaTime;
+
+  // This part is neutralizing gsap animation:
+  for (const mesh of sectionMeshes) {
+    mesh.rotation.x = elapsedTime * 0.1;
+    mesh.rotation.y = elapsedTime * 0.12;
+  }
+
+  renderer.render(scene, camera);
+
+  window.requestAnimationFrame(tick);
+};
+```
+
+To fix it, in the `tick` function, instead of setting a very specific rotation based on the `elapsedTime`, you should add the `deltaTime` to the current rotation. So you need to change that part in the `tick` function to this:
+
+```js
+for (const mesh of sectionMeshes) {
+  mesh.rotation.x += deltaTime * 0.1;
+  mesh.rotation.y += deltaTime * 0.12;
+}
+```
