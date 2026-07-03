@@ -154,6 +154,17 @@
   - [Implementing parallax effect](#implementing-parallax-effect)
   - [Implement easing/smoothing](#implement-easingsmoothing)
   - [Triggered animations](#triggered-animations)
+- [React Three Fiber (R3F)](#react-three-fiber-r3f)
+  - [Creating a simple mesh](#creating-a-simple-mesh)
+  - [Position and rotation](#position-and-rotation)
+  - [Nested objects and grouping](#nested-objects-and-grouping)
+  - [Creating the first R3F app](#creating-the-first-r3f-app)
+    - [Creating and handling meshes](#creating-and-handling-meshes)
+    - [Animate things](#animate-things)
+    - [Adding the `OrbitControls`](#adding-the-orbitcontrols)
+      - [The hard way](#the-hard-way)
+      - [The easy way](#the-easy-way)
+    - [Adding lights](#adding-lights)
 
 # Getting started
 
@@ -3582,3 +3593,357 @@ for (const mesh of sectionMeshes) {
   mesh.rotation.y += deltaTime * 0.12;
 }
 ```
+
+# React Three Fiber (R3F)
+
+R3F is a React renderer. With R3F, you write code in JSX and the data gets converted to a ThreeJS scene. It also takes care of a lot of default settings for us and makes good use of React tools.
+
+> To see some examples of things that can be done with R3F, check https://docs.pmnd.rs/react-three-fiber/getting-started/examples
+
+## Creating a simple mesh
+
+You can use this syntax to create a mesh:
+
+```jsx
+<mesh>
+  <boxGeometry />
+  <meshBasicMaterial color="red" />
+</mesh>
+```
+
+This way:
+
+- The geometry and the material are automatically associated with the mesh
+- The syntax is shorter and easier to understand
+- Default parameteres are automatically set for us
+
+## Position and rotation
+
+To implement positions and rotations you can use:
+
+```jsx
+<mesh position={[1, 2, 3]} rotation-x={0.5}>
+  <boxGeometry />
+  <meshBasicMaterial color="red" />
+</mesh>
+```
+
+Which:
+
+- Is shorter
+- The `set` function is called automatically and we can still change individual properties like the `rotation.x`
+
+## Nested objects and grouping
+
+To include multiple objects in a group, you can use:
+
+```jsx
+<group>
+  <mesh>
+    <boxGeometry />
+    <meshBasicMaterial color="red" />
+  </mesh>
+
+  <mesh>
+    <sphereGeometry />
+    <meshBasicMaterial color="orange" />
+  </mesh>
+</group>
+```
+
+This is where the tag-based structure of JSX gets really handy.
+
+> R3F implements all ThreeJS classes automatically. If ThreeJS is updated and adds new classes, R3F won't break, and it will continue to support the new classes.
+
+> In R3F, automatically generated primitive component names are written in camelCase. But more specific components like the ones that we create ourselves or the ones that come from Drei will be written in PascalCase.
+
+## Creating the first R3F app
+
+In a React app, inside the `index.jsx` file which would be the project's entry file, do this:
+
+```jsx
+import "./style.css";
+import ReactDOM from "react-dom/client";
+import { Canvas } from "@react-three/fiber";
+
+const root = ReactDOM.createRoot(document.querySelector("#root"));
+
+root.render(
+  <>
+    <Canvas>
+      <mesh>
+        <torusKnotGeometry />
+        <meshNormalMaterial />
+      </mesh>
+    </Canvas>
+  </>,
+);
+```
+
+You can notice that, by default, the canvas does not fill the whole viewport. There are some spaces at the edges. You can make the `#root` element fill the viewport and do the same with the `html` and `body` tags.
+
+Notice that:
+
+- We didn't have to create a `Scene`
+- We didn't have to create the `WebGLRenderer`
+- The scene is being rendered on each frame
+- The default settings are making it look appealing (antialias, encoding, etc.)
+- We didn't have to place a `PerspectiveCamera`
+- We didn't have to pull it back from the center
+- When you resize the viewport everything that needs resizing is handled automatically
+- We didn't have to provide any specific value for the `<torusKnotGeometry />`
+- We didn't have to import the `Mesh`, nor the `SphereGeometry`, nor the `MeshNormalMaterial`
+- We didn't even have to reload the page (most of the time)
+
+> There some special hooks provided by the R3F which can only be used in components created inside the `<Canvas>`.
+
+You can create a R3F component and import it in your app as:
+
+```jsx
+// Experience.jsx
+export default function Experience() {
+  return (
+    <>
+      <mesh>
+        <torusKnotGeometry />
+        <meshNormalMaterial />
+      </mesh>
+    </>
+  );
+}
+```
+
+```jsx
+// index.jsx
+import "./style.css";
+import ReactDOM from "react-dom/client";
+import { Canvas } from "@react-three/fiber";
+import Experience from "./Experience";
+
+const root = ReactDOM.createRoot(document.querySelector("#root"));
+
+root.render(
+  <Canvas>
+    <Experience />
+  </Canvas>,
+);
+```
+
+### Creating and handling meshes
+
+When creating a geometry in R3F, you can still use the arguments you would normally use with vanilla JS to create a new geometry. For instance, to create a sphere geometry with the corresponding arguments you can:
+
+```js
+export default function Experience() {
+  return (
+    <>
+      <mesh>
+        <sphereGeometry args={[1.5, 32, 32]} />
+        <meshBasicMaterial />
+      </mesh>
+    </>
+  );
+}
+```
+
+This is because you would normally create a sphere geometry with:
+
+```js
+const geometry = new THREE.SphereGeometery(1.5, 32, 32);
+```
+
+> In the case of a geometry, be careful not to update the valuse too much or animate them. Each change will result in the whole geometry being rebuilt.
+
+Creating a material with arguments is a bit different since it only requires one argument. You still need to pass in an array, but the array should only have 1 element and that element would be an object:
+
+```jsx
+<meshBasicMaterial args={[{ color: "red", wireframe: true }]} />
+```
+
+However, you can also pass the argument object properties directly as props:
+
+```jsx
+<meshBasicMaterial color="mediumpurple" wireframe={true} />
+```
+
+Just like you changed the `color` or `wireframe` props on the material, you can play with the `position`, `rotation`, and `scale` on the `<mesh>` element.
+
+```jsx
+export default function Experience() {
+  return (
+    <>
+      <mesh scale={[3, 2, 1]}>
+        <sphereGeometry args={[1.5, 32, 32]} />
+        <meshBasicMaterial color="mediumpurple" wireframe />
+      </mesh>
+    </>
+  );
+}
+```
+
+Or if you want to pass the same value for the 3 arguments of `scale` you can simply do:
+
+```jsx
+export default function Experience() {
+  return (
+    <>
+      <mesh scale={1.5}>
+        <sphereGeometry args={[1.5, 32, 32]} />
+        <meshBasicMaterial color="mediumpurple" wireframe />
+      </mesh>
+    </>
+  );
+}
+```
+
+You can also target specific axes:
+
+```jsx
+export default function Experience() {
+  return (
+    <>
+      <mesh position-x={-2}>
+        <sphereGeometry />
+        <meshBasicMaterial color="orange" />
+      </mesh>
+      <mesh rotation-y={Math.PI * 0.25} position-x={2} scale={1.5}>
+        <boxGeometry scale={1.5} />
+        <meshBasicMaterial color="mediumpurple" />
+      </mesh>
+      <mesh position-y={-1} rotation-x={-Math.PI * 0.5} scale={10}>
+        <planeGeometry />
+        <meshBasicMaterial color="greenyellow" />
+      </mesh>
+    </>
+  );
+}
+```
+
+### Animate things
+
+The scene that you have created up until this point, is already being drawn on each frame, but nothing is moving.
+
+You can rotate the cube using the `useFrame` hook prvided by R3F. Notice that to be able to refer to the target mesh, you need to use React's `useRef` hook.
+
+```jsx
+import { useFrame } from "@react-three/fiber";
+import { useRef } from "react";
+
+export default function Experience() {
+  const cubeRef = useRef();
+
+  useFrame(() => {
+    cubeRef.current.rotation.y += 0.01;
+  });
+
+  return (
+    <>
+      <mesh position-x={-2}>
+        <sphereGeometry />
+        <meshBasicMaterial color="orange" />
+      </mesh>
+      <mesh
+        ref={cubeRef}
+        rotation-y={Math.PI * 0.25}
+        position-x={2}
+        scale={1.5}
+      >
+        <boxGeometry scale={1.5} />
+        <meshBasicMaterial color="mediumpurple" />
+      </mesh>
+      <mesh position-y={-1} rotation-x={-Math.PI * 0.5} scale={10}>
+        <planeGeometry />
+        <meshBasicMaterial color="greenyellow" />
+      </mesh>
+    </>
+  );
+}
+```
+
+The same problem that we have discussed earlier should also be handled here. With this animation setup:
+
+```js
+useFrame(() => {
+  cubeRef.current.rotation.y += 0.01;
+});
+```
+
+The animation speed will be different in devices with different frame rates. To handle this, you need to know how much time passes in between frames. Good news is that the callback inside `useFrame` has access to 2 parameters: `state` and `delta`.
+
+```js
+useFrame((state, delta) => {
+  cubeRef.current.rotation.y += delta;
+});
+```
+
+### Adding the `OrbitControls`
+
+There are actually 2 ways; the hard way and the easy way.
+
+#### The hard way
+
+Since `OrbitControls` is not part of the default ThreeJS classes, we cannot declare it like we declare a `<mesh>` element.
+
+So we are going to first import it and the convert it into a declarative version.
+
+```jsx
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+```
+
+Then import `extend` from `@react-three/fiber`, since this will automaticaly convert a ThreeJS class into a declarative version and make it available in the JSX:
+
+```jsx
+import { extend } from "@react-three/fiber";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+extend({ OrbitControls });
+
+// Component function
+```
+
+Now to add the `<orbitControls>` element to the JSX, you need to provide some arguments, since the class originally requires some arguments upon initialization. The arguments are first a camera and then a DOM element.
+
+Where can these arguments be found? In the `state` variable available inside the `useFrame` hook, there is a `camera` and a `gl` property which is exactly what we need for the `<orbitControls>` element. But we don't want to get these arguments on each frame. We only need to acquire them once. For this purpose, you can use `useThree` hook instead of `useFrame`. The `useThree` returns exactly the same object as the `state` variable itself.
+
+```js
+import { useFrame, extend, useThree } from "@react-three/fiber";
+import { useRef } from "react";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+extend({ OrbitControls });
+
+export default function Experience() {
+  const sphereBoxGroup = useRef();
+  console.log(OrbitControls);
+
+  const { camera, gl } = useThree();
+
+  useFrame((state, delta) => {
+    sphereBoxGroup.current.rotation.y += delta;
+  });
+
+  return (
+    <>
+      <orbitControls args={[camera, gl.domElement]} />
+      <group ref={sphereBoxGroup}>
+        <mesh position-x={-2}>
+          <sphereGeometry />
+          <meshBasicMaterial color="orange" />
+        </mesh>
+        <mesh rotation-y={Math.PI * 0.25} position-x={2} scale={1.5}>
+          <boxGeometry scale={1.5} />
+          <meshBasicMaterial color="mediumpurple" />
+        </mesh>
+      </group>
+      <mesh position-y={-1} rotation-x={-Math.PI * 0.5} scale={10}>
+        <planeGeometry />
+        <meshBasicMaterial color="greenyellow" />
+      </mesh>
+    </>
+  );
+}
+```
+
+#### The easy way
+
+### Adding lights
