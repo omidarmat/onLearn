@@ -1,123 +1,92 @@
-# OWASP top 10s
+# Recon
 
-## Web application
+To exploit web applications efficiently, a wide array of skills is required. On the one hand, a hacker needs knowledge of network protocols, software development techniques, and common vulnerabilities found in various types of applications. But on the other hand, the hacker also needs to understand the application they are targeting. The more intimate this knowledge is, the better and more applicable it will be.
 
-- Broken Access Control
-- Cryptographic failures
-- Injection
-- Insecure design
-- Security misconfiguration
-- Vulnerable and outdated components
-- Identification and authentication failure
-- Software and data integrity failure
-- Security logging and monitoring failures
-- Server-side request forgery
+The hacker should understand the purpose of the application from a functional perspective.
 
-### Broken Access Control
+Without deep understanding of the target application from a nontechnical perspective, it is actually difficult to determine what data and functionality matter.
 
-Restrictions on what authenticated users are allowed to do are often not properly enforced. Attackers can exploit these flaws to access unauthorized functionality and/or data, such as access other users' accounts, view sensitive files, modify other users' data, change access rights, etc.
+- Who are its users?
+- How does the application generate revenue?
+- For what purpose do users select the application over competitors?
+- Who are the competitors?
+- What functionality is found in the application?
 
-### Cryptographic failures
+Ultimately, web application reconnaissance is about collecting data and building a model that combines a web application’s technical and functional details in a way that allows you to fully understand the purpose and usage of a web application.
 
-Failure to sufficiently protect data in transit or rest from exposure to unauthorized individuals. This can include poor usage of encryption or the lack of encryption all together.
+information is key — regardless of if it is technical in nature or not.
 
-### Injection
+## Web application mapping
 
-Injection flaws, such as SQL, NoSQL, and LDAP injection occur when untrusted data is sent to an interpreter as part of a command or query. The attacker's hostile data can trick the interpreter into executing unintended commands or accessing data without proper authorization.
+You should learn how to build up a map that represents the structure, organization, and functionality of a web application. It is important to note that this should generally be the first step you take before attempting to hack into a web application.
 
-### Insecure design
+We will use the term "map" here to define the data points collected regarding the code, network structure,
+Web Application Mapping and feature set of an application. You will learn how to acquire the data required to fill a map in the next few chapters.
 
-Failing to build security into the application early in the design process through a process of thread modeling, and secure design patterns and principles.
+For robust applications, or applications you intend to test frequently and over long periods of time, you probably want a more robust solution to create and develop your map. Any format of mapping should be sufficient as long as it is easily traversable and capable of storing relevant information and relationships.
 
-### Security misconfiguration
+## Finding subdomains
 
-Security misconfiguration is commonly a result of insecure default configurations, incomplete or ad hoc configurations, open cloud storage, misconfigured HTTP headers, and verbose error messages containing sensitive information.
+In order to scope out and test API endpoints, we should first be familiar with the domain structure a web application uses. In today’s world it is rare for a single domain to be used to serve a web application in its entirety. More often than not, web applications will be split into at minimum client and server domains, plus the well-known "https://www" versus just "https://."
 
-### Vulnerable and outdated components
+Take `https://www.mega-bank.com` as example. We are particularly curious if MegaBank has any other internet-accessible servers linked to the mega-bank.com domain name.
 
-Components, such as libraries, frameworks, and other software modules, run with the same privileges as the application. If a vulnerable component is exploited, such an attack can facilitate serious data loss or derver takeover.
+The first thing we should do is perform some recon and fill our web application map up with a list of subdomains attached to `mega-bank.com`. Most large consumer companies actually host a variety of subdomains attached to their primary domain. These subdomains are used for hosting a variety of services from email, to admin applications, file servers, and more.
 
-### Identification and authentication failure
+There are many ways to find this data, and often you will have to try several to get the results you are looking for.
 
-Application functions related to authentication and session management are often implemented incorrectly, allowing attackers to compromise passwords, keys, or session tokens, or to exploit other implementation flaws to assume other users' identities temporarily or permanently.
+### Browser's built-in network analysis tools
 
-### Software and data integrity failure
+To view these requests as they are being made, we can use our own web browser’s network tools, or a more
+powerful tool like **Burp**, **PortSwigger**, or **ZAP**.
 
-Code or infrastructure that does not properly protect against integrity failures like using plugins from untrusted sources that can lead to a compromise.
+### Public records
 
-### Insufficient logging and monitoring
+A good hacker can take advantage of this fact and find many interesting tidbits of information that could lead to an easy attack down the line.
 
-Insufficient logging and monitoring, coupled with missing or ineffective integration with incident response, allows attackers to further attack systems, maintain persistence, pivot to more systems, and tamper, extract, or destroy data.
+Some data that I’ve found on the web while performing penetration tests in the past includes:
 
-### Server-side request forgery
+• Cached copies of GitHub repos that were accidentally turned public before being turned private again
+• SSH keys
+• Various keys for services like Amazon AWS or Stripe that were exposed periodically and then removed from a public-facing web application
+• DNS listings and URLs that were not intended for a public audience
+• Pages detailing unreleased products that were not intended to be live
+• Financial records hosted on the web but not intended to be crawled by a search engine
+• Email addresses, phone numbers, and usernames
 
-SSRF occurs when an application fetches resources without validating the destination URL. This can be taken advantage of by an attacker who is able to enter a destination of their choosing.
+This information can be found in many places, such as:
 
-# Application security terms and definitions
+• Search engines
+• Social media posts
+• Archiving applications, like archive.org
+• Image searches and reverse image searches
 
-## Security
+When attempting to find subdomains, public records can also be a good source of information because subdomains may not be easily found via a dictionary, but could have been indexed in one of the services previously listed.
 
-Security is anything we do to protect an asset that is vulnerable to some attack, failure, or error.
+### Search engine caches
 
-## Assets
+Fortunately, Google offers special search operators for power searchers that allow you to increase the specificity of your search query. We can use the `site:<my-site>` operator to ask Google to only query against a specific domain:
 
-An asset is anything you deem to have value:
+```
+site:mega-bank.com log in
+```
 
-- An asset may be valuable because it holds its value
-- An asset may be valuable because it provides access to value
-- An asset may be valuable because it produces value
+Doing this against a popular site will usually return pages upon pages of content from the main domain, and very little content from the interesting subdomains. You will need to improve the focus of your search further to start uncovering any interesting stuff.
 
-## Vulnerability
+Use the minus operator to add specific negative conditions to any query string. For example, `-inurl:<pattern>` will reject any URLs that match the pattern supplied. An example of a search that combines the Google search operators `site:` and `-inurl:<pattern>` can work to a great extent.
 
-A vulnerability is any weakness in an asset that makes it susceptible to attack or failure.
+This technique can be used to reduce the number of search results returned, and to search specific subdomains while ignoring specific keywords.
 
-## Attack
+We can use the operator `-inurl:<pattern>` to remove results for the subdomains we are already familiar with, like www. Note that it will also filter out instances of www from other parts of a URL, as it does not specify the subdomain but the whole URL string instead:
 
-An attack is any intentional action that can reduce the value of an asset.
+```
+site:mega-bank.com -inurl:www
+```
 
-## Failure and errors
+You can also use multiple `-inurl:` search patterns:
 
-Failures and errors are unintentional actions that can reduce the value of an asset.
+```
+site:mega-bank.com -inurl:www -inurl:mobile
+```
 
-## Threats
-
-Attacks, failures, and errors are actions that we collectively refer to as threats.
-
-# "Anything" in security
-
-Security, and more specifically cybersecurity, can be understood as a set of goals. These goals are specifically defined by how we measure an asset's value. How does value define our security goals? The goal of security is to protect an asset's **value** from threats. Value is important because not everything is valued the same and requires the same level of protection.
-
-## Finding your security goals
-
-- Determining what assets we want to protect
-- Learn how the asset works and interacts with other things
-- Determine how our asset's value is reduced directly and indirectly
-
-These will form the steps to mitigate the threats.
-
-# Application security goals
-
-We must consider the unique nature of IT assets and capabilities when considering security goals.
-
-From a high level, there is 3 main goals that we are trying to achieve:
-
-1. Confidentiality: Ensures that sensitive information is accessible only to authorized individuals. When we protect something that holds value, we're maintaining its confidentiality.
-2. Integrity: Ensures that data is accurate and unaltered, safeguarding it from unauthorized modifications, deletions, or corruptions. When we protect something that produces value, we're maintaining its integrity.
-3. Availability: Ensures that data and services are accessible to authorized users when needed. When we protect something that provides access to value, we're maintaining its availability.
-
-Collectively, these are known as the CIA triad.
-
-## Security principles
-
-Security principles aid in selecting or designing the correct mechanisms to implement our gloas.
-
-Here is a list of security principles:
-
-1. Economy of mechanism: It means keeping it simple. Also means complexity is the enemy of security.
-2. Fail-Safe defaults: It means that fail and error scenarios should fall back to the most secure option.
-3. Complete mediation: It means that we check every access to a resource for authority.
-4. Open design: It means there is no security through obsecurity.
-5. Separation of privilege: It means that two keys are more secure that one. So two keys should be used in any kind of high-value transaction.
-6. Least privilege: It means that you should have access to do just what is needed to do your job, and no more.
-7. Least common mechanism: It means that we are reducing the shared components in a system since that provides the opportunity for information leaks or inappropriate accesss.
-8. Psychological acceptability: It means that the systems need to be designed so that people's expected behaviors provide security. If security is hard, people will find other ways.
+### Accidental archives
