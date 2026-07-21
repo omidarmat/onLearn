@@ -90,3 +90,568 @@ site:mega-bank.com -inurl:www -inurl:mobile
 ```
 
 ### Accidental archives
+
+Public archiving utilities like archive.org are useful because they build snapshots of websites periodically and allow you to visit a copy of a website from the past. `archive.org` strives to preserve the history of the internet, as many sites die and new sites take their domains. Because Archive.org stores historical snapshots of websites, sometimes dating back 20 years, the website is a goldmine for finding information that was once disclosed (purposefully or accidentally) but later removed.
+
+Generally speaking, search engines will index data regarding a website but try to crawl that website periodically to keep their cache up to date. This means that for relevant **current data** you should look in a search engine, but for relevant **historical data** you might be better off looking at a website archive.
+
+When looking for subdomains, historical archives often disclose these via hyperlinks that were once exposed through the HTML or JS but are no longer visible in the live app.
+
+We can automate the discovery of subdomains from an archive with these simple steps:
+
+1. Open 10 archives from 10 separate dates with significant time in between.
+2. Right-click “View source,” then press Ctrl-A to highlight all HTML.
+3. Press Ctrl-C to copy the HTML to your clipboard.
+4. Create a file on your desktop named legacy-source.html.
+5. Press Ctrl-V to paste the source code from an archive into the file.
+6. Repeat this for each of the nine other archives you opened.
+7. Open this file in your favorite text editor (VIM, Atom, VSCode, etc.).
+8. Perform searches for the most common URL schemes:
+   • http://
+   • https://
+   • file://
+   • ftp://
+   • ftps://
+
+You can find a full list of browser-supported URL schemes in the specification document at `https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml`, which is used accross all major browsers to define which schemes should be supported.
+
+### Zone Transfer Attacks
+
+A zone transfer attack is a kind of recon trick that works against improperly configured Domain Name System (DNS) servers. Instead, it’s just a information-gathering technique that takes little effort to use, and can give us some valuable information if it is successful. At its core, a DNS zone transfer attack is a specially formatted request on behalf of an individual that is designed to look like a valid DNS zone transfer request from a valid DNS server.
+
+DNS zone transfers are a standardized way that DNS servers can share DNS records. Records are shared in a text-based format known as a **zone file**.
+
+Zone files often contain DNS configuration data that is not intended to be easily accessible. As a result, a properly configured DNS master server should only be able to resolve zone transfer requests that are requested by another authorized DNS slave server. If a DNS server is not properly configured to only resolve requests for other specifically defined DNS servers, it will be vulnerable to bad actors.
+
+We can find the DNS used by a specific website by:
+
+```
+host -t NS digikala.com
+```
+
+The expected output would be:
+
+```
+digikala.com name server u.ns2.digikalacloud.com.
+digikala.com name server f.ns1.digikalacloud.com.
+```
+
+Then you can execute the Zone Transfer Attack:
+
+```
+host -l digikala.com f.ns1.digikalacloud.com
+```
+
+You should get a result like this if the DNS is configured improperly:
+
+```
+Using domain server:
+Name: ns1.bankhost.com
+Address: 195.11.100.25
+Aliases:
+digikala.com has address 195.250.100.195
+digikala.com name server ns1.bankhost.com
+digikala.com name server ns2.bankhost.com
+mail.digikala.com has address 82.31.105.140
+admin.digikala.com has address 32.45.105.144
+internal.digikala.com has address 25.44.105.144
+```
+
+A properly configured server will give a different output when you request a zone transfer:
+
+```
+Using domain server:
+Name: ns1.secure-bank.com
+Address: 141.122.34.45
+Aliases:
+
+: Transfer Failed.
+```
+
+### Brute forcing subdomains
+
+As a final measure in discovering subdomains, brute force tactics can be used. These can be effective against web applications with few security mechanisms in place, but against more established and secure web applications we will find that our brute force must be structured very intelligently.
+
+Let’s build up a brute force algorithm in two steps using JavaScript. Our script should do the following:
+
+1. Generate a list of potential subdomains.
+2. Run through that list of subdomains, pinging each time to detect if a subdomain is live.
+3. Record the live subdomains and do nothing with the unused subdomains.
+
+We can generate subdomains using the following:
+
+```js
+/*
+ * A simple function for brute forcing a list of subdomains
+ * given a maximum length of each subdomain.
+ */
+const generateSubdomains = function (length) {
+  /*
+   * A list of characters from which to generate subdomains.
+   *
+   * This can be altered to include less common characters
+   * like '-'.
+   *
+   * Chinese, Arabic, and Latin characters are also
+   * supported by some browsers.
+   */
+  const charset = "abcdefghijklmnopqrstuvwxyz".split("");
+  let subdomains = charset;
+  let subdomain;
+  let letter;
+  let temp;
+  /*
+   * Time Complexity: o(n*m)
+   * n = length of string
+   * m = number of valid characters
+   */
+  for (let i = 1; i < length; i++) {
+    temp = [];
+    for (let k = 0; k < subdomains.length; k++) {
+      subdomain = subdomains[k];
+      for (let m = 0; m < charset.length; m++) {
+        letter = charset[m];
+        temp.push(subdomain + letter);
+      }
+    }
+    subdomains = temp;
+  }
+  return subdomains;
+};
+const subdomains = generateSubdomains(4);
+```
+
+This script will generate every possible combination of characters of length `n`, where the list of characters to assemble subdomains from is `charset`. The algorithm works by splitting the charset string into an array of characters, then assigning the initial set of characters to that array of characters.
+
+Next, we iterate for duration length, creating a temporary storage array at each iteration. Then we iterate for each subdomain, and each character in the charset array that specifies our available character set. Finally, we build up the temp array using combinations of existing subdomains and letters.
+
+Now, using this list of subdomains, we can begin querying against a top-level domain (.com, .org., .net, etc.) like mega-bank.com. In order to do so, we will write a short script that takes advantage of the DNS library provided within Node.js—a popular JavaScript runtime.
+
+```js
+const dns = require("dns");
+const promises = [];
+/*
+ * This list can be filled with the previous brute force
+ * script, or use a dictionary of common subdomains.
+ */
+const subdomains = [];
+/*
+ * Iterate through each subdomain, and perform an asynchronous
+ * DNS query against each subdomain.
+ *
+ * This is much more performant than the more common `dns.lookup()`
+ * because `dns.lookup()` appears asynchronous from the JavaScript,
+ * but relies on the operating system's getaddrinfo(3) which is
+ * implemented synchronously.
+ */
+subdomains.forEach((subdomain) => {
+  promises.push(
+    new Promise((resolve, reject) => {
+      dns.resolve(`${subdomain}.mega-bank.com`, function (err, ip) {
+        return resolve({ subdomain: subdomain, ip: ip });
+      });
+    }),
+  );
+});
+// after all of the DNS queries have completed, log the results
+Promise.all(promises).then(function (results) {
+  results.forEach((result) => {
+    if (!!result.ip) {
+      console.log(result);
+    }
+  });
+});
+```
+
+After a short period of waiting, we will see a list of valid subdomains in the terminal:
+
+```
+{ subdomain: 'mail', ip: '12.32.244.156' },
+{ subdomain: 'admin', ip: '123.42.12.222' },
+{ subdomain: 'dev', ip: '12.21.240.117' },
+{ subdomain: 'test', ip: '14.34.27.119' },
+{ subdomain: 'www', ip: '12.14.220.224' },
+{ subdomain: 'shop', ip: '128.127.244.11' },
+{ subdomain: 'ftp', ip: '12.31.222.212' },
+{ subdomain: 'forum', ip: '14.15.78.136' }
+```
+
+### Dictionary attacks
+
+Rather than attempting every possible subdomain, we can speed up the process further by utilizing a dictionary attack instead of a brute force attack. Much like a brute force attack, a dictionary attack iterates through a wide array of potential subdomains, but instead of randomly generating them, they are pulled from a list of the most common subdomains.
+
+the top 25 most common subdomains are as follows:
+
+```
+www
+mail
+ftp
+localhost
+webmail
+smtp
+pop
+ns1
+webdisk
+ns2
+cpanel
+whm
+autodiscover
+autoconfig
+m
+imap
+test
+ns
+blog
+pop3
+dev
+www2
+admin
+forum
+news
+```
+
+The dnscan repository on GitHub hosts files containing the top 10,000 subdomains that can be integrated into your recon process thanks to its very open GNU v3 license. You can find dnscan’s subdomain lists, and source code on GitHub at `https://github.com/rbsec/dnscan`.
+
+For large lists, like dnscan’s 10,000 subdomain list, we should keep the data separate from the script and pull it in at runtime. This will make it much easier to modify the subdomain list, or make use of other subdomain lists. Most of these lists will be in .csv format, making integration into your subdomain recon script very simple:
+
+```js
+const dns = require("dns");
+const csv = require("csv-parser");
+const fs = require("fs");
+const promises = [];
+/*
+ * Begin streaming the subdomain data from disk (versus
+ * pulling it all into memory at once, in case it is a large file).
+ *
+ * On each line, call `dns.resolve` to query the subdomain and
+ * check if it exists. Store these promises in the `promises` array.
+ *
+ * When all lines have been read, and all promises have been resolved,
+ * then log the subdomains found to the console.
+ *
+ * Performance Upgrade: if the subdomains list is exceptionally large,
+ * then a second file should be opened and the results should be
+ * streamed to that file whenever a promise resolves.
+ */
+fs.createReadStream("subdomains-10000.txt")
+  .pipe(csv())
+  .on("data", (subdomain) => {
+    promises.push(
+      new Promise((resolve, reject) => {
+        dns.resolve(`${subdomain}.mega-bank.com`, function (err, ip) {
+          return resolve({ subdomain: subdomain, ip: ip });
+        });
+      }),
+    );
+  })
+  .on("end", () => {
+    // after all of the DNS queries have completed, log the results
+    Promise.all(promises).then(function (results) {
+      results.forEach((result) => {
+        if (!!result.ip) {
+          console.log(result);
+        }
+      });
+    });
+  });
+```
+
+Because the dictionary approach is much more efficient than the brute force approach, it may be wise to begin with a dictionary and then use a brute force subdomain generation only if the dictionary does not return the results you are seeking.
+
+## API analysis
+
+### Endpoing discovery
+
+The HTTP specification defines a special method that only exists to give information about a particular API’s verbs. This method is called OPTIONS, and should be our first go-to when performing recon against an API. We can easily make a request in curl from the terminal:
+
+```
+curl -i -X OPTIONS https://api.mega-bank.com/users/1234
+```
+
+If the OPTIONS request was successful, we should see the following response:
+
+```
+200 OK
+Allow: HEAD, GET, PUT, DELETE, OPTIONS
+```
+
+Generally speaking, `OPTIONS` will only be available on APIs specifically designated for public use. So while it’s an easy first attempt, we will need a more robust discovery solution for most apps we attempt to test. Very few enterprise applications expose `OPTIONS`.
+
+Let’s move on to a more likely method of determining accepted HTTP verbs. The first API call we saw in our browser was the following:
+
+```
+GET api.mega-bank.com/users/1234
+```
+
+We can now expand this to:
+
+```
+GET api.mega-bank.com/users/1234
+POST api.mega-bank.com/users/1234
+PUT api.mega-bank.com/users/1234
+PATCH api.mega-bank.com/users/1234
+DELETE api.mega-bank.com/users/1234
+```
+
+With the above list of HTTP verbs in mind, we can generate a script to test the legitimacy of our theory.
+
+```js
+/*
+ * Given a URL (cooresponding to an API endpoint),
+ * attempt requests with various HTTP verbs to determine
+ * which HTTP verbs map to the given endpoint.
+ */
+const discoverHTTPVerbs = function (url) {
+  const verbs = ["POST", "GET", "PUT", "PATCH", "DELETE"];
+  const promises = [];
+  verbs.forEach((verb) => {
+    const promise = new Promise((resolve, reject) => {
+      const http = new XMLHttpRequest();
+      http.open(verb, url, true);
+      http.setRequestHeader(
+        "Content-type",
+        "application/x-www-form-urlencoded",
+      );
+      /*
+       * If the request is successful, resolve the promise and
+       * include the status code in the result.
+       */
+      http.onreadystatechange = function () {
+        if (http.readyState === 4) {
+          return resolve({ verb: verb, status: http.status });
+        }
+      };
+      /*
+       * If the request is not successful, or does not complete in time, mark
+       * the request as unsuccessful. The timeout should be tweaked based on
+       * average response time.
+       */
+      setTimeout(() => {
+        return resolve({ verb: verb, status: -1 });
+      }, 1000);
+      // initiate the HTTP request
+      http.send({});
+    });
+    // add the promise object to the promises array
+    promises.push(promise);
+  });
+  /*
+   * When all verbs have been attempted, log the results of their
+   * respective promises to the console.
+   */
+  Promise.all(promises).then(function (values) {
+    console.log(values);
+  });
+};
+```
+
+The way this script functions on a technical level is just as simple. HTTP endpoints return a status code alongside any message they send back to the browser. We don’t actually care what this status code is. We just want to see a status code.
+
+### Authentication mechanisms
+
+Guessing the payload shape required for an API endpoint is much more difficult than just asserting that an API endpoint exists.
+
+It’s usually best to start with common endpoints that can be found on nearly every application: sign in, sign up, password reset, etc. These often take a similarly shaped payload to that of other apps, since authentication is usually designed based on a standardized scheme.
+
+if we can reverse engineer the type of authentication used and understand how the token is being attached to requests, it will be easier to analyze other API endpoints that rely on an authenticated user token. Here is a table of major authentication schemes:
+
+| Authentication scheme      | Implementation details                                                                 | Strengths                                                                    | Weaknesses                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| HTTP Basic auth            | Username and password sent on each request                                             | All major browsers support this natively                                     | Session does not expire; easy to intercept                                      |
+| HTTP Digest authentication | Hashed `username:realm:password` sent on each request                                  | More difficult to intercept; server can reject expired tokens                | Encryption strength dependent on hashing algorithm used                         |
+| OAuth                      | "Bearer" token-based auth; allows sign in with other websites such as Amazon -> Twitch | Tokenized permissions can be shared from one app to another for integrations | Phishing rist; central site can be compromised, compromising all connected apps |
+
+If we log in to `https://www.mega-bank.com` and analyze the network response, we might see something like this after the login succeeds:
+
+```
+GET /homepage
+HOST mega-bank.com
+Authorization: Basic am9lOjEyMzQ=
+Content Type: application/json
+```
+
+We can tell at first glance that this is HTTP basic authentication because of the Basic authorization header being sent. Furthermore, the string `am9lOjEyMzQ=` is simply a base64-encoded `username:password` string.
+
+In the browser console, we can use the built-in functions btoa(str) and atob(base64) to convert strings to base64 and vice versa. If we run the base64-encoded string through the atob function, we will see the username and password being sent over the network:
+
+```js
+/*
+ * Decodes a string that was previously encoded with base64.
+ * Result = joe:1234
+ */
+atob("am9lOjEyMzQ=");
+```
+
+Because of how insecure this mechanism is, basic authentication is typically only used on web applications that enforce SSL/TLS traffic encryption. This way, credentials cannot be intercepted midair—for example, at a sketchy mall WiFi hotspot.
+
+This means that if we ever run into another endpoint that is not returning anything interesting with an empty payload, the first
+thing we should try is attaching an authorization header and seeing if it does anything different when we request as an authenticated user.
+
+### Endpoint shapes
+
+After locating a number of subdomains and the HTTP APIs contained within those subdomains, you should begin determining the HTTP verbs used per resource and adding the results of that investigation to your web application map.
+
+#### Application-specific shapes
+
+Application-specific shapes are much harder to determine than those that are based on public specifications. To determine the shape of a payload expected by an API endpoint, you may need to rely on a number of recon techniques and slowly learn about the endpoint by trial and error.
+
+If you know the name of a variable expected in the payload, but not a value, then you may be able to brute force the request by repeating it with variations until one sticks. Obviously, brute forcing values is slow manually, so you want a script to speed up the process. The more rules you can learn about an expected variable, the better.
+
+## Identifying thrid-party dependencies
+
+During reconnaissance you will likely encounter many third-party integrations, and you will want to pay a lot of attention to both the dependency and the method of integration. Often these dependencies can turn into attack vectors; sometimes vulnerabilities in such dependencies are well known and you may not even have to prepare an attack yourself but will instead be able to copy an attack from a Common Vulnerabilities and Exposures (CVE) database.
+
+### Detecting client-side frameworks
+
+Usually all three of these are easy to detect, and if you can pin down the version number, you can often find a combination of applicable ReDoS, Prototype Pollution, and XSS vulnerabilities on the web (in particular with older versions that have not been updated).
+
+#### Detecting SPA frameworks
+
+The largest SPA frameworks on the web as of 2019 are (in no particular order):
+
+• EmberJS (LinkedIn, Netflix)
+• AngularJS (Google)
+• React (Facebook)
+• VueJS (Adobe, GitLab)
+
+##### EmberJS
+
+EmberJS is quite easy to detect because when EmberJS bootstraps, it sets up a global variable `Ember` that can easily be found in the browser console:
+
+```js
+Ember.VERSION;
+```
+
+##### AngularJS
+
+Older versions of Angular provide a global object similar to EmberJS. The global object is named `angular`, and the version can be derived from its property `angular.version`. AngularJS 4.0+ got rid of this global object, which makes it a bit harder to determine the version of an AngularJS app. You can detect if an application is running AngularJS 4.0+ by checking to see if the `ng` global exists in the console.
+
+```js
+// returns array of root elements
+const elements = getAllAngularRootElements();
+const version = elements[0].attributes["ng-version"];
+// ng-version="6.1.2"
+console.log(version);
+```
+
+##### React
+
+React can be identified by the global object React, and like EmberJS, can have its version detected easily via a constant:
+
+```js
+const version = React.version;
+// 0.13.3
+console.log(version);
+```
+
+You may also notice script tags with the type `text/jsx` referencing React’s special file format that contains JavaScript, CSS, and HTML all in the same file.
+
+##### VueJS
+
+Similarly to React and EmberJS, VueJS exposes a global object Vue with a version constant:
+
+```js
+const version = Vue.version;
+// 2.6.10
+console.log(version);
+```
+
+If you cannot inspect elements on a VueJS app, it is likely because the app was configured to ignore developer tools.
+
+You can flip this property to true in order to begin inspecting VueJS components in the browser console again:
+
+```js
+// Vue components can now be inspected
+Vue.config.devtools = true;
+```
+
+### Detecting JavaScript Libraries
+
+Beyond the major libraries you are better off running a query to see all of the external scripts loaded into the page.
+
+We can make use of the DOM’s querySelectorAll function to rapidly find a list of all third-party scripts imported into the page:
+
+```js
+/*
+ * Makes use of built-in DOM traversal function
+ * to quickly generate a list of each <script>
+ * tag imported into the current page.
+ */
+const getScripts = function () {
+  /*
+   * A query selector can either start with a "."
+   * if referencing a CSS class, a "#" if referencing
+   * an `id` attribute, or with no prefix if referencing an HTML element.
+   *
+   * In this case, 'script' will find all instances of <script>.
+   */
+  const scripts = document.querySelectorAll("script");
+  /*
+   * Iterate through each `<script>` element, and check if the element
+   * contains a source (src) attribute that is not empty.
+   */
+  scripts.forEach((script) => {
+    if (script.src) {
+      console.log(`i: ${script.src}`);
+    }
+  });
+};
+```
+
+### Detecting CSS libraries
+
+With minor modifications to the algorithm to detect scripts, we can also detect CSS:
+
+```js
+/*
+ * Makes use of DOM traversal built into the browser to
+ * quickly aggregate every `<link>` element that includes
+ * a `rel` attribute with the value `stylesheet`.
+ */
+const getStyles = function () {
+  const scripts = document.querySelectorAll("link");
+  /*
+   * Iterate through each script, and confirm that the `link`
+   * element contains a `rel` attribute with the value `stylesheet`.
+   *
+   * Link is a multipurpose element most commonly used for loading CSS
+   * stylesheets, but also used for preloading, icons, or search.
+   */
+  scripts.forEach((link) => {
+    if (link.rel === "stylesheet") {
+      console.log(`i: ${link.getAttribute("href")}`);
+    }
+  });
+};
+```
+
+### Detecting server-side frameworks
+
+Detecting what dependencies a server has is much harder, but often not impossible. Sometimes server-side dependencies leave a distinct mark on HTTP traffic (headers, optional fields) or expose their own endpoints. Detecting server-side frameworks requires more knowledge about the individual frameworks being used, but fortunately, just like on the client, there are a few packages that are very widely used. If you can memorize ways to detect the top packages, you will be able to recognize them on many web applications that you investigate.
+
+#### Header detection
+
+Some insecurely configured web server packages expose too much data in their default headers. A prime example of this is the X-Powered-By header, which will literally give away the name and version of a web server
+
+Make any call to one of those vulnerable web servers and you should see a return value like this in the response:
+
+```
+X-Powered-By: ASP.NET
+```
+
+If you are very lucky, the web server might even provide additional information:
+
+```
+Server: Microsoft-IIS/4.5
+X-AspNet-Version: 4.0.25
+```
+
+#### Default Error Messages and 404 Pages
+
+Some popular frameworks don’t provide very easy methods of determining the version number used. If these frameworks are open source, like Ruby on Rails, then you may be able to determine the version used via fingerprinting. Specific changes from commit to commit on GitHub can be used to fingerprint the version of the framwork that is being used on the server.
+
+Most web servers provide their own default error messages and 404 pages, which continue to be presented to users until they are replaced with a custom alternative by the owner of the web application.
+
+These 404 pages and error messages can expose quite a bit of intelligence regarding your server setup. Not only can these expose your server software, but they can often expose the version or range of versions as well.
+
+### Database detection
