@@ -215,9 +215,9 @@ Address: 157.240.2.35
 ```
 
 Once you’ve found the IP address of the known domain, perform a reverse IP lookup. Reverse IP searches look for domains hosted on the same
-server, given an IP or domain. You can also use ViewDNS.info for this.
+server, given an IP or domain. You can also use `viewdns.info` for this.
 
-Also run the whois command on an IP address, and then see if the target has a dedicated IP range by checking the NetRange field. An IP range is a block of IP addresses that all belong to the same organization. If the organization has a dedicated IP range, any IP you find in that range belongs to that organization:
+Also run the `whois` command on an IP address, and then see if the target has a dedicated IP range by checking the NetRange field. An IP range is a block of IP addresses that all belong to the same organization. If the organization has a dedicated IP range, any IP you find in that range belongs to that organization:
 
 ```
 whois 157.240.2.35
