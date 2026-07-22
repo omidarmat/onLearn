@@ -186,6 +186,9 @@ When companies or individuals register a domain name, they need to supply identi
 
 This information is not always available, as some organizations and individuals use a service called domain privacy, in which a third-party service provider replaces the user’s information with that of a forwarding service.
 
+You could then conduct a reverse WHOIS search, searching a database by using an organization name, a phone number, or an email address to find
+domains registered with it. This way, you can find all the domains that belong to the same owner. Reverse WHOIS is extremely useful for finding obscure or internal domains not otherwise disclosed to the public. Use a public reverse WHOIS tool like `ViewDNS.info` (https://viewdns.info/reversewhois/) to conduct this search. WHOIS and reverse WHOIS will give you a good set of top-level domains to work with.
+
 ## Web application mapping
 
 You should learn how to build up a map that represents the structure, organization, and functionality of a web application. It is important to note that this should generally be the first step you take before attempting to hack into a web application.
@@ -194,9 +197,6 @@ We will use the term "map" here to define the data points collected regarding th
 Web Application Mapping and feature set of an application. You will learn how to acquire the data required to fill a map in the next few chapters.
 
 For robust applications, or applications you intend to test frequently and over long periods of time, you probably want a more robust solution to create and develop your map. Any format of mapping should be sufficient as long as it is easily traversable and capable of storing relevant information and relationships.
-
-You could then conduct a reverse WHOIS search, searching a database by using an organization name, a phone number, or an email address to find
-domains registered with it. This way, you can find all the domains that belong to the same owner. Reverse WHOIS is extremely useful for finding obscure or internal domains not otherwise disclosed to the public. Use a public reverse WHOIS tool like `ViewDNS.info` (https://viewdns.info/reversewhois/) to conduct this search. WHOIS and reverse WHOIS will give you a good set of top-level domains to work with.
 
 ## IP Addresses
 
