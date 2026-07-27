@@ -199,6 +199,7 @@
     - [Making the code attack-proof](#making-the-code-attack-proof)
     - [Test Helpers](#test-helpers)
     - [Post-test cleanups](#post-test-cleanups)
+- [Backup and restore](#backup-and-restore)
 
 # Basics of SQL
 
@@ -3852,7 +3853,7 @@ app.post("/posts", async (req, res) => {
             INSERT INTO posts (lat, lng)
             VALUES ($1, $2);
         `,
-    [lat, lng]
+    [lat, lng],
   );
 
   res.redirect("/posts");
@@ -3925,7 +3926,7 @@ app.post("/posts", async (req, res) => {
   await pool.query(
     `INSERT INTO posts (lat, lng, loc)
         VALUES ($1, $2, $3);`,
-    [lat, lng, `(${lng}, ${lat})`]
+    [lat, lng, `(${lng}, ${lat})`],
   );
 
   res.redirect("/posts");
@@ -4007,7 +4008,7 @@ pool
     UPDATE posts
     SET loc = POINT(lng, lat)
     WHERE loc IS NULL;
-    `
+    `,
   )
   .then(() => {
     console.log("Update complete");
@@ -4094,7 +4095,7 @@ app.post("/posts", async (req, res) => {
   await pool.query(
     `INSERT INTO posts (loc)
         VALUES ($1);`,
-    [`(${lng}, ${lat})`]
+    [`(${lng}, ${lat})`],
   );
 
   res.redirect("/posts");
@@ -4619,7 +4620,7 @@ class UserRepo {
 
       for (let key in row) {
         const camelCase = key.replace(/([-_][a-z])/gi, ($1) =>
-          $1.toUpperCase().replace("_", "")
+          $1.toUpperCase().replace("_", ""),
         );
         replaced[camelCase] = row[key];
       }
@@ -4642,7 +4643,7 @@ module.exports = (rows) => {
 
     for (let key in row) {
       const camelCase = key.replace(/([-_][a-z])/gi, ($1) =>
-        $1.toUpperCase().replace("_", "")
+        $1.toUpperCase().replace("_", ""),
       );
       replaced[camelCase] = row[key];
     }
@@ -4774,7 +4775,7 @@ class UserRepo {
       `
         SELECT * FROM users WHERE id = $1;
       `,
-      [id]
+      [id],
     );
 
     return toCamelCase(rows)[0];
@@ -4852,7 +4853,7 @@ class UserRepo {
       `
         SELECT * FROM users WHERE id = $1;
       `,
-      [id]
+      [id],
     );
 
     return toCamelCase(rows)[0];
@@ -4861,7 +4862,7 @@ class UserRepo {
   static async insert(username, bio) {
     const { rows } = await pool.query(
       "INSERT INTO users (username, bio) VALUES ($1, $2) RETURNING *;",
-      [username, bio]
+      [username, bio],
     );
 
     return toCamelCase(rows)[0];
@@ -4885,7 +4886,7 @@ class UserRepo {
   static async update(id, username, bio) {
     const { rows } = await pool.query(
       "UPDATE users SET username = $1, bio = $2 WHERE id = $3 RETURNING *;",
-      [username, bio, id]
+      [username, bio, id],
     );
 
     return toCamelCase(rows)[0];
@@ -4937,7 +4938,7 @@ class UserRepo {
   static async delete(id) {
     const { rows } = await pool.query(
       "DELETE FROM users WHERE id = $1 RETURNING *;",
-      [id]
+      [id],
     );
 
     return toCamelCase(rows)[0];
@@ -5445,11 +5446,11 @@ Referring back to tip number 3 above, you can use the `pg-format` module to make
 
 ```js
 await pool.query(
-  format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+  format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName),
 );
 
 await pool.query(
-  format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+  format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName),
 );
 ```
 
@@ -5482,11 +5483,11 @@ class Context {
     });
     // Create a new role
     await pool.query(
-      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName),
     );
     // Create a schema with the same name
     await pool.query(
-      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName),
     );
     // Disconnect entirely from PG
     await pool.close();
@@ -5556,11 +5557,11 @@ class Context {
     await pool.connect(DEFAULT_OPTS);
     // Create a new role
     await pool.query(
-      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName)
+      format("CREATE ROLE %I WITH LOGIN PASSWORD %L;", rolename, roleName),
     );
     // Create a schema with the same name
     await pool.query(
-      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName)
+      format("CREATE SCHEMA %I AUTHORIZATION %I;", roleName, roleName),
     );
     // Disconnect entirely from PG
     await pool.close();
@@ -5648,3 +5649,25 @@ beforeEach(async () => {
 ```
 
 You can now safely run parallel tests with no worry.
+
+# Backup and restore
+
+In a back-end application that uses Postgresql and deployed using a Docker compose setup, you can get a backup of your Postgresql container by getting into the database container:
+
+```
+docker compose exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F c \
+  > "backup_$(date +%Y%m%d_%H%M%S).dump"
+```
+
+- `-F c` is the custom compressed format, which restores faster and supports selective restore.
+- `-T` disables TTY allocation so the redirect works cleanly.
+- Adjust the service name (`postgres`) to match your `docker-compose.yml`.
+
+Then to restore the backup file into a clean database:
+
+```
+cat backup_20260617_120000.dump | \
+docker compose exec -T postgres \
+pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists
+```
