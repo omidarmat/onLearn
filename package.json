@@ -1,0 +1,21 @@
+{
+  "name": "onlearn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "git:push": "git add . && git commit -m 'update notest' && git push origin_chabokan main && git push origin main"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omidarmat/onLearn.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/omidarmat/onLearn/issues"
+  },
+  "homepage": "https://github.com/omidarmat/onLearn#readme"
+}
