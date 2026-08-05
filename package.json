@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "git:push": "git add . && git commit -m 'update notest' && git push origin_chabokan main && git push origin main"
+    "git:commit": "git add . && git commit -m 'add new notes'",
+    "git:push": "git push origin_chabokan main && git push origin main"
   },
   "repository": {
     "type": "git",
