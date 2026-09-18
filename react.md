@@ -3808,7 +3808,7 @@ This practically means that render logic is not allowed to produce any side effe
 
 Let's now see how event objects actually work behind the scenes. When we declare an event handler like the code example below...
 
-```js
+```jsx
 <input onChange={(e) => setText(e.target.value)} />
 ```
 
@@ -3849,7 +3849,7 @@ This is when a component instance dies, meaning that it is completely destroyed 
 
 > Remember that after one instance of a component is unmounted, a new instance of the same component can be mounted later, but the previous instance is completely gone.
 
-> It is important to know about the lifecycle of a componenta instance, because you can hook into different phases of this lifecycle. You can basically define code to be executed at these specific points in time, which can be extremely useful. We do this using the `useEffect()` hook
+> It is important to know about the lifecycle of a component instance, because you can hook into different phases of this lifecycle. You can basically define code to be executed at these specific points in time, which can be extremely useful. We do this using the `useEffect()` hook
 
 ## Hooks
 
@@ -4605,7 +4605,7 @@ Behind the scenes the dispatch function has access to the reducer function becau
 
 | `useState`                                                                                                        | `useReducer`                                                                                                                                                                             |
 | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ideal for single, independent pieces of state (numbers, strings, single arrays, etc.)                             | Ideal for multiple related pieces of state and comples state (object with many values and nested objects or arrays)                                                                      |
+| Ideal for single, independent pieces of state (numbers, strings, single arrays, etc.)                             | Ideal for multiple related pieces of state and complex state (object with many values and nested objects or arrays)                                                                      |
 | Logic to update state is placed directly in event handlers or effects, spread all over one or multiple components | Logic to update state lives in one central place, decoupled from components: the reducer function.                                                                                       |
 | State is updated by calling the state setter function, which makes it a lot more imparative.                      | State is updated by _dispatching_ an action to the reducer function. Essentially, reducers map state transitions to actions with well-defined names, making them a lot more declarative. |
 | Easy to understand and use                                                                                        | More difficult to understand and implement                                                                                                                                               |
@@ -7158,7 +7158,7 @@ This will run the fake server on port 8000, but you would have to navigate to `l
 
 # Optimization and advanced useEffect
 
-In this section we are going deep into some inner workings of React We will analyze renders in practical terms using the Atmoic Blog app, and learn how to optimize wasted renders and performance in general using some more advanced React tools. This way you will understand React apps even better and make them as as fast and snappy as possible.
+In this section we are going deep into some inner workings of React. We will analyze renders in practical terms using the Atmoic Blog app, and learn how to optimize wasted renders and performance in general using some more advanced React tools. This way you will understand React apps even better and make them as as fast and snappy as possible.
 
 We will also go even deeper into `useEffect` because there is still a few more things that we need to learn.
 
@@ -7194,7 +7194,7 @@ A wasted render is a render that did not produce any change in the DOM. It is a 
 
 ### The profiler developer tool
 
-We have used the React developer tools all the time until now, but actually we have used only half of it. Let's now meet the other half which is the.
+We have used the React developer tools all the time until now, but actually we have used only half of it. Let's now meet the other half which is the React Profiler Rool.
 
 With the profiler we can analyze renders and re-renders. We can see which components have rendered, why they are rendered, and also how long each render took.
 
@@ -7289,7 +7289,7 @@ export default function Test() {
 }
 ```
 
-Not that delay is gone. So this means that the `SlowComponent` component is no longer re-rendered. The profiler also proves this, while `Counter` component is.
+Note now that delay is gone. So this means that the `SlowComponent` component is no longer re-rendered. The profiler also proves this, while `Counter` component is.
 
 Why does this work this way? The `SlowComponent` is now passed in as a `children` prop. This means that the `SlowComponent` component was created actually before the `Counter` component re-rendered. So there is no way that the `SlowComponent` could have been affected by the state change in the `Counter` component. So React first creates the `SlowComponent` and then passes it as a child to the `Counter` component.
 
