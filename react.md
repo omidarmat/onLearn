@@ -181,6 +181,18 @@
       - [The `useLogin` custom hook](#the-uselogin-custom-hook)
       - [The login form component](#the-login-form-component)
     - [Authorization](#authorization)
+  - [Error boundary](#error-boundary)
+  - [A concrete implementation](#a-concrete-implementation)
+    - [1. The state](#1-the-state)
+    - [2. `getDerivedStateFromError`](#2-getderivedstatefromerror)
+    - [3. `componentDidCatch`](#3-componentdidcatch)
+    - [4. The fallback UI](#4-the-fallback-ui)
+    - [5. Rendering the children normally](#5-rendering-the-children-normally)
+    - [6. The retry button](#6-the-retry-button)
+  - [A more realistic version](#a-more-realistic-version)
+  - [Where should you put error boundaries?](#where-should-you-put-error-boundaries)
+  - [What error boundaries do NOT catch](#what-error-boundaries-do-not-catch)
+  - [The simplest mental model](#the-simplest-mental-model)
   - [Implementation of Dependency Injection pattern in React](#implementation-of-dependency-injection-pattern-in-react)
     - [1. Context API (Built-in DI)](#1-context-api-built-in-di)
     - [2. Custom Hooks (Lightweight DI)](#2-custom-hooks-lightweight-di)
@@ -3650,7 +3662,7 @@ After the commit phase completes, the `workInProgress` fiber tree becomes the cu
 
 It is a special prop that we use to tell the diffing algorithm that an element is unique. This works for both DOM elements and React component instances. It means that we can give each component instance a unique identification, which allows React to distinguish between multiple instances of the same type. But why we need this?
 
-Remember what the second assumption of the diffint algorithm?
+Remember what the second assumption of the diffing algorithm was?
 
 > Same element at the same position in the tree.
 
@@ -3673,7 +3685,7 @@ When we add a new item to the top of the list:
 </ul>
 ```
 
-The two previous list items is obviously the same, but their position in the Virtual DOM. So we now have the same elements at different positions. According to diffing rules, these two DOM elements will be removed from the DOM and then recreated immediately at their new positions. This is bad for performance, but React has no way of understanding it. So we use the `key` prop to uniquely identify an element, then give React this information.
+The two previous list items are obviously the same, but their positions in the Virtual DOM are now different. So we now have the same elements at different positions. According to diffing rules, these two DOM elements will be removed from the DOM and then recreated immediately at their new positions. This is bad for performance, but React has no way of understanding it. So we use the `key` prop to uniquely identify an element, then give React this information.
 
 ```js
 <ul>
@@ -8044,6 +8056,646 @@ export function useLogin() {
 ```
 
 This way, the `useUser` custom hook will simply get the user data from cache and therefore, no unnecessary attempts on interacting with the database.
+
+## Error boundary
+
+An **error boundary** in React is a component that acts like a safety net around part of your UI.
+
+If one of its child components crashes while React is rendering it, the error boundary catches that error and shows a fallback UI instead of letting the entire app disappear.
+
+For example, imagine your page has three sections:
+
+```text
+Header
+Dashboard
+Footer
+```
+
+If something inside `Dashboard` throws an error, an error boundary can turn this:
+
+```text
+Header
+[entire app crashes]
+```
+
+into this:
+
+```text
+Header
+Something went wrong.
+Try again
+
+Footer
+```
+
+The important idea is:
+
+> An error boundary catches rendering errors in the React component tree below it.
+
+It is similar to `try/catch`, but specifically designed for React component rendering.
+
+## A concrete implementation
+
+React's built-in error boundary mechanism still uses a **class component**. A typical reusable implementation looks like this:
+
+```jsx
+import React from "react";
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
+
+  static getDerivedStateFromError(error) {
+    return {
+      hasError: true,
+      error,
+    };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error caught by ErrorBoundary:", error);
+    console.error("Component stack:", errorInfo.componentStack);
+  }
+
+  handleRetry = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+    });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div>
+          <h2>Something went wrong.</h2>
+
+          <p>{this.state.error?.message}</p>
+
+          <button onClick={this.handleRetry}>Try again</button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+```
+
+You would then use it like this:
+
+```jsx
+import ErrorBoundary from "./ErrorBoundary";
+import Dashboard from "./Dashboard";
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <Dashboard />
+    </ErrorBoundary>
+  );
+}
+
+export default App;
+```
+
+Now let's break down what each part does.
+
+### 1. The state
+
+```jsx
+this.state = {
+  hasError: false,
+  error: null,
+};
+```
+
+Initially, everything is fine.
+
+```text
+hasError = false
+```
+
+means:
+
+> Render the normal application.
+
+If a child component crashes, we change it to:
+
+```text
+hasError = true
+```
+
+which means:
+
+> Stop rendering the broken UI and show the fallback instead.
+
+We also store the actual error:
+
+```jsx
+error: null;
+```
+
+so we can optionally display or log information about it.
+
+---
+
+### 2. `getDerivedStateFromError`
+
+This is the part that tells React:
+
+> If something below me crashes during rendering, update my state.
+
+```jsx
+static getDerivedStateFromError(error) {
+  return {
+    hasError: true,
+    error,
+  };
+}
+```
+
+Suppose a child component contains:
+
+```jsx
+function UserProfile() {
+  throw new Error("Could not load user");
+
+  return <div>User profile</div>;
+}
+```
+
+When React tries to render `UserProfile`, it throws.
+
+React looks upward through the component tree until it finds an error boundary.
+
+Then React calls:
+
+```jsx
+getDerivedStateFromError(error);
+```
+
+which changes the state to:
+
+```jsx
+{
+  hasError: true,
+  error: ...
+}
+```
+
+On the next render, the error boundary shows the fallback UI.
+
+---
+
+### 3. `componentDidCatch`
+
+```jsx
+componentDidCatch(error, errorInfo) {
+  console.error("Error caught by ErrorBoundary:", error);
+  console.error("Component stack:", errorInfo.componentStack);
+}
+```
+
+This method is mostly useful for **logging**.
+
+React gives you two pieces of information.
+
+The first is the actual JavaScript error:
+
+```jsx
+error;
+```
+
+For example:
+
+```text
+TypeError: Cannot read properties of undefined
+```
+
+The second is:
+
+```jsx
+errorInfo;
+```
+
+which includes React-specific information about where the error happened in the component tree.
+
+For example:
+
+```text
+UserProfile
+UserPage
+Dashboard
+App
+```
+
+In a real production application, instead of just:
+
+```jsx
+console.error(...)
+```
+
+you might send the error to an error-monitoring service such as Sentry.
+
+Conceptually:
+
+```jsx
+componentDidCatch(error, errorInfo) {
+  sendErrorToMonitoringService({
+    error,
+    componentStack: errorInfo.componentStack,
+  });
+}
+```
+
+There's an important distinction between the two lifecycle methods:
+
+```text
+getDerivedStateFromError
+        ↓
+decides what UI to show
+
+componentDidCatch
+        ↓
+logs/reports the error
+```
+
+---
+
+### 4. The fallback UI
+
+Inside `render()`:
+
+```jsx
+if (this.state.hasError) {
+  return (
+    <div>
+      <h2>Something went wrong.</h2>
+
+      <p>{this.state.error?.message}</p>
+
+      <button onClick={this.handleRetry}>Try again</button>
+    </div>
+  );
+}
+```
+
+Normally:
+
+```jsx
+hasError === false;
+```
+
+so this block is skipped.
+
+But after an error:
+
+```jsx
+hasError === true;
+```
+
+and React renders this instead of the broken components.
+
+So instead of:
+
+```text
+Dashboard crashes
+↓
+UI disappears
+```
+
+you get:
+
+```text
+Dashboard crashes
+↓
+ErrorBoundary catches it
+↓
+Fallback UI appears
+```
+
+---
+
+### 5. Rendering the children normally
+
+At the bottom:
+
+```jsx
+return this.props.children;
+```
+
+`children` means whatever you put inside the error boundary.
+
+For example:
+
+```jsx
+<ErrorBoundary>
+  <Dashboard />
+</ErrorBoundary>
+```
+
+Here:
+
+```jsx
+this.props.children;
+```
+
+is essentially:
+
+```jsx
+<Dashboard />
+```
+
+So under normal conditions, the boundary does almost nothing. It simply passes the UI through:
+
+```text
+ErrorBoundary
+    │
+    └── Dashboard
+```
+
+If `Dashboard` crashes:
+
+```text
+ErrorBoundary
+    │
+    └── fallback UI
+```
+
+---
+
+### 6. The retry button
+
+We added:
+
+```jsx
+handleRetry = () => {
+  this.setState({
+    hasError: false,
+    error: null,
+  });
+};
+```
+
+and:
+
+```jsx
+<button onClick={this.handleRetry}>Try again</button>
+```
+
+This clears the error state.
+
+So:
+
+```text
+hasError: true
+```
+
+becomes:
+
+```text
+hasError: false
+```
+
+and React tries to render the children again.
+
+One caveat: this only works if the underlying reason for the crash is no longer present. If the component always throws, clicking Retry will simply cause it to crash again.
+
+## A more realistic version
+
+In a real application, I would usually make the fallback customizable instead of hardcoding it:
+
+```jsx
+import React from "react";
+
+class ErrorBoundary extends React.Component {
+  state = {
+    hasError: false,
+    error: null,
+  };
+
+  static getDerivedStateFromError(error) {
+    return {
+      hasError: true,
+      error,
+    };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Unhandled React error", {
+      error,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+
+  resetErrorBoundary = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+    });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div role="alert">
+          <h2>Something went wrong</h2>
+          <button onClick={this.resetErrorBoundary}>Try again</button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+```
+
+Then different parts of the application can have different fallback UIs:
+
+```jsx
+<ErrorBoundary fallback={<div>The dashboard could not be displayed.</div>}>
+  <Dashboard />
+</ErrorBoundary>
+```
+
+## Where should you put error boundaries?
+
+You don't necessarily want just one around the whole application.
+
+For example, imagine:
+
+```jsx
+function App() {
+  return (
+    <>
+      <Header />
+
+      <ErrorBoundary>
+        <Sidebar />
+      </ErrorBoundary>
+
+      <ErrorBoundary>
+        <Dashboard />
+      </ErrorBoundary>
+
+      <Footer />
+    </>
+  );
+}
+```
+
+If `Dashboard` crashes, the rest of the application can still work:
+
+```text
+Header          ✓
+
+Sidebar         ✓
+
+Dashboard       ✗
+"Something went wrong"
+
+Footer          ✓
+```
+
+This is one of the biggest benefits of error boundaries: **isolating failures**.
+
+A useful mental model is to place them around independently useful sections of your application.
+
+```text
+App
+│
+├── Header
+│
+├── ErrorBoundary
+│     └── Navigation
+│
+├── ErrorBoundary
+│     └── MainContent
+│
+└── ErrorBoundary
+      └── ChatWidget
+```
+
+If the chat widget crashes, you probably don't want your entire application to disappear.
+
+## What error boundaries do NOT catch
+
+This is an important limitation.
+
+Error boundaries primarily catch errors that happen while React is rendering components, including lifecycle-related errors below the boundary.
+
+They do **not** automatically catch every JavaScript error.
+
+For example, an error in an event handler:
+
+```jsx
+function Button() {
+  function handleClick() {
+    throw new Error("Boom");
+  }
+
+  return <button onClick={handleClick}>Click me</button>;
+}
+```
+
+An error boundary will not handle that in the same way, because the error happens in an event callback rather than while React is rendering the component.
+
+For event handlers, normal JavaScript error handling is appropriate:
+
+```jsx
+async function handleClick() {
+  try {
+    await doSomething();
+  } catch (error) {
+    console.error(error);
+  }
+}
+```
+
+The same idea applies to many asynchronous operations:
+
+```jsx
+try {
+  const response = await fetch("/api/users");
+} catch (error) {
+  // Handle the request failure here
+}
+```
+
+So there are really two complementary mechanisms:
+
+```text
+React rendering errors
+        ↓
+Error Boundary
+
+
+Async / event / business logic errors
+        ↓
+try / catch
+```
+
+## The simplest mental model
+
+Think of this component:
+
+```jsx
+<ErrorBoundary>
+  <Dashboard />
+</ErrorBoundary>
+```
+
+as roughly meaning:
+
+```text
+Try to show Dashboard.
+
+If Dashboard or something underneath it crashes
+while React is rendering it:
+
+    don't destroy the whole UI
+
+    show the fallback UI instead
+
+    optionally report the error
+```
+
+The core flow is:
+
+```text
+Normal state
+    ↓
+render children
+    ↓
+child throws error
+    ↓
+getDerivedStateFromError()
+    ↓
+hasError = true
+    ↓
+render fallback
+    ↓
+componentDidCatch()
+    ↓
+log/report error
+```
+
+One practical note: for many modern React applications, developers use a small library such as `react-error-boundary`, which provides a nicer functional API around this concept. But understanding the class-based implementation above is valuable because it shows exactly what React itself is doing under the hood.
 
 ## Implementation of Dependency Injection pattern in React
 
