@@ -604,3 +604,156 @@ export class App {
 ```
 
 So what you pass to a `FormControl` as validator, can either be a single validator or an array of validators. Notice that you can always inspect the `FormGroup`'s `valid` status; for example, `profileForm.valid`
+
+## Injectable services
+
+A dependency that can be injected into a component, can be service or some other resources. Fo a dependency class to be eligible to be injected by the DI system, use the `@Service` decorator. Marking a class with this decorator notifies the DI system that it can be accessed anywhere in your application.
+
+> By default, Angular provides the service across your entire application, so you don't need to write any extra configuration.
+
+```ts
+import { Service } from "@angular/core";
+
+@Service()
+export class CarService {
+  cars = ["Sunflower GT", "Flexus Sport", "Sprout Mach One"];
+
+  getCars(): string[] {
+    return this.cars;
+  }
+
+  getCar(id: number) {
+    return this.cars[id];
+  }
+}
+```
+
+Now to inject this service into a component, you initialize a component class property with the `inject()` function and the the `CarService`.
+
+```ts
+import { Component, inject } from "@angular/core";
+import { CarService } from "./car.service";
+
+@Component({
+  selector: "app-root",
+  template: `<p>Car listing: {{ display }}</p>`,
+})
+export class App {
+  carService = inject(CarService);
+  display = this.carService.getCars().join("*");
+}
+```
+
+## Pipes
+
+Pipes are functions that are used to transform data in templates. Pipes are pure functions and don't cause side effects. There are some built-in pipes in Angular and you can also create your own pipes.
+
+> Remember: since pipes are used in the component's template, they should be listed in the component's `imports` list.
+
+```ts
+import { Component } from "@angular/core";
+import { LowerCasePipe } from "@angular/common";
+
+@Component({
+  selector: "app-root",
+  template: ` {{ username | lowercase }} `,
+  imports: [LowerCasePipe],
+})
+export class App {
+  username = "yOunGTECh";
+}
+```
+
+> Notice that we imported `LowerCasePipe` into the component `imports` list, but we used `lowercase` as the actual pipe name in the component template.
+
+### Pipe parameters
+
+Since pipes are actual functions, they can also receive parameters to customize their functionality. To pass a parameter to a pipe, use the `:` syntax followed by the parameter value. Take this example where we are going to use `DecimalPipe`:
+
+```ts
+import { Component } from "@angular/core";
+import { DecimalPipe } from "@angular/common";
+
+@Component({
+  selector: "app-root",
+  template: `
+    <ul>
+      <li>Number with "decimal" {{ num | number: "3.2-2" }}</li>
+    </ul>
+  `,
+  imports: [DecimalPipe],
+})
+export class App {
+  num = 103.1234;
+  birthday = new Date(2023, 3, 2);
+  cost = 4560.34;
+}
+```
+
+The `DecimalPipe` parameter is called `digitsInfo` and it uses the format: `{minIntegerDigits}.{minFractionDigits}-{maxFractionDigits}`
+
+Let's now take another example where we are going to use `DatePipe` to format date and `CurrencyPipe` to format currency:
+
+```ts
+import { Component } from "@angular/core";
+import { DatePipe, CurrencyPipe } from "@angular/common";
+
+@Component({
+  selector: "app-root",
+  template: `
+    <ul>
+      <li>Date with "date" {{ birthday | date: "medium" }}</li>
+    </ul>
+  `,
+  imports: [DatePipe, CurrencyPipe],
+})
+export class App {
+  num = 103.1234;
+  birthday = new Date(2023, 3, 2);
+  cost = 4560.34;
+}
+```
+
+### Creating a pipe
+
+A pipe is a TypeScript class with `@Pipe` decorator:
+
+```ts
+import { Pipe, PipeTransform } from "@angular/core";
+
+@Pipe({
+  name: "reverse",
+})
+export class ReversePipe implements PipeTransform {
+  transform(value: string): string {
+    let reverse = "";
+
+    for (let i = value.length - 1; i >= 0; i--) {
+      reverse += value[i];
+    }
+
+    return reverse;
+  }
+}
+```
+
+Notice that:
+
+- the name in the `@Pipe` decorator configuration is what will be used in the template to call the pipe
+- the `transform` function is where you put your logic
+
+Then to use this pipe:
+
+```ts
+import { Component } from "@angular/core";
+import { ReversePipe } from "./reverse.pipe";
+
+@Component({
+  selector: "app-root",
+  template: ` Reverse Machine: {{ word | reverse }} `,
+  imports: [ReversePipe],
+})
+export class App {
+  word = "You are a champion";
+}
+```
