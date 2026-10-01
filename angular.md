@@ -739,7 +739,7 @@ export class ReversePipe implements PipeTransform {
 
 Notice that:
 
-- the name in the `@Pipe` decorator configuration is what will be used in the template to call the pipe
+- the `name` in the `@Pipe` decorator configuration is what will be used in the template to call the pipe
 - the `transform` function is where you put your logic
 
 Then to use this pipe:
@@ -757,3 +757,98 @@ export class App {
   word = "You are a champion";
 }
 ```
+
+# Angular signals
+
+Signals are Angular's reactive primitive that provide a way to manage state and automatically update your UI when that state changes.
+
+You should basically know:
+
+1. How to create a signal using the `signal()` function
+2. Display the signal value in templates
+3. Update the signal value using `set()` and `update()` methods
+
+```ts
+import { Component, signal } from "@angular/core";
+
+@Component({
+  selector: "app-root",
+  template: `
+    <div class="user-profile">
+      <h1>User Dashboard</h1>
+      <div class="status-indicator" [class]="userStatus()">
+        <span class="status-dot"></span>
+        Status: {{ userStatus() }}
+      </div>
+
+      <div class="status-controls">
+        <button>Go Online</button>
+        <button>Go Offline</button>
+        <button class="toggle-btn">Toggle Status</button>
+      </div>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {
+  userStatus = signal<"online" | "offline">("offline");
+}
+```
+
+Notice:
+
+1. To create a signal you should call `signal()` and initialize it with an initial value
+2. To read the signal value you should call the variable that holds the signal `userStatus()`
+3. To update the signal you should use the `update()` function which receives a callback that has access to the `current` value of the signal. You can also use the `set()` method to update the signal value.
+
+## Computed signals
+
+Computed signals are derived values that automatically update when their dependencies change. They're perfect for creating reactive calculations based on other signals.
+
+```ts
+import { Component, signal, computed } from "@angular/core";
+
+export class App {
+  userStatus = signal<"online" | "away" | "offline">("offline");
+
+  notificationsEnabled = computed(() => this.userStatus() === "online");
+}
+```
+
+> Notice that the `computed()` function receives a callback that should return the value for the computed signal.
+
+This is another example of how you could use a computed signal with complex logic and calculation:
+
+```ts
+statusMessage = computed(() => {
+  const status = this.userStatus();
+
+  switch (status) {
+    case "online":
+      return "Available for meetings and messages";
+    case "away":
+      return "Temporarily away, will respond soon";
+    case "offline":
+      return "Not available, check back later";
+    default:
+      return "Status unknown";
+  }
+});
+```
+
+To retrieve the value of a computed signal, you should call the computed signal variable, just like a regular signal:
+
+```ts
+@if(notificationsEnabled()) {
+    Enabled
+  } @else {
+    Disabled
+  }
+```
+
+Remember:
+
+- Computed signals are reactive: They automatically update when their dependencies change
+- They're read-only: You can't directly set computed values, they're derived from other signals
+- They can contain complex logic: Use them for calculations, transformations, and derived state
+- They provide a way to make performant computations based on dynamic state: Angular only recalculates them when their dependencies actually change (automatic `useMemo`!)
