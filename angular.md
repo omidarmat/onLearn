@@ -852,3 +852,431 @@ Remember:
 - They're read-only: You can't directly set computed values, they're derived from other signals
 - They can contain complex logic: Use them for calculations, transformations, and derived state
 - They provide a way to make performant computations based on dynamic state: Angular only recalculates them when their dependencies actually change (automatic `useMemo`!)
+
+## Linked signals
+
+Take this scenario as example: You create a computed signal called `notificationsEnabled` that automatically follows the user's `userStatus` signal. But what if the user wants to manually disable notifications even when they're online? This is where **linked signals** come in.
+
+Linked signals are writable signals that maintain a reactive connection to their source signals. They're perfect for creating state that normally follows a computation, but can be overridden when needed.
+
+So you import `linkedSignals`, declare a linked signal with it, and then you have access to the `.set()` method on the linked signal to override its value anywhere you need.
+
+```ts
+import { Component, computed, signal, linkedSignal } from "@angular/core";
+
+export class App {
+  userStatus = signal<"online" | "away" | "offline">("offline");
+
+  notificationsEnabled = linkedSignal(() => this.userStatus() === "online");
+
+  statusMessage = computed(() => {
+    const status = this.userStatus();
+    switch (status) {
+      case "online":
+        return "Available for meetings and messages";
+      case "away":
+        return "Temporarily away, will respond soon";
+      case "offline":
+        return "Not available, check back later";
+      default:
+        return "Status unknown";
+    }
+  });
+
+  isWithinWorkingHours = computed(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const isWeekday = now.getDay() > 0 && now.getDay() < 6;
+    return (
+      isWeekday && hour >= 9 && hour < 17 && this.userStatus() !== "offline"
+    );
+  });
+
+  toggleNotifications() {
+    this.notificationsEnabled.set(!this.notificationsEnabled());
+  }
+
+  goOnline() {
+    this.userStatus.set("online");
+  }
+
+  goAway() {
+    this.userStatus.set("away");
+  }
+
+  goOffline() {
+    this.userStatus.set("offline");
+  }
+
+  toggleStatus() {
+    const current = this.userStatus();
+    switch (current) {
+      case "offline":
+        this.userStatus.set("online");
+        break;
+      case "online":
+        this.userStatus.set("away");
+        break;
+      case "away":
+        this.userStatus.set("offline");
+        break;
+    }
+  }
+}
+```
+
+> The key difference: computed signals are read-only, but linked signals can be updated manually while still maintaining their reactive connection.
+
+## Async data, the resources API and signals
+
+The Resource API provides a powerful way to manage async operations using signals, with built-in loading states, error handling, and request management.
+
+Let's learn how to use the `resource()` function to load data asynchronously and how to handle different states of async operations by building a user profile loader that demonstrates the Resource API in action.
+
+```ts
+// TODO: Add the resource import from @angular/core
+import { Component, resource, signal, computed } from "@angular/core";
+import { getUserData } from "./user-api";
+
+@Component({
+  selector: "app-root",
+  template: `
+    <div>
+      <h2>User Profile Loader</h2>
+
+      <div>
+        <button (click)="loadUser(1)">Load User 1</button>
+        <button (click)="loadUser(2)">Load User 2</button>
+        <button (click)="loadUser(999)">Load Invalid User</button>
+
+        <button (click)="reloadUser()">Reload</button>
+      </div>
+
+      <div class="status">
+        @if (isLoading()) {
+          <p>Loading user...</p>
+        } @else if (hasError()) {
+          <p class="error">Error: {{ userResource.error()?.message }}</p>
+        } @else if (userResource.hasValue()) {
+          <div>
+            <h3>{{ userResource.value().name }}</h3>
+            <p>{{ userResource.value().email }}</p>
+          </div>
+        }
+        <!-- Use isLoading(), hasError(), and userResource.hasValue() -->
+        <!-- For loading: show "Loading user..." -->
+        <!-- For error: show error message with userResource.error()?.message -->
+        <!-- For success: show user name and email from userResource.value() -->
+        <p>Click a button to load user data</p>
+      </div>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {
+  userId = signal(1);
+
+  userResource = resource({
+    params: () => ({ id: this.userId() }),
+    loader: (params) => getUserData(params.params.id),
+  });
+
+  isLoading = computed(() => this.userResource.status() === "loading");
+
+  hasError = computed(() => this.userResource.status() === "error");
+
+  loadUser(id: number) {
+    this.userId.set(id);
+  }
+
+  reloadUser() {
+    this.userResource.reload();
+  }
+}
+```
+
+Changing the `params` signal automatically triggers a reload, or you can manually reload with `reload()`. So notice that the `params` parameter is a signal itself.
+
+The Resources API provide a `status()` signal that can be `loading`, `resolved`, or `error`, and a `value()` signal for the loaded data, and a `hasValue()` method that safely checks if data is available.
+
+The resource provides different methods to check its state:
+
+- `isLoading()` - true when fetching data
+- `hasError()` - true when an error occurred
+- `userResource.hasValue()` - true when data is available
+- `userResource.value()` - access the loaded data
+- `userResource.error()` - access error information
+
+## Input signals
+
+The Angular's signal-based `input()` API is used for passing data from parent to child components. If you're familiar with component props from other frameworks, inputs are the same idea.
+
+Take this example. In the `App` component below, we are going to use a `ProductCard` component which is written as:
+
+```ts
+// product-card.ts
+import { Component, input } from "@angular/core";
+
+@Component({
+  selector: "product-card",
+  template: `
+    <div class="product-card">
+      <h3>{{ name() }}</h3>
+      <p class="price">\${{ price() }}</p>
+      <p class="status">
+        Status:
+        @if (available()) {
+          Available
+        } @else {
+          Out of stock
+        }
+      </p>
+    </div>
+  `,
+})
+export class ProductCard {
+  name = input.required<string>(); // required
+  price = input.required<number>();
+  available = input<boolean>(true); // optional
+}
+```
+
+Then in the parent `App` component you can use it as:
+
+```ts
+// app.ts
+import { Component, signal } from "@angular/core";
+import { ProductCard } from "./product-card";
+
+@Component({
+  selector: "app-root",
+  imports: [ProductCard],
+  template: `
+    <div class="shopping-app">
+      <h1>Input Signals Demo</h1>
+
+      <div class="demo-section">
+        <h2>Signal Inputs (Parent → Child)</h2>
+        <p>Data flows down from parent to child via signal inputs:</p>
+
+        <product-card
+          [name]="productName()"
+          [price]="productPrice()"
+          [available]="productAvailable()"
+        />
+
+        <div class="controls">
+          <button (click)="updateProduct()">Update product information</button>
+          <button (click)="toggleAvailability()">Toggle avilable</button>
+        </div>
+      </div>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {
+  productName = signal<string>("");
+  productPrice = signal<number>(0);
+  productAvailable = signal<boolean>(false);
+
+  updateProduct() {
+    this.productName.set("Updated Product");
+    this.productPrice.set(149);
+  }
+
+  toggleAvailability() {
+    this.productAvailable.set(!this.productAvailable());
+  }
+}
+```
+
+Notice how data is being passed to the `product-card` component using `[]` data binding syntax. Compare this with the case of using `[]` around a native HTML attribute (for example, `[src]` on an `image` element).
+
+Notice that:
+
+- **Signal inputs** - Use input() and input.required() to receive data from parent components
+- **Reactive updates** - Child components automatically update when parent signal values change
+- **Type safety** - Signal inputs provide full TypeScript type checking
+- **Default values** - Optional inputs can have default values while required inputs must be provided
+
+> Signal inputs make component communication more reactive and eliminate the need for `OnChanges` lifecycle hooks in many cases.
+
+## Model signals
+
+Input signals provide one-way data binding, meaning that you can pass data to child components with input signals, but you cannot send data back from child components to parent components.
+
+The `model()` API provides two-way data binding. Model signals are perfect for UI components like checkboxes, sliders, or custom form controls where the component needs to both receive a value AND update it.
+
+```ts
+// custom-checkbox.ts
+import { Component, model, input } from "@angular/core";
+
+@Component({
+  selector: "custom-checkbox",
+  template: `
+    <label class="custom-checkbox">
+      <input type="checkbox" [checked]="checked()" (change)="toggle()" />
+      <span class="checkmark"></span>
+      {{ label() }}
+    </label>
+  `,
+})
+export class CustomCheckbox {
+  checked = model.required<boolean>();
+  label = input<string>("");
+
+  toggle() {
+    this.checked.set(!this.checked());
+  }
+}
+```
+
+When this child component `custom-checkbox.ts` calls `this.checked.set()`, it automatically propagates the change back to the parent. This is the key difference from `input()` signals.
+
+Now to setup two-way binding in the parent component:
+
+```ts
+// app.ts
+import { Component, model } from "@angular/core";
+import { CustomCheckbox } from "./custom-checkbox";
+
+@Component({
+  selector: "app-root",
+  imports: [CustomCheckbox],
+  template: `
+    <div class="shopping-app">
+      <h1>Custom Checkbox Example</h1>
+
+      <div class="demo-section">
+        <custom-checkbox
+          [(checked)]="agreedToTerms"
+          label="I agree to the terms"
+        />
+
+        <custom-checkbox
+          [(checked)]="enableNotifications"
+          label="Enable notifications"
+        />
+
+        <div class="controls">
+          <p>
+            Terms agreed:
+            @if (agreedToTerms()) {
+              Yes
+            } @else {
+              No
+            }
+          </p>
+          <p>
+            Notifications:
+            @if (enableNotifications()) {
+              Yes
+            } @else {
+              No
+            }
+          </p>
+          <button (click)="toggleTermsFromParent()">
+            Toggle Terms from Parent
+          </button>
+          <button (click)="resetAll()">Reset All</button>
+        </div>
+      </div>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {
+  agreedToTerms = model(false);
+  enableNotifications = model(true);
+
+  toggleTermsFromParent() {
+    this.agreedToTerms.set(!this.agreedToTerms());
+  }
+
+  resetAll() {
+    this.agreedToTerms.set(false);
+    this.enableNotifications.set(false);
+  }
+}
+```
+
+The `[(checked)]` syntax creates two-way binding - data flows down to the component AND changes flow back up to the parent by emitting an event that references the signal itself and does not call the signal getter directly.
+
+Notice:
+
+**Model signals** - Use `model()` and `model.required()` for values that can be both read and written
+**Two-way binding** - Use `[(property)]` syntax to bind parent signals to child models
+**Perfect for UI components** - Checkboxes, form controls, and widgets that need to manage their own state
+**Automatic synchronization** - Parent and child stay in sync without manual event handling
+
+### When to use `model()` vs `input()`
+
+Use `input()` for data that only flows down (display data, configuration)
+
+Use `model()` for UI components that need to update their own value (form controls, toggles)
+
+## Services
+
+Services are perfect for **sharing reactive state across multiple components**, and signals make this even more powerful by providing automatic change detection and clean reactive patterns.
+
+```ts
+import { Service, signal, computed } from "@angular/core";
+import { CartItem } from "./cart-types";
+
+@Service()
+export class CartStore {
+  private items = signal<CartItem[]>([]);
+
+  readonly cartItems = this.items.asReadonly();
+
+  readonly totalQuantity = computed(() => {
+    return this.items().reduce((sum, item) => sum + item.quantity, 0);
+  });
+
+  readonly totalPrice = computed(() => {
+    return this.items().reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+  });
+
+  addItem(id: string, name: string, price: number) {
+    this.items.update((currentItems) => {
+      const existingItem = currentItems.find((item) => item.id === id);
+
+      if (existingItem) {
+        return currentItems.map((item) =>
+          item.id === id ? { ...item, quantity: item.quantity + 1 } : item,
+        );
+      } else {
+        return [...currentItems, { id, name, price, quantity: 1 }];
+      }
+    });
+  }
+
+  removeItem(id: string) {
+    this.items.update((currentItems) =>
+      currentItems.filter((item) => item.id !== id),
+    );
+  }
+
+  updateQuantity(id: string, quantity: number) {
+    if (quantity <= 0) {
+      this.removeItem(id);
+      return;
+    }
+
+    this.items.update((currentItems) =>
+      currentItems.map((item) =>
+        item.id === id ? { ...item, quantity } : item,
+      ),
+    );
+  }
+
+  clearCart() {
+    this.items.set([]);
+  }
+}
+```
+
+Notice that these signals allow components to reactively access cart data and computed totals. The `asReadonly()` method prevents external code from modifying the cart items directly, while `computed()` creates derived state that automatically updates when the source signal changes.
