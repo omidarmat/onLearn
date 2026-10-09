@@ -1217,9 +1217,10 @@ Use `model()` for UI components that need to update their own value (form contro
 
 ## Services
 
-Services are perfect for **sharing reactive state across multiple components**, and signals make this even more powerful by providing automatic change detection and clean reactive patterns.
+Services are perfect for **sharing reactive state across multiple components**, and signals make this even more powerful by providing automatic change detection and clean reactive patterns (sounds like `zustand` in React!).
 
 ```ts
+// cart-store.ts
 import { Service, signal, computed } from "@angular/core";
 import { CartItem } from "./cart-types";
 
@@ -1280,3 +1281,254 @@ export class CartStore {
 ```
 
 Notice that these signals allow components to reactively access cart data and computed totals. The `asReadonly()` method prevents external code from modifying the cart items directly, while `computed()` creates derived state that automatically updates when the source signal changes.
+
+Now to use this service in another component like:
+
+```ts
+// cart-display.ts
+import { Component, inject } from "@angular/core";
+import { CartStore } from "./cart-store";
+
+@Component({
+  selector: "cart-display",
+  template: `
+    <div class="cart-display">
+      <h2>Shopping Cart Demo</h2>
+
+      <div class="add-products">
+        <h3>Add Products</h3>
+        <button (click)="addLaptop()">Add Laptop ($999)</button>
+        <button (click)="addMouse()">Add Mouse ($25)</button>
+        <button (click)="addKeyboard()">Add Keyboard ($79)</button>
+      </div>
+
+      <h3>Cart Contents</h3>
+      @if (cartStore.cartItems().length === 0) {
+        <p class="empty-message">Your cart is empty</p>
+      } @else {
+        <div class="cart-items">
+          @for (item of cartStore.cartItems(); track item.id) {
+            <div class="cart-item">
+              <div class="item-info">
+                <h4>{{ item.name }}</h4>
+                <p class="price">\${{ item.price }} each</p>
+              </div>
+
+              <div class="quantity-controls">
+                <button (click)="decreaseQuantity(item.id)">-</button>
+                <span class="quantity">{{ item.quantity }}</span>
+                <button (click)="increaseQuantity(item.id)">+</button>
+                <button (click)="removeItem(item.id)" class="remove">×</button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="cart-summary">
+          <p>Total Items: {{ cartStore.totalQuantity() }}</p>
+          <p class="total-price">Total: \${{ cartStore.totalPrice() }}</p>
+          <button (click)="clearCart()" class="clear-btn">Clear Cart</button>
+        </div>
+      }
+    </div>
+  `,
+})
+export class CartDisplay {
+  cartStore = inject(CartStore); // notice you would have to `inject()` the CartStore to be able to use it in this component
+
+  addLaptop() {
+    this.cartStore.addItem("1", "Laptop", 999);
+  }
+
+  addMouse() {
+    this.cartStore.addItem("2", "Mouse", 25);
+  }
+
+  addKeyboard() {
+    this.cartStore.addItem("3", "Keyboard", 79);
+  }
+
+  increaseQuantity(id: string) {
+    const items = this.cartStore.cartItems(); // notice `cartItems()` should be called to retrieve its value since it is a signal originally
+    const currentItem = items.find((item) => item.id === id);
+    if (currentItem) {
+      this.cartStore.updateQuantity(id, currentItem.quantity + 1);
+    }
+  }
+
+  decreaseQuantity(id: string) {
+    const items = this.cartStore.cartItems();
+    const currentItem = items.find((item) => item.id === id);
+    if (currentItem && currentItem.quantity > 1) {
+      this.cartStore.updateQuantity(id, currentItem.quantity - 1);
+    }
+  }
+
+  removeItem(id: string) {
+    this.cartStore.removeItem(id);
+  }
+
+  clearCart() {
+    this.cartStore.clearCart();
+  }
+}
+```
+
+Then inside a parent component, again using `inject()`:
+
+```ts
+// app.ts
+// TODO: Import inject from @angular/core
+import { Component, inject } from "@angular/core";
+import { CartStore } from "./cart-store";
+import { CartDisplay } from "./cart-display";
+
+@Component({
+  selector: "app-root",
+  imports: [CartDisplay], // You need to put it in `imports` array since you're going to use it in your template
+  template: `
+    <div class="shopping-app">
+      <header>
+        <h1>Signals with Services Demo</h1>
+        <div class="cart-badge">Cart: {{ cartStore.totalQuantity() }}</div>
+      </header>
+
+      <main>
+        <cart-display />
+      </main>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {
+  cartStore = inject(CartStore);
+}
+```
+
+You've now learned how to use signals with services. Key concepts to remember:
+
+- **Service-level signals:** Services can use signals to manage reactive state
+- **Dependency injection:** Use `inject()` to access services with signals in components
+- **Computed signals in services:** Create derived state that updates automatically
+- **Readonly signals:** Expose read-only versions of signals to prevent external mutations
+
+## Directives
+
+Signals work exactly the same in directives as they do in components! The main difference is that since directives don't have templates, you'll primarily use signals in host bindings to reactively update the host element.
+
+This is a Directive:
+
+```ts
+// highligh-directive.ts
+import { Directive, input, signal, computed } from "@angular/core";
+
+@Directive({
+  selector: "[highlight]",
+})
+export class HighlightDirective {
+  color = input<string>("yellow");
+  intensity = input<number>(0.3);
+
+  private isHovered = signal<boolean>(false);
+
+  backgroundStyle = computed(() => {
+    const baseColor = this.color();
+    const alpha = this.isHovered() ? this.intensity() : this.intensity() * 0.5;
+
+    const colorMap: Record<string, string> = {
+      yellow: `rgba(255, 255, 9, ${alpha})`,
+      blue: `rgba(0, 100, 255, ${alpha})`,
+      green: `rgba(0, 200, 0, ${alpha})`,
+      red: `rgba(255, 0, 0, ${alpha})`,
+    };
+
+    return colorMap[baseColor] || colorMap["yellow"];
+  });
+}
+```
+
+Notice how this is identical to component patterns. Since directives don't have templates, you'll use signals in **host bindings** to reactively update the host element. Add the `host` configuration and event handlers:
+
+```ts
+// highlight-directive.ts
+import { Directive, input, signal, computed } from "@angular/core";
+
+@Directive({
+  selector: "[highlight]",
+  host: {
+    "[style.backgroundColor]": "backgroundStyle()",
+    "(mouseenter)": "onMouseEnter()",
+    "(mouseleave)": "onMouseLeave()",
+  },
+})
+export class HighlightDirective {
+  color = input<string>("yellow");
+  intensity = input<number>(0.3);
+
+  private isHovered = signal<boolean>(false);
+
+  backgroundStyle = computed(() => {
+    const baseColor = this.color();
+    const alpha = this.isHovered() ? this.intensity() : this.intensity() * 0.5;
+
+    const colorMap: Record<string, string> = {
+      yellow: `rgba(255, 255, 9, ${alpha})`,
+      blue: `rgba(0, 100, 255, ${alpha})`,
+      green: `rgba(0, 200, 0, ${alpha})`,
+      red: `rgba(255, 0, 0, ${alpha})`,
+    };
+
+    return colorMap[baseColor] || colorMap["yellow"];
+  });
+
+  onMouseEnter() {
+    this.isHovered.set(true);
+  }
+
+  onMouseLeave() {
+    this.isHoevered.set(false);
+  }
+}
+```
+
+The host bindings automatically re-evaluate when the signals change - just like template bindings in components! When `isHovered` changes, the `backgroundStyle` computed signal recalculates, and the host binding updates the element's style.
+
+Then to use this directive in another component's template:
+
+```ts
+// app.ts
+import { Component } from "@angular/core";
+import { HighlightDirective } from "./highlight-directive";
+
+@Component({
+  selector: "app-root",
+  imports: [HighlightDirective],
+  template: `
+    <div>
+      <h1>Directive with Signals</h1>
+
+      <div highlight color="blue" [intensity]="0.2">
+        Hover me - Blue highlight
+      </div>
+
+      <div highlight color="green" [intensity]="0.4">
+        Hover me - Green highlight
+      </div>
+
+      <div highlight color="yellow" [intensity]="0.6">
+        Hover me - Yellow highlight
+      </div>
+    </div>
+  `,
+  styleUrl: "./app.css",
+})
+export class App {}
+```
+
+Notice how `highlight` is used as a `div` attribute to call the hightlight directive as defined in its `selector`.
+
+You've now seen how signals work with directives. Some key takeaways from this lesson are:
+
+- **Signals are universal** - All signal APIs (`input()`, `signal()`, `computed()`, `effect()`) work the same in both directives and components
+- **Host bindings are the primary use case** - Since directives don't have templates, you use signals in host bindings to reactively modify the host element
+- **Same reactive patterns** - Signal updates trigger automatic re-evaluation of computed signals and **host bindings**, just like in component templates
