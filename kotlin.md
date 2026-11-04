@@ -1,0 +1,697 @@
+# Kotlin fundamentals
+
+When creating a new project in Android Studio, your package name will be something like `com.example.firstKotlinProgram`. This would be also be the name of the folder in which you will place your source code files. By default, Android Studio will create a `MainActivity` file in that folder. When you want to create a new file in your source code, you will have to choose **Kotlin Class/File** item from the "New" menu on right click.
+
+By convension, you name your files like `HelloWorld.kt` or `Hello_World.kt`.
+
+> In order to perform an operation in Java programming language, normally you would need at least one class and one `main` function in the class. But you don't need a class in Kotlin. Instead, you need a `main` function in each file in order to run a program.
+
+## Kotlin-specific things
+
+### Printing to console
+
+```java
+// HelloWorld.kt
+fun main(args: Array<String>) {
+  print("Hello world!") // after printing the expression, stays at the same line
+  println("Goodbye!") // after printing the expression, moves to the next line
+}
+```
+
+You can now run this file, and `main` will be executed without having to call it explicitly.
+
+### Generating random numbers
+
+To generate a random number in Kotlin, you can use Kotlin's **Random** package:
+
+```java
+fun main(args: Array<String>) {
+  val number = Random.nextInt(0, 100)
+}
+```
+
+## Variables
+
+By convension, you name your variables like you do it in JavaScript, so follow camelCase formatting. Variables in Kotlin can be either **mutable** or **immutable**.
+
+Here is how you declare and initialize a variable in Kotlin:
+
+```java
+var speed = 100 // mutable - can be assigned multiple times
+val speed = 100 // immutable
+```
+
+## Data types
+
+Here is a list of data types in Kotlin:
+
+- Boolean: `Boolean`
+- Character: `Char`
+- Numbers:
+  - Integer: `Byte`, `Short`, `Int`, `Long`
+  - Floating point: `Float`, `Double`
+- String: `String`
+- Array: `Array`
+
+Let's go over some details on each data type:
+
+### Data type technical details
+
+#### `Byte`
+
+Default size: 1 byte (8 bit)
+Range: [-128, 127]
+Default value: 0
+
+Useful for saving memory in large arrays.
+
+#### `Short`
+
+Default size: 2 bytes (16 bit)
+Range: [-32.768, 32.767]
+Default value: 0
+
+Useful for saving memory
+
+#### `Int`
+
+Default size: 4 bytes (32 bit)
+Range: [-2^31, 2^31-1]
+Default value: 0
+
+#### `Long`
+
+Default size: 8 bytes (64 bit)
+Range: [-2^63, 2^63-1]
+Default value: 0L
+
+#### `Float`
+
+Default size: 4 bytes (32 bit)
+Range: 32-bit floating point single-precision
+Default value: 0.0f
+
+Useful for saving memory when working with large arrays of floating point numbers
+
+#### `Double`
+
+Default size: 8 bytes (64 bit)
+Range: 64-bit floating point double-precision
+Default value: 0.0d
+
+For decimal values, this is the default choice.
+
+#### `Boolean`
+
+Default size: 1 bit
+Range: true or false
+Default value: false
+
+#### `Char`
+
+Default size: 2 Bytes (16 bit)
+Range: ['\u0000', '\uffff'] or [0, 65535]
+Default value: '\u0000' (means 0 in ASCII)
+
+### Declaration and initialization of variables
+
+For now, everything seems very similar to TypeScript.
+
+```java
+var a : Boolean = true
+var b : Char = "R"
+var c : Byte = 12
+var d : Short = -356
+var e : Int = 43543
+var f : Long = -432543234L // Notice L at the end
+var g : Float = 5.68764324F // Notice F at the end
+var h : Double = 7.34534276464 // Notice there is no D at the end - Double is default
+```
+
+### Type Conversions
+
+You can convert data types in Kotlin using several methods:
+
+- `toByte()`
+- `toShort()`
+- `toInt()`
+- `toLong()`
+- `toFloat()`
+- `toDouble()`
+
+> Converting a small value to a large one makes no trouble. But doing so the other way round, you will lose data.
+
+```java
+fun main(args: Array<String>) {
+  var x : Byte = 127
+  var y : Int = x.toInt()
+  var z : Double = x.toDouble()
+
+  println(x) // 127
+  println(y) // 127
+  println(z) // 127.0
+
+  var a : Double = 132.32
+  var b : Int = a.toInt()
+  var c : Byte = b.toByte()
+
+  println(a) // 132.32
+  println(b) // 132
+  println(c) // -124
+}
+```
+
+### Details of `String` data type
+
+Use `Char` data type when you only need to store one chatacter. Use `String` when you really need a string of characters. Strings are treated in kotlin in a very similar way to how JavaScript treats them.
+
+#### Methods on `String`
+
+There are several useful methods available on `String` data type:
+
+- `length()`: returns the length of the string.
+- `equals(Object another)`: compares the string with the specified string and if both matches, returns true, else false.
+- `isEmpty()`: returns true if the given string has 0 length. If the length of string is non-zero, then returns false.
+- `plus("...")`: concatenates the string "..." and other string.
+- `lowercase()`: returns a string in lowercase.
+- `uppercase()`: returns a string in uppercase.
+- `trim()`: removes spaces at the beginning and end of the string.
+
+```java
+fun main(args: Array<String>) {
+  var a : String = "Hello Kotlin"
+  var b : String = "Language"
+  var age : Int = 25
+
+  println(a + b) // Hello KotlinLanguage
+  println(a + " " + b) // Hello Kotlin Language
+  println("Your age is = " + age) // age is converted from int to string
+
+  var x : String = "Kotlin"
+
+  var i : Int = x.length()
+  println("Length of Kotlin = " + i) // Length of Kotlin = 6
+
+  var b : Boolean = x.equals("Java")
+  println(b) // false
+
+  println(x.isEmpty()) // false
+  println(x.plus(" language")) // Kotlin language
+
+  println(x.lowercase())
+  println(x.uppercase())
+
+  var t : String = "   Android   "
+  println(x + t) // Kotlin   Android
+  println(s + t.trim()) // KotlinAndroid
+}
+```
+
+### Details of `Array` data type
+
+Arrays are objects that hold multiple data of different types together. Notice that `Array` is an immutable data type.
+
+```java
+fun main(args: Array<String>) {
+  var ages = arrayOf(24, 14, 23, 45, 19, 10, 31);
+  println("First element of array: " + age[0]) // the first element of array lives at index 0
+  println("Second element of array: " + age.get(1))
+
+  var cars = arrayOf("Mercedes", "Audi", "BMW", "Opel")
+  cars.set(3, "Ford") // mutates the original array - first param: index, second param: value
+  println("Last element of array: " + age[3]) // Ford
+
+  println("Size of cars array = " + cars.size) // 4
+
+  cars.set(4, "Renault") // ArrayIndexOutOfBoundsException (immutable) - use ArrayList
+}
+```
+
+#### `ArrayList`
+
+When you need to add elements to an array, you should use the `ArrayList` instead of `Array`.
+
+```java
+fun main(args: Array<String>) {
+  var age = arrayListOf<Int>(5, 10, 15) // can specify elements here or later
+  age.add(3, 20) // first param: index, second param: value
+  age.removeAt(1) // param: index
+
+
+  var age2 = ArrayList<Int>() // can only add elements later
+  age2.add(10) // when passed single param, 10 is considered as value, not index, and added to the end of array
+  age2.add(1, 15)
+  age2.add(20)
+
+  println("First element of ArrayList = " + age2[0]) // 10
+  println("Second element of ArrayList = " + age2.get(1)) // 15
+  println("Third element of ArrayList = ${age2[2]}") // 20
+
+  age2.remove(15) // param: value
+
+  println(age.size) // 2
+  println("First element of ArrayList = " + age2[0]) // 10
+  println("Second element of ArrayList = " + age2.get(1)) // 20
+}
+```
+
+To declare and initialize an array of mixed types you use `Any` type:
+
+```java
+fun main(args: Array<String>) {
+  var myMixArrayList = ArrayList<Any>()
+  myMixArrayList.add("Ford")
+  myMixArrayList.add(5)
+  myMixArrayList.add(2.5)
+  myMixArrayList.add(false)
+  myMixArrayList.add("K")
+}
+```
+
+### Details of `Set`
+
+Set is a special type of array (actually derived from `Collection`) where you can only have unique values. Notice that Sets are immutable collections. If you want to mutate the set later, use `mutableSetOf`.
+
+```java
+fun main(args: Array<String>) {
+  var mySetArray2 = setOf<Any>("Kotlin", 2, 2.5, "K", true, "Kotlin")
+  println(mySetArray2.size) // 5
+  println(mySetArray2.last()) // true - last element "Kotlin" is ignored (not unique)
+}
+```
+
+### Details of `Map`
+
+Map is a special type of array (actually derived from `Collection`) where you can store key/value pairs. Notice that maps are immutable collections. If you want to mutate the map later, use `mutableMapOf`.
+
+```java
+fun main(args: Array<String>) {
+  // immutable
+  var age = mapOf<String, Int>("david" to 20, "ronaldo" to 25)
+  println("Age of David: " + age["david"]) // 20
+  println("Age of Ronaldo: " + age["ronaldo"]) // 25
+
+  // mutable
+  var mutableAge = mutableMapOf<String, Int>("david" to 20, "ronaldo" to 25)
+  mutableAge.put("buffon", 30)
+
+  println("Age of Buffon: ", mutableAge["buffon"]) // 30
+  println("Age of David: ", mutableAge.get("david")) // 20
+}
+```
+
+## Operators
+
+### Arithmetic operators
+
+Arithmetic operators used in Kotlin are exactly the same as in JavaScript. Type coercions that happen when using arithmetic operators in JavaScript, behave the same way in Kotlin also.
+
+### Assignment operator
+
+Similar to JavaScript we have:
+
+- `=`
+- `+=`
+- `-=`
+- `*=`
+- `/=`
+- `%=`
+
+### Unary operators
+
+This type of operators require only one operrand.
+
+- `+`: used when converting a numeric negative value to a positive one
+- `-`: used when converting a numeric value to a negative one
+- `++`: increments a numeric value by one
+- `--`: decrements a numeric value by one
+- `!`: used to toggle a boolean value
+
+```java
+fun main(args: Array<String>) {
+  var number : Double = 7.6
+  var isCheck : Boolean = true
+
+  println(+number) // 7.6
+  println(-number) // -7.6
+  println(++number) // 8.6
+  println(--number) // 7.6
+  println(!isCheck) // false
+
+  var result: Double = 4.7
+
+  println(result++) // 4.7 - incremented after `result` is evaluated
+  println(result) // 5.7 - result of increment in the previous line
+  println(++result) // 6.7
+  println(result) // 6.7
+}
+```
+
+### Equality and relational operators
+
+These are used to determine if two values are greater than, less than, equal to, or not equal to each other.
+
+- `==`
+- `!=`
+- `>`
+- `>=`
+- `<`
+- `<=`
+
+### Conditional operators
+
+These are used to check multiple conditions together
+
+- `&&`: And - checks the second condition only if the first one is true, returns true if both come true
+- `||`: Or - checks both conditions anyway, returns true if any of them comes true
+
+> Each condition expression can be wrapped in `()`
+
+### Operator precedence
+
+Here is a list of operator precedence in Kotlin, from the highest priority to the lowest:
+
+- Unary (`++`, `--`, `+`, `-`, `!`)
+- Multiplicative (`*`, `/`, `%`)
+- Additive (`+`, `-`)
+- Relational (`<`, `<=`, `>=`, `>`)
+- Equality (`==`, `!=`)
+- Conditional AND (`&&`)
+- Conditional OR (`||`)
+- Assignment (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
+
+> You can alter this precedence anywhere by wrapping in `()` the expression that you want to be evaluated with a higher priority.
+
+### Special operators (`rangeTo`, `in`)
+
+Here is how you can use `rangeTo` operator:
+
+```java
+var myCharRange = 'a'.rangeTo('z')
+var myCharRange = 'a'..'z'
+```
+
+Then to use `in` operator you can:
+
+```java
+var myChar = 'k' in myCharRange // true
+```
+
+Another example:
+
+```java
+fun main(args: Array<String>) {
+  var myCharRange = 'a'.rangeTo('j') // single quotes can be used for single characters
+  var myChar = 'k' in myCharRange
+  println(myChar) // false
+}
+```
+
+## Console input
+
+To get data from the user through the console, you can use Kotlin `readLine()` method. When attempting to get some data from user, you would have to handle the nullable situation, since the user may not type anything and simply press Enter.
+
+```java
+var name : String? = readLine() // means we are not sure the user will input any data
+var name : String = readLine()!! // means we are sure the user will input some data
+```
+
+> The data received from the user through the console is of type `String` by default.
+
+```java
+fun main(args: Array<String>) {
+  print("What is your name? ") // cursor will wait at the end of this line
+
+  var name : String? = readLine()
+
+  print("How old are you? ")
+
+  var age : Int = readLine()!!.toInt()
+
+  println("Your name is $name, and you are $age years old.")
+}
+```
+
+## Control flow statements
+
+Control flow statements in Kotlin are:
+
+- Decision making statements:
+  - If: Runs some code based on a given condition
+  - When: Similar to JavaScript's `switch` and `default` statement
+- Looping statements
+  - For
+  - For-each
+  - While
+  - Do-while
+
+### If statements
+
+```java
+// If
+if(condition) {
+  // code to execute if condition is true
+}
+
+// If-else
+if(condition) {
+  // code to execute if condition is true
+} else {
+  // code to exexute if condition is false
+}
+
+
+// If-else ladder
+if(condition) {
+  // code
+} else if (condition) {
+  // code
+} else {
+  // code
+}
+
+// Nested if
+if(condition) {
+  if(condition) {
+    // code
+  }
+
+  // code
+}
+```
+
+### When
+
+```java
+fun main(args: Array<String>) {
+  print("Please enter a day number of the week: ")
+  var dayNum : Int = readLine()!!.toInt()
+  var day : String
+
+  when(dayNum) {
+    1 -> day = "Monday"
+    2 -> day = "Tuesday"
+    3 -> day = "Wednesday"
+    4 -> day = "Thursday"
+    5 -> day = "Friday"
+    6 -> day = "Saturday"
+    7 -> day = "Sunday"
+    else -> day = "Invalid day choice" // equivalent to JavaScript's default branch
+  }
+
+  println("Day is $day")
+}
+```
+
+## Loops
+
+There are multiple loop statements in Kotlin.
+
+### For loop
+
+You can use ranges to evaluate the for loop's condition:
+
+```java
+for (i in 0..10) {
+  // loop body
+}
+```
+
+As the initial step in executing the loop, variable `i` is initialized then it is checked against the loop's condition, and so on.
+
+```java
+fun main(args: Array<String>) {
+  var sum: Int = 0
+
+  for(x in 0..5) {
+    println(x)
+    sum += x
+  }
+
+  println("Sum of numbers: $sum")
+}
+
+// 0
+// ...
+// Sum of numbers = 15
+```
+
+```java
+fun main(args: Array<String>) {
+  var myNumbersArray = arrayListOf<Int>(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+  for(y in myNumbersArray) {
+    println(y)
+  }
+}
+
+// 1
+// ...
+```
+
+```java
+fun main(args: Array<String>) {
+  var myNumbersArray = arrayListOf<Int>(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+  for(y in myNumbersArray.indices) { // every array has an `indices` property on it
+    println("myNumbersArray[$y] = ${myNumbersArray[y]}")
+  }
+}
+
+// myNumbersArray[0] = 1
+// ...
+```
+
+### For-each loop
+
+In for-each loops, Kotlin automatically defines a `it` variable which represents each element of the array on which the `forEach` method is used.
+
+```java
+fun main(args: Array<String>) {
+  var myNumbersArray = arrayListOf<Int>(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+  myNumbersArray.forEach {
+    println(it)
+  }
+}
+```
+
+### While loop
+
+In a while loop, the controlling variable (or condition) is defined before the loop definition itself. You must also update the variable in each iteration of the loop if you are not going for an infinite loop.
+
+```java
+fun main(args: Array<String>) {
+  var i = 5
+
+  while(i > 0) {
+    println(i)
+    i--
+  }
+}
+```
+
+You can implement while loops that continues for ever before meeting a given condition and hitting a `break` statement:
+
+```java
+fun main(args: Array<String>) {
+  val number = Random.nextInt(0, 100)
+  println("Please guess the number: ")
+
+  while(true) {
+    val userGuess : Int = readLine()!!.toInt()
+    if(userGuess == number) {
+      println("You gussed it!")
+      break
+    } else if(userGuess < number) {
+      println("Go up")
+    } else {
+      println("Go down")
+    }
+  }
+}
+```
+
+### Do-while loop
+
+It is similar to while loop, with the difference that it executes the loop body first, then checks for the loop's condition. So the loop body executes at least once with this type of loop.
+
+```java
+fun main(args: Array<String>) {
+  var number = 1
+
+  do {
+    println("$number ")
+    number++
+  } while(number < 15)
+}
+```
+
+## Functions
+
+Very similar to JavaScript, in Kotlin functions are defined with parameter types and return type. The function can use `return` statement to return a value.
+
+```java
+fun addNumber(x: Int, y: Int): Int {
+  var sum = 0;
+  sum = x + y;
+  return sum;
+}
+
+var result = 0;
+result = addNumber(2, 3)
+println(result) // 5
+```
+
+### Types of functions
+
+In Kotlin, there are 2 different types of functions:
+
+1. Standard library functions: pre-defined library of classes and functions
+2. User-defined functions
+
+#### Function return types
+
+- Unit (void): returns nothing
+- Primitive: returns `char`, `byte`, `short`, ...
+- Non-primitive: returns reference data types, such as object of Class, `String`, etc.
+
+```java
+fun main(args: Array<String>) {
+  print("Enter enter the first number: ")
+  var num1 = Int = readLine()!!.toInt()
+
+  print("Enter enter the second number: ")
+  var num2 = Int = readLine()!!.toInt()
+
+  show(num1, num2)
+
+  var a = add(num1, num2)
+  println("Sum of the numbers = $a")
+
+  var min = findMinimumNumber(num1, num2)
+  println("Minimum: $min")
+}
+
+fun show(num1: Int, num2: Int): Unit { // you can simply omit Unit
+  println("You entered $num1 and $num2")
+}
+
+fun add(num: Int, num2: Int): Int {
+  var sum: Int = 0
+  sum = num1 + num2
+  return sum // satisfies function's return type
+}
+
+fun findMinimumNumber(num: Int, num2: Int): Int {
+  var minimum: Int
+
+  if(num1 > num2) {
+    minimum = num2
+  } else {
+    minimum = num1
+  }
+
+  return minimum
+}
+```
