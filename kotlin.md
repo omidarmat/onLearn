@@ -695,3 +695,14 @@ fun findMinimumNumber(num: Int, num2: Int): Int {
   return minimum
 }
 ```
+
+## Kotlin OOP
+
+### Access modifiers
+
+Access modifiers are statements used before class property/method declarations that define how the property/method can be accessed.
+
+- `private`: Most restricted access type; only accessible (visible) inside the class.
+- `protected`: Similar to `private`, but is visible to sub-classes.
+- `internal`: Visible to any client inside the current module, meaning that any client, within the same module, who can see the declared class, can also see its internal members. A module is a set of Kotlin files compiled together.
+- `public`: Visible to any client that can see the declared class. This is the least restricted access level. `public` is the default access modifier, meaning that if you don't mention any modifier, Kotlin will consider the property/method to be public.
