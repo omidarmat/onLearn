@@ -817,4 +817,81 @@ class Plane {
 var myPlane = Plane("Boeing", 2024)
 ```
 
-> Notice that you can reassign the values assigned to the object after you created the object. This is done because Kotlin automatically created `set` and `get` methods on the objects you create.
+> Notice that you can reassign the values assigned to the object after you created the object. This is done because Kotlin automatically created `set` and `get` methods on the objects you create. To alter this behavior, you need to declare these methods manually.
+
+### Encapsulation
+
+Encapsulation referes to the use of `set` and `get` methods in a class definition.
+
+```java
+// Plane.kt
+class Plane {
+  var name: Stirng? = null
+  var model: Int? = null
+    private set // preventing others from changing the model value
+            get // allowing other to read the model value
+
+  constructor(name: String, model: Int) {
+    this.name = name
+    this.model = model
+  }
+}
+```
+
+### Inheritance
+
+Inheritance is used when `is a` relation exists between two or more classes. For instance, a `Car` **is a** `Vehicle`, and a `Motorcycle` **is a** `Vehicle`. So a `Car` can have the same behavior as `Vehicle`. In this case, `Vehicle` is a super class (parent), and `Car` and `Motorcycle` are sub-classes (child).
+
+> `Car` and `Motorcycle` can also have some additional behavior
+
+Kotlin classes are `final` by default. The `final` modifier marks methods and classes as not allowed to be overriden. Therefore, in order for a sub-class to inherit from a super class, the `open` statement must be written before the `Class` statement.
+
+```java
+// Vehicle.kt
+open class Vehicle {
+  var type: String? = null
+  var model: Int? = null
+  var maxSpeed: Int? = null
+
+  fun show() {
+    println("Type: $type")
+    println("Model: $model")
+    println("Max speed: $maxSpeed")
+  }
+}
+```
+
+```java
+// Car.kt
+class Car: Vehicle() {
+
+}
+```
+
+```java
+// Motorcycle.kt
+class Motorcycle: Vehicle() {
+
+}
+```
+
+```java
+// InheritanceTest.kt
+fun main(args: Array<String>) {
+  // Create a car object
+  var car = Car()
+  car.type = "Car"
+  car.model = "Ferrari"
+  car.maxSpeed = 320
+  car.show()
+  // While `Car` class is empty, it inherits properties and methods from `Vehicle` class
+
+  // Create a motorcycle object
+  var motor = Motorcycle()
+  motor.type = "Motorcycle"
+  motor.model = "Yamaha"
+  motor.maxSpeed = 180
+  motor.show()
+  // While `Motorcycle` class is empty, it inherits properties and methods from `Vehicle` class
+}
+```
