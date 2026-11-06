@@ -706,3 +706,115 @@ Access modifiers are statements used before class property/method declarations t
 - `protected`: Similar to `private`, but is visible to sub-classes.
 - `internal`: Visible to any client inside the current module, meaning that any client, within the same module, who can see the declared class, can also see its internal members. A module is a set of Kotlin files compiled together.
 - `public`: Visible to any client that can see the declared class. This is the least restricted access level. `public` is the default access modifier, meaning that if you don't mention any modifier, Kotlin will consider the property/method to be public.
+
+### Naming conventions
+
+- Class name: Should start with uppercase letter and be a noun
+- Function name: should start with lowercase letter, and follow camelCase formatting and be a verb.
+- Variable name: should start with lowercase letter, and follow camelCase formatting
+
+### Constructor
+
+Constructor refers to the first function to be called when creating an object from any class. At least one constructor is required for each class. If you don't create any constructors, the compiler will create a default empty constructor.
+
+There are 2 different typs of constructors in Kotlin:
+
+- Primary constructor: A class in Kotlin can have 1 primary, or 1 or more secondary constructors.
+- Secondary constructor: Similar to Java.
+
+#### Primary constructor
+
+The primary constructor cannot contain any code. Initialization code can be places in `init` blocks.
+
+```java
+class Cars constructor(name: String, model: Int) {
+  init {
+    println("My car is $name and its model is $model")
+  }
+}
+```
+
+#### Secondary constructor
+
+Secondary constructors allow initialization of variables, and also allow you to provide some logic to the class.
+
+```java
+class Cars {
+  var name: String? = null
+  var model: Int? = null
+
+  constructor() // empty constructor
+
+  constructor(name: String, model: Int) { // full constructor
+    this.name = name
+    this.model = model
+  }
+}
+```
+
+### Doing OOP in Kotlin
+
+To declare a class in a Kotlin program, you should open a Kotlin Class file and name it after the class name, for example, `Car`:
+
+```java
+// Car.kt
+class Car {
+  var name: String? = null
+  var mode: Int? = null
+}
+```
+
+Then in a `.kt` Kotlin file:
+
+```java
+// ObjectClassConstructor.kt
+fun main() {
+  var myCar = Car()
+  myCar.name = "Ferrari"
+  myCar.model = 2006
+
+  println("My car's name is ${myCar.name} and its model is ${myCar.model}")
+}
+```
+
+Notice that the `Car` class does not have a constructor. That is why we had to first create an object from the class, and then define the values for `name` and `model`. To be able to define those values right at the moment when the object is being created, you need to add a constructor to the class.
+
+Let's first go with the **primary constructor**:
+
+```java
+// Car.kt
+class Car constructor(var name: String, var model: Int) {
+  init {
+    println("My car's name is $name and its model is $model")
+  }
+}
+```
+
+Now when creating an object from this class, your IDE will require you to input values for the parameters:
+
+```java
+// ObjectClassConstructor.kt
+var myNewCar = Car("Ferrari", 2021)
+// console: My car's name is Ferrari and its model is 2021
+```
+
+Now let's try **secondary constructor**:
+
+```java
+// Plane.kt
+class Plane {
+  var name: Stirng? = null
+  var model: Int? = null
+
+  constructor(name: String, model: Int) {
+    this.name = name
+    this.model = model
+  }
+}
+```
+
+```java
+var myPlane = Plane("Boeing", 2024)
+```
+
+> Notice that you can reassign the values assigned to the object after you created the object. This is done because Kotlin automatically created `set` and `get` methods on the objects you create.
