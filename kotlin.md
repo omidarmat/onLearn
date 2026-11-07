@@ -895,3 +895,110 @@ fun main(args: Array<String>) {
   // While `Motorcycle` class is empty, it inherits properties and methods from `Vehicle` class
 }
 ```
+
+### Function overriding
+
+If you define a function in a sub-class with the same name, parameters and return type as a function defined in a super class, you are doing function overriding.
+
+```java
+open class Vehicle {
+  open fun stop() { // Methods are `final` by defualt. They should be marked with `open` if they are going to be overriden
+    println("Vehicle has stopped")
+  }
+}
+
+class Car: Vehicle() {
+  override fun stop() { // Methods that are overriding a method in a super class, must be marked with `override`
+    println("Car has stopped")
+  }
+}
+```
+
+#### Using the `super` keyword
+
+When defining a sub-class, you may need to call methods from the super class. To do this, you can use the `super` keyword with a dot `.` notation.
+
+```java
+class Car: Vehicle() {
+  fun alteredStop() {
+    super.stop()
+  }
+}
+```
+
+### Abstract classes
+
+Abstract classes are a special type of a classes from which you cannot create an instance (object). These classes would act as a schema or blueprint for creating some concrete classes from them, and then instances would be created from those concrete classes.
+
+```java
+abstract class Vehicle {
+  // Abstract function - no body code
+  abstract fun vehicleName(name: String): String
+
+  // Non-abstract function
+  fun vehicleType(type: String): String {
+    return type // contains body code
+  }
+
+  // Abstract property
+  abstract var model: Int // not initialized
+
+  // Non-abstract property
+  var speed: Int? = null // initialized to null
+}
+```
+
+```java
+class Car(override var model: Int): Vehicle() {
+  override fun vehicleName(name: String): String {
+    return name
+  }
+}
+```
+
+```java
+fun main(args: Array<String>) {
+  var car = Car(2021)
+  car.speed = 300
+}
+```
+
+### Interfaces
+
+Interfaces are custom types provided by Kotlin. Interfaces cannot be instantiated directly. Instead, these define a form of behavior that the types have to follow. So with an interface you can define and setup properties and methods that the concrete types must follow and implement.
+
+Interfaces are also abstract, so they have the characteristics of the abstract classes, so we don't use interfaces to create objects. The purpose of interfaces: In Kotlin a class can only inherit from one class, it cannot inherit from more than one class. So when a class needs to inherit from more than one class, we should define those classes as interfaces.
+
+```java
+interface CanGo {
+  fun go() {
+    println("vehicle can go") // you can provide a body to the function or ignore it completely
+  }
+
+  val name: String // variables in interfaces cannot be initialized, and also cannot be declared as var since they cannot be defined after they are instantiated
+}
+
+interface CanStop {
+  fun stop()
+}
+```
+
+```java
+class Vehicle: CanGo, CanStop {
+  override val name: String
+    get() = "Ferrari"
+
+    override fun stop() {
+      println("Vehicle can stop")
+    }
+}
+```
+
+```java
+fun main(args: Array<String>) {
+  var vehicle = Vehicle()
+  println("Name: ${vehicle.name}")
+  vehicle.go()
+  vehicle.stop()
+}
+```
