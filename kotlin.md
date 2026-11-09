@@ -52,6 +52,7 @@ Here is a list of data types in Kotlin:
   - Floating point: `Float`, `Double`
 - String: `String`
 - Array: `Array`
+- List: `List`
 
 Let's go over some details on each data type:
 
@@ -213,7 +214,7 @@ Arrays are objects that hold multiple data of different types together. Notice t
 
 ```java
 fun main(args: Array<String>) {
-  var ages = arrayOf(24, 14, 23, 45, 19, 10, 31);
+  var ages = arrayOf(24, 14, 23, 45, 19, 10, 31); // immutable array
   println("First element of array: " + age[0]) // the first element of array lives at index 0
   println("Second element of array: " + age.get(1))
 
@@ -266,6 +267,26 @@ fun main(args: Array<String>) {
   myMixArrayList.add(false)
   myMixArrayList.add("K")
 }
+```
+
+### Details of `List`
+
+You can create a list of type `List` using:
+
+```java
+// Immutable list
+val shoppingList = listOf("Processor", "RAM", "Graphics card", "SSD") // List<String>
+shoppingList.contains("Processor") // returns boolean
+
+// Mutable list
+var mutableShoppingList = mutableListOf("Processor", "RAM", "Graphics card", "SSD")
+mutableShoppingList.add(4, "Cooling system") // first param: index, second param: value
+mutableShoppingList.add("RGB lights")
+mutableShoppingList.removeAt(0) // param: index
+mutableShoppingList.remove("RAM") // param: value
+
+mutableShoppingList[3] = 'Some other tooling' // modifying element at index 3
+mutableShoppingList.set(0, 'Pre-processor') // modifying element at index 0
 ```
 
 ### Details of `Set`
@@ -409,7 +430,7 @@ fun main(args: Array<String>) {
 
 ## Console input
 
-To get data from the user through the console, you can use Kotlin `readLine()` method. When attempting to get some data from user, you would have to handle the nullable situation, since the user may not type anything and simply press Enter.
+To get data from the user through the console, you can use Kotlin `readLine()` or `readln()` method. When attempting to get some data from user, you would have to handle the nullable situation, since the user may not type anything and simply press Enter.
 
 ```java
 var name : String? = readLine() // means we are not sure the user will input any data
@@ -509,7 +530,7 @@ There are multiple loop statements in Kotlin.
 
 ### For loop
 
-You can use ranges to evaluate the for loop's condition:
+You can use ranges, lists or arrays to evaluate the for loop's iteration:
 
 ```java
 for (i in 0..10) {
@@ -542,12 +563,19 @@ fun main(args: Array<String>) {
 
   for(y in myNumbersArray) {
     println(y)
+    if(y == 5) {
+      break // breaks out of the whole loop if y == 5
+    }
   }
 }
 
 // 1
 // ...
 ```
+
+> Notice that for loops can be used on lists (`List`) also.
+
+You can get the indices of the iteration using `indeces` property of the array or list on which the for loop is iterating.
 
 ```java
 fun main(args: Array<String>) {
@@ -727,19 +755,31 @@ There are 2 different typs of constructors in Kotlin:
 The primary constructor cannot contain any code. Initialization code can be places in `init` blocks.
 
 ```java
-class Cars constructor(name: String, model: Int) {
+class Car(name: String, model: Int) {
   init {
     println("My car is $name and its model is $model")
   }
 }
 ```
 
+Notice that `name` and `model` are now parameters to the constructor function. So `name` and `model` are not going to be a property of the object created from this class. If you want the `name` and `model` to be a property of the objects created from this class, you should mark them with `val`.
+
+```java
+class Dog(val name: String, val breed: Int, var age: Int = 0) {
+  init {
+    // code
+  }
+}
+```
+
+Now `name` and `model` will be a property of an object that would be instantiated from `Car` class. Also notice that properties declared with `var` can be overriden later after the object creation.
+
 #### Secondary constructor
 
 Secondary constructors allow initialization of variables, and also allow you to provide some logic to the class.
 
 ```java
-class Cars {
+class Car {
   var name: String? = null
   var model: Int? = null
 
@@ -1000,5 +1040,71 @@ fun main(args: Array<String>) {
   println("Name: ${vehicle.name}")
   vehicle.go()
   vehicle.stop()
+}
+```
+
+### Data classes
+
+Data classes in Kotlin are classes whose main purpose is to hold data. Data classes come automatically with additional member functions that allow you to print an instance to readable output, compare instances, copy instances, and more.
+
+```java
+data class User(val name: String, val age: Int)
+```
+
+Here is a list of methods available by default on data classes:
+
+- `equals()`
+- `.hashCode()`
+- `.toString()`
+- `.componentN()`
+- `.copy()`
+
+# Jetpack compose
+
+## State management
+
+Generally, when you want to work with state and manage it in your UI, you need to work with 2 keywords and 1 function:
+
+- `val`
+- `remember`
+- `mutableStateOf()`
+
+```java
+@Composable
+fun CaptainGame() {
+  val treasuresFound = remember { mutableStateOf(0) }
+
+  Column {
+    Text("Treasures found: ${treasuresFound.value}")
+
+    Button(onClick = {
+      treasuresFound.value += 1
+    }) {
+      Text("Collect treasure")
+    }
+  }
+}
+```
+
+The value of `treasuresFound` itself is actually the remembered state and that does not change. What changes is the `value` of the remembered state (notice how we access `.value`). That is why we can use `val` to declare a remembered state variable.
+
+There is another way of declaring a remembered state variable using `by` and `var` keywords. This way the state variable will hold the value itself, so you no longer need to access `.value` on it, and therefore you cannot use `val` on it anymore. You should use `var` instead.
+
+```java
+import State.getValue;
+
+@Composable
+fun CaptainGame() {
+  var treasuresFound by remember { mutableStateOf(0) }
+
+  Column {
+    Text("Treasures found: ${treasuresFound}")
+
+    Button(onClick = {
+      treasuresFound += 1
+    }) {
+      Text("Collect treasure")
+    }
+  }
 }
 ```
