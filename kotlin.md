@@ -750,6 +750,37 @@ Now the `doubleNumber` variable holds the lambda function and you can call it:
 doubleNumber(2) // returns 4
 ```
 
+Lambda functions are used in many places in Kotlin:
+
+#### `map`
+
+Similar to JavaScript `map` method available on arrays, you can use the same method on lists in Kotlin, with the difference that you should pass a lambda function to them. So the lambda function is responsible for the calculation process being done in each iteration:
+
+```java
+var numbers = listOf(1, 2 ,3)
+var doubled = numbers.map{ it * 2 } // [2, 4, 6]
+```
+
+#### `copy`
+
+The `copy` function makes a copy of an object with altered properties received as parameters of the `copy` function.
+
+```java
+data class Vase(val color: String, val design: String)
+
+val blueRoseVase = Vase(color = "Blue", design = "Rose")
+val redRoseVase = blueRoseVase.copy(color = "Red")
+```
+
+#### `let` and nullable
+
+The `let` function allows you to apply some transformation on some nullable value without affecting the original variable that holds the nullable value.
+
+```java
+val name: String? = "Ella"
+var upperName = name?.let{ it.toUpperCase() }
+```
+
 ## Kotlin OOP
 
 ### Access modifiers
