@@ -678,7 +678,7 @@ In Kotlin, there are 2 different types of functions:
 1. Standard library functions: pre-defined library of classes and functions
 2. User-defined functions
 
-#### Function return types
+### Function return types
 
 - Unit (void): returns nothing
 - Primitive: returns `char`, `byte`, `short`, ...
@@ -722,6 +722,32 @@ fun findMinimumNumber(num: Int, num2: Int): Int {
 
   return minimum
 }
+```
+
+### Lambda function
+
+Lambda expressions use `() -> {}` syntax. Take a loot at this example:
+
+```java
+val doubleNumber: (Int) -> Int = { it * 2 }
+```
+
+So this lambda expression should receive an integer as input, and it returns an integer as output. Notice the type definition of the lambda:
+
+```java
+(Int) -> Int
+```
+
+After the type definition, there is a `=` assignment operator and then there is the body of the lambda, where `it` refers to the input value of type `Int`. The body is the part that performs the actual calculation that results in the intended output.
+
+```java
+{ it * 2 }
+```
+
+Now the `doubleNumber` variable holds the lambda function and you can call it:
+
+```java
+doubleNumber(2) // returns 4
 ```
 
 ## Kotlin OOP
@@ -1051,6 +1077,8 @@ Data classes in Kotlin are classes whose main purpose is to hold data. Data clas
 data class User(val name: String, val age: Int)
 ```
 
+> Notice that if the data class should include a property whose value would change during the app's activity, you should mark it as `var`, not `val`.
+
 Here is a list of methods available by default on data classes:
 
 - `equals()`
@@ -1080,6 +1108,7 @@ fun CaptainGame() {
     Button(onClick = {
       treasuresFound.value += 1
     }) {
+      // YOU CAN PUT KOTLIN CODE HERE ALSO (IN A COMPOSABLE BODY)
       Text("Collect treasure")
     }
   }
@@ -1107,4 +1136,40 @@ fun CaptainGame() {
     }
   }
 }
+```
+
+### Conditional composable rendering
+
+You can render a composable based on a condition using this simple syntax:
+
+```java
+fun ShoppingList() {
+  var showDialog by remember { mutableStateOf(false) }
+
+  if(showDialog) {
+    AlertDialog(onDismissRequest = { showDialog = false }) {
+      // content here
+    }
+  }
+}
+```
+
+## Lazy column
+
+When you want to render a list of items in the screen, you would want to use Jetpack compose's `LazyColumn`. The lazy column composable renders only items that are within the viewport of the application. So items that are yet to come into the screen or items scrolled out of the screen will simply be ignored.
+
+Notice that the each item in the lazy column content should be defined as a data class.
+
+```java
+var sItems by remember { mutableStateOf(listOf<ShoppingItem>()) }
+
+LazyColumn(
+  modifier = Modifier.fillMaxSize().padding(16.dp)
+) {
+  items(sItems) {
+
+  }
+}
+
+data class ShoppingItem (val id: Int, var name: String, var quantity: Int, var isEditing: Boolean = false)
 ```
