@@ -1053,6 +1053,8 @@ class Car(override var model: Int): Vehicle() {
 }
 ```
 
+> Notice that to override a method inherited from an `abstract` class, you should mark the method itself with `abstract` keyword. Compare it with when you want to override a method inherited from a normal class where you have to mark it with `open` if you want to override it in a sub-class.
+
 ```java
 fun main(args: Array<String>) {
   var car = Car(2021)
@@ -1062,9 +1064,11 @@ fun main(args: Array<String>) {
 
 ### Interfaces
 
-Interfaces are custom types provided by Kotlin. Interfaces cannot be instantiated directly. Instead, these define a form of behavior that the types have to follow. So with an interface you can define and setup properties and methods that the concrete types must follow and implement.
+Interfaces are custom types provided by Kotlin. Interfaces cannot be instantiated directly. So with an interface you can define and setup properties and methods that the concrete classes must follow and implement.
 
-Interfaces are also abstract, so they have the characteristics of the abstract classes, so we don't use interfaces to create objects. The purpose of interfaces: In Kotlin a class can only inherit from one class, it cannot inherit from more than one class. So when a class needs to inherit from more than one class, we should define those classes as interfaces.
+Interfaces are also abstract, so they have the characteristics of the abstract classes, so we don't use interfaces to create objects. The purpose of interfaces: In Kotlin a class can only inherit from one superior class, it cannot inherit from more than one superior class. So when a class needs to inherit from more than one paths, we should define those classes as interfaces.
+
+> Notice that a class can inherit from one superior class and multiple interfaces at the same time.
 
 ```java
 interface CanGo {
@@ -1090,6 +1094,8 @@ class Vehicle: CanGo, CanStop {
     }
 }
 ```
+
+> Notice that in order to override a method that is inherited from an `interface`, you don't need to mark the method with `open` or `abstract`.
 
 ```java
 fun main(args: Array<String>) {
@@ -1203,4 +1209,98 @@ LazyColumn(
 }
 
 data class ShoppingItem (val id: Int, var name: String, var quantity: Int, var isEditing: Boolean = false)
+```
+
+## MVVM
+
+To describe the MVVM architecture, let's go over an example. Imagine you want to build a simple counter application where you can increment/decrement a count number by pressing the corresponding buttons. Now to implement this simple app using MVVM architecture you should first build a `ViewModel`:
+
+```java
+import androidx.lifecycle.ViewModel;
+
+class CounterViewModel : ViewModel() {
+  // Making the actual state value inaccessible to outside
+  private val _count = mutableIntStateOf(0)
+
+  // Exposing the value of the state as an immutable value
+  val count: MutableState<Int> = _count
+
+  fun increment() {
+    _count.intValue++
+  }
+
+  fun decrement() {
+    _count.intValue--
+  }
+}
+```
+
+Now any `@Composable` function can accept a `viewModel` parameter and you can pass the view model created above to it. Where you display the output to the user in the form UI, it is called `View`. So:
+
+```java
+@Composable
+fun CounterApp(viewModel: CounterViewModel) {
+  Column() {
+    Text("Count : ${viewMode.count.value}")
+
+    Button(onClick = { viewModel.increment() }) {
+      Text("Increment")
+    }
+
+    Button(onClick = { viewModel.decrement() }) {
+      Text("Decrement")
+    }
+  }
+}
+```
+
+But, there is still one piece missing from the MVVM architecture, and that is the `Model`. So, this would complete the `MVVM` architecture. To implement a model for this simple example application, let's create a Kotlin class called `CounterModel`:
+
+```java
+data class CounterModel (
+    var count: Int
+)
+```
+
+So a model is actually a data class. For this example, the data class is too simple. Then, you need to setup a repository for this counter data model. A repository is a clean API for accessing the data of this model.
+
+```java
+data class CounterModel (
+    var count: Int
+)
+
+class CounterRepository {
+    private var counter = CounterModel(0)
+
+    fun getCounter() = counter // short syntax for returning a value from a function (no {} body block)
+
+    fun incrementCounter() {
+        counter.count++
+    }
+
+    fun decrementCounter() {
+        counter.count--
+    }
+}
+```
+
+Now according to this `CounterModel` and `CounterRepository` which act as the Model together, you should apply some changes to the `ViewModel` to match it:
+
+```java
+class CounterViewModel() : ViewModel() {
+    private val _repository: CounterRepository = CounterRepository()
+    private val _count = mutableIntStateOf(_repository.getCounter().count)
+
+    val count: MutableState<Int> = _count
+
+    fun increment() {
+        _repository.incrementCounter()
+        _count.intValue = _repository.getCounter().count
+    }
+
+    fun decrement() {
+        _repository.decrementCounter()
+        _count.intValue = _repository.getCounter().count
+    }
+}
 ```
