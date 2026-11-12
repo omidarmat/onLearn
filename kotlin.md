@@ -781,6 +781,38 @@ val name: String? = "Ella"
 var upperName = name?.let{ it.toUpperCase() }
 ```
 
+### `try`, `catch` and `finally`
+
+In order handle errors in Kotlin, you can use the `try`, `catch` and `finally` blocks, similar to JavaScript. Take this crashing code as example:
+
+```java
+fun main() {
+  println("Please enter a number: ")
+  val number = readln().toInt()
+    // crashes here if user types something that cannot be converted to int
+  println("User entered $number")
+}
+```
+
+To prevent your app from crashing, you must catch the exception and handle the error with proper error display.
+
+```java
+fun main() {
+  try {
+    // Error-prone code
+    println("Please enter a number: ")
+    val number = readln().toInt()
+    println("User entered $number")
+  } catch (error: Exception) {
+    // What should happen when error occurs
+    println(error.message)
+  } finally {
+    // Code that will run regardless; error or no error
+    println("This will be executed anyway.")
+  }
+}
+```
+
 ## Kotlin OOP
 
 ### Access modifiers
@@ -1123,6 +1155,38 @@ Here is a list of methods available by default on data classes:
 - `.toString()`
 - `.componentN()`
 - `.copy()`
+
+## Asynchronous operations
+
+Similar to JavaScript asynchronous operations, there is a feature in Kotlin which allows you to do the same thing for, for instance, fetching data, long-running tasks, etc.
+
+### Fetching data
+
+In order to implement data fetching from a remote API, you conventionally create a service called `ApiService.kt` file where you define an interface that describes the behavior of the API service:
+
+```java
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.GET;
+
+// Initializing Retrofit
+private val retrofit = Retrofit
+    .Builder()
+    .baseUrl("https://www.themealdb.com/api/json/v1/")
+    .addConverterFactory(GsonConverterFactory.create())
+    .build()
+
+// Defining the API service interface
+interface ApiService {
+    @GET("categories.php")
+    suspend fun getCategories(): CategoriesResponse
+}
+
+// Creating the actual service based on the defined interface
+val recipeService = retrofit.create(ApiService::class.java)
+```
+
+The `suspend` keyword before the function declaration allows the function to run asynchronously without blocking the main thread of the application. It is a part of the **Coroutine API** that provide a structured way to manage concurrency. Coroutines is a powerful and lightweight concurrency framework in Kotlin, specifically designed for handling asynchronous operations.
 
 # Jetpack compose
 
