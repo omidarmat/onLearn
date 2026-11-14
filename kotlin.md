@@ -1172,7 +1172,7 @@ import retrofit2.http.GET;
 // Initializing Retrofit
 private val retrofit = Retrofit
     .Builder()
-    .baseUrl("https://www.themealdb.com/api/json/v1/")
+    .baseUrl("https://www.themealdb.com/api/json/v1/") // normally comes from env
     .addConverterFactory(GsonConverterFactory.create())
     .build()
 
@@ -1186,7 +1186,140 @@ interface ApiService {
 val recipeService = retrofit.create(ApiService::class.java)
 ```
 
-The `suspend` keyword before the function declaration allows the function to run asynchronously without blocking the main thread of the application. It is a part of the **Coroutine API** that provide a structured way to manage concurrency. Coroutines is a powerful and lightweight concurrency framework in Kotlin, specifically designed for handling asynchronous operations.
+> Notice the top-level `private` variable declaration for `retrofit`. So this variable will not be accessible from outside this file.
+
+The `suspend` keyword before the function declaration allows the function to run asynchronously without blocking the main thread of the application. It is a part of the **Coroutine API** that provides a structured way to manage concurrency. Coroutines is a powerful and lightweight concurrency framework in Kotlin, specifically designed for handling asynchronous operations.
+
+The next step is to use this API service in a view model:
+
+```java
+data class RecipeState(
+  val loading: Boolean = true,
+  val list: List<Category> = emptyList(),
+  val error: String? = null
+)
+
+class MainViewModel: ViewModel() {
+  private val _categoriesState = mutableStateOf(RecipeState())
+  val categoriesState: State<RecipeState> = _categoriesState
+
+  init {
+    fetchCategories()
+  }
+
+  private fun fetchCategories() {
+    viewModelScope.launch {
+      try {
+        val response = recipeService.getCategories()
+        _categoriesState.value = _categoriesState.value.copy(
+          list = response.categories,
+          loading = false,
+          error = null
+        )
+      } catch(err: Exception) {
+        _categoriesState.value = _categoriesState.value.copy(
+          loading = false,
+          error = "Error fetching categories ${err.message}"
+        )
+      }
+    }
+  }
+}
+```
+
+This view model is then going to be used in a **View** where the output is displayed as UI to the user:
+
+```java
+@Composable
+fun RecipeScreen(modifier: Modifier = Modifier) {
+    val recipeViewModel: MainViewModel = viewModel()
+    val viewState by recipeViewModel.categoriesState
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            viewState.loading -> {
+                CircularProgressIndicator(modifier.align(Alignment.Center))
+            }
+
+            viewState.error != null -> {
+                Text("Error occurred!")
+            }
+
+            else -> {
+                CategoryScreen(viewState.list)
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryScreen(categories: List<Category>) {
+    LazyVerticalGrid(GridCells.Fixed(2), modifier = Modifier.fillMaxSize()) {
+        items(categories) {
+            category -> CategoryItem(category = category)
+        }
+    }
+}
+
+@Composable
+fun CategoryItem(category: Category) {
+    Column(
+        modifier = Modifier.padding(8.dp).fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(category.strCategoryThumb),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().aspectRatio(1f)
+        )
+
+        Text(
+            text = category.strCategory,
+            color = Color.Black,
+            style = TextStyle(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+```
+
+Right now if you try to run this application, it will stop right away. That is because you have not added the internet access permission to the app. This should be done in the `AndroidManifest.xml` file of the project:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- This signifies the internet access permission for the app -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyRecipeApp">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.MyRecipeApp"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+```
+
+Now your app has access to internet and can actually fetch data.
 
 # Jetpack compose
 
@@ -1275,6 +1408,62 @@ LazyColumn(
 data class ShoppingItem (val id: Int, var name: String, var quantity: Int, var isEditing: Boolean = false)
 ```
 
+## Lazy vertical grid
+
+Jetpack Compose's `LazyVerticalGrid` basically allows you to render a list of items in a grid. You can determin the number of columns for the grid:
+
+```java
+import androidx.compose.foundation.lazy.grid.GridCells;
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid;
+import androidx.compose.foundation.lazy.grid.items;
+
+@Composable
+fun CategoryScreen(categories: List<Category>) {
+    LazyVerticalGrid(GridCells.Fixed(2), modifier = Modifier.fillMaxSize()) {
+        items(categories) {
+            category -> CategoryItem(category = category)
+        }
+    }
+}
+```
+
+## The `Modifier`
+
+The `Modifier` object allows you to control a composable element's styling attributes with more detailed properties.
+
+### `padding`
+
+You can add padding to all or any direction of a composable element:
+
+```java
+@Composable
+fun CategoryItem(category: Category) {
+    Column(
+        modifier = Modifier.padding(8.dp).fillMaxSize(), // 8dp applies to all directions of the column
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(category.strCategoryThumb),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().aspectRatio(1f)
+        )
+
+        Text(
+            text = category.strCategory,
+            color = Color.Black,
+            style = TextStyle(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(top = 4.dp) // 4dp applies only to top of the text
+        )
+    }
+}
+```
+
+### `horizontalAlignment`
+
+### `verticalArrangement`
+
+### `height`
+
 ## MVVM
 
 To describe the MVVM architecture, let's go over an example. Imagine you want to build a simple counter application where you can increment/decrement a count number by pressing the corresponding buttons. Now to implement this simple app using MVVM architecture you should first build a `ViewModel`:
@@ -1299,7 +1488,7 @@ class CounterViewModel : ViewModel() {
 }
 ```
 
-Now any `@Composable` function can accept a `viewModel` parameter and you can pass the view model created above to it. Where you display the output to the user in the form UI, it is called `View`. So:
+Now any `@Composable` function can accept a `viewModel` parameter and you can pass the view model created above to it. Where you display the output to the user in the form of UI, it is called `View`. So:
 
 ```java
 @Composable
@@ -1348,7 +1537,7 @@ class CounterRepository {
 }
 ```
 
-Now according to this `CounterModel` and `CounterRepository` which act as the Model together, you should apply some changes to the `ViewModel` to match it:
+Now according to this `CounterModel` and `CounterRepository` which act as the **model** together, you should apply some changes to the `ViewModel` to match it:
 
 ```java
 class CounterViewModel() : ViewModel() {
