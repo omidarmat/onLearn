@@ -1464,6 +1464,18 @@ fun CategoryItem(category: Category) {
 
 ### `height`
 
+### `verticalScroll`
+
+This is used to implement vertical scrolling on a given composable. The `verticalScroll` method should receive the `rememberScrollState()` function call as argument.
+
+```java
+Text(
+      text = category.strCategoryDescription,
+      textAlign = TextAlign.Justify,
+      modifier = Modifier.verticalScroll(rememberScrollState())
+    )
+```
+
 ## MVVM
 
 To describe the MVVM architecture, let's go over an example. Imagine you want to build a simple counter application where you can increment/decrement a count number by pressing the corresponding buttons. Now to implement this simple app using MVVM architecture you should first build a `ViewModel`:
@@ -1557,3 +1569,510 @@ class CounterViewModel() : ViewModel() {
     }
 }
 ```
+
+## Navigation
+
+In order to provide the user with a multi-page application, you should be able to implement navigation in your app. Take these 2 files as the base for our navigation system:
+
+```java
+// FirstScree.kt
+@Composable
+fun FirstScreen() {
+    val name = remember {
+        mutableStateOf("")
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("This is the first screen", fontSize = 24.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = name.value,
+            onValueChange = {
+                name.value = it
+            }
+        )
+        Button(onClick = {
+
+        }) {
+            Text("Go to next screen")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FirstPreview() {
+    FirstScreen()
+}
+```
+
+```java
+// SecondScreen.kt
+@Composable
+fun SecondScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("This is the second screen", fontSize = 24.sp)
+        Text("Welcome", fontSize = 24.sp)
+        Button(onClick = {
+
+        }) {
+            Text("Go to first screen")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SecondPreview() {
+  SecondScreen()
+}
+```
+
+You then need to use `NavHost` and `NavController` to implement the actual navigation. In order to be able to use these, you should first add some dependencies to your app-level `build.gradle.kts` file:
+
+```java
+dependencies {
+    val nav_version = "2.7.4"
+    implementation("androidx.navigation:navigation-compose:$nav_version")
+}
+```
+
+Then in your `MainActivity.kt` file, create a `@Composable` for your whole app, in which you will then setup the navigation system using `rememberNavController`:
+
+```java
+// MainActivity.kt
+@Composable
+fun MyApp() {
+    val navController = rememberNavController()
+}
+```
+
+The `NavController` is the central API for the `Navigation` component. It is stateful, and keeps track of the back stack of composables that make up the screens in your app and the state of each screen.
+
+> Back stack means that if you move from screen 1 to 2 and then to 3, going back from screen 3 will lead you to screen 2, and goind back from screen 2 will lead you to screen 1.
+
+You now need to set up a `NavHost`. It requires a `NavController` which is already set up at this stage.
+
+```java
+// MainActivity.kt
+@Composable
+fun MyApp() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = "firstScreen"
+    ) {
+        composable("firstscreen") {}
+        composable("secondscreen") {}
+    }
+}
+```
+
+Let's now go back and define what should actually be done in the buttons of `firstScreen` and `secondScreen` composables. Basically, each composable screen that is able to initiate a navigation to another composable screen should receive a function as property (parameter) and that function should be called by the button that triggers the navigation:
+
+```java
+@Composable
+fun FirstScreen(
+    navigationToSecondScreen: () -> Unit
+) {
+    val name = remember {
+        mutableStateOf("")
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("This is the first screen", fontSize = 24.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = name.value,
+            onValueChange = {
+                name.value = it
+            }
+        )
+        Button(onClick = {
+            navigationToSecondScreen()
+        }) {
+            Text("Go to next screen")
+        }
+    }
+}
+```
+
+A similar thing should be done for `SecondScreen` composable. Then go back to `MainActivity` where you are setting up the navigation:
+
+```java
+@Composable
+fun MyApp() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = "firstScreen"
+    ) {
+        composable("firstscreen") {
+            FirstScreen {
+                navController.navigate("secondscreen")
+            }
+        }
+        composable("secondscreen") {
+            SecondScreen {
+                navController.navigate("firstscreen")
+            }
+        }
+    }
+}
+```
+
+Notice how the function is passed to the composables of `FirstScreen` and `SecondScreen`. This can be written as below and it would make no difference:
+
+```java
+@Composable
+fun MyApp() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = "firstScreen"
+    ) {
+        composable("firstscreen") {
+            FirstScreen(
+                navigationToSecondScreen = {
+                    navController.navigate("secondscreen")
+                }
+            )
+        }
+        composable("secondscreen") {
+            SecondScreen(
+                navigateToFirstScreen = {
+                    navController.navigate("firstscreen")
+                }
+            )
+        }
+    }
+}
+```
+
+Also, there is this routing setup convention which helps to prevent mistakes from happening when implementing navigation. The convention basically involves implementing a `sealed class` that would hold different routes (screens) that would be available in the app, so when you need to implement some navigation, you would simply refer to the class properties instead of writing the route string. Here is the class implementation:
+
+```java
+sealed class Screen(val route: String) {
+    object RecipeScreen: Screen("recipescreen")
+    object DetailScreen: Screen("detailscreen")
+}
+```
+
+And then when you want to implement routing and navigation in your app you can do:
+
+```java
+@Composable
+fun RecipeApp(navController: NavHostController) {
+    val recipeViewModel: MainViewModel = viewModel()
+    val viewState by recipeViewModel.categoriesState
+
+    NavHost(
+        navController = navController,
+        startDestination = Screen.RecipeScreen.route
+    ) {
+        composable(Screen.RecipeScreen.route) {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                RecipeScreen(
+                    navigateToDetail = {
+                        navController.currentBackStackEntry?.savedStateHandle?.set("cat", it)
+                        navController.navigate(Screen.DetailScreen.route)
+                    },
+                    viewState = viewState,
+                    innerPadding = innerPadding
+                )
+            }
+        }
+
+        composable(route = Screen.DetailScreen.route) {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                val category = navController
+                    .previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<Category>("cat") ?: Category("", "", "", "")
+
+                CategoryDetailScreen(
+                    category = category,
+                    innerPadding = innerPadding
+                )
+            }
+        }
+    }
+}
+```
+
+> Notice how we are using `Screen.RecipeScreen.route` instead of writing the route string.
+
+Now use `MyApp` composable in your whole app setup and test it. You'll see that you can navigate between that two screens. But let's now go further and explore how to pass variables from one screen to another.
+
+### Passing variables through navigation
+
+Following the previous example, the first step to pass variables from one screen to another is to make the destination composable screen accept the variable:
+
+```java
+// SecondScreen.kt
+@Composable
+fun SecondScreen(
+    name: String,
+    navigateToFirstScreen: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("This is the second screen", fontSize = 24.sp)
+        Text("Welcome $name", fontSize = 24.sp)
+        Button(onClick = {
+            navigateToFirstScreen()
+        }) {
+            Text("Go to first screen")
+        }
+    }
+}
+```
+
+Now where you actually pass the variable, is where the navigation is being triggered, so that would be in the source composable screen:
+
+```java
+// FirstScreen.kt
+@Composable
+fun FirstScreen(
+    navigationToSecondScreen: (String) -> Unit
+) {
+    val name = remember {
+        mutableStateOf("")
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("This is the first screen", fontSize = 24.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = name.value,
+            onValueChange = {
+                name.value = it
+            }
+        )
+        Button(onClick = {
+            navigationToSecondScreen(name.value)
+        }) {
+            Text("Go to next screen")
+        }
+    }
+}
+```
+
+Notice that now the type definition for `navigationToSecondScreen` accepts a string parameter. Now another part is missing in `MainActivity`:
+
+```java
+// MainActivity.kt
+@Composable
+fun MyApp() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = "firstScreen"
+    ) {
+        composable("firstscreen") {
+            FirstScreen(
+                navigationToSecondScreen = { name ->
+                    navController.navigate("secondscreen/$name")
+                }
+            )
+        }
+        composable("secondscreen/{name}") {
+            val name = it.arguments?.getString("name") ?: "No Name"
+
+            SecondScreen(
+                name = name,
+                navigateToFirstScreen = {
+                    navController.navigate("firstscreen")
+                }
+            )
+        }
+    }
+}
+```
+
+Notice that since we are now passing the variable to `navigationToSecondScreen(name.value)` you now have access to it (`name ->`) in the function body that is being passed to the `FirstScreen` composable screen. You can use it to add a path to the second composable screen route. This additional path can then be tracked by the second composable sreen route as:
+
+```java
+val name = it.arguments?.getString("name") ?: "No Name"
+```
+
+...where `it` is of type `NavBackStackEntry`, and `name` is then passed to the `SecondScreen` composable screen.
+
+But what if you needed to pass an entire object as a variable through navigation, and not just a single string value? You would have to use serialization.
+
+### Serialization
+
+Serialization allows you to pass objects as values through navigation. In order to make a specific data class serializable you need to mark it with:
+
+```java
+import kotlinx.parcelize.Parcelize;
+
+@Parcelize
+data class Category (
+    val idCategory: String,
+    val strCategory: String,
+    val strCategoryThumb: String,
+    val strCategoryDescription: String
+)
+```
+
+Then when you pass it between screens while navigation, it would become properly serialized. By "pass it between screens while navigation", we specifically mean:
+
+```java
+navController.currentBackStackEntry?.savedStateHandle?.set("cat", it)
+```
+
+...where `it` is of type `Category`. This is where it gets serialized and then de-serialized to the original object so it can be used in the navigation destination.
+
+## Location services
+
+When you are going to build an application in which you need to acquire user's location, you need to add the corresponding premission to the application's `AndroidManifest.xml` file:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<!-- This permission is used to acquire an approximation of user's location, useful for figuring out which country, state or city the user lives in. This service does not use GPS. -->
+
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- This permission is used to acquire precise user's location, useful for navigation services. This service consumes the phone's battery with a high rate since it activates and uses GPS on the phone. -->
+```
+
+When you want to implement location services in your app, it is useful to set up a helper class that helps you with checking if you have the corresponding permission.
+
+```java
+// LocationUtils.kt
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
+
+class LocationUtils(val context: Context) {
+    fun hasLocationPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+                &&
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+}
+```
+
+But what is the `Context`? Context is the context in which your application is running. Let's see how you would use this helper class while asking the user for location services permission.
+
+```java
+@Composable
+fun LocationDisplay(
+    locationUtils: LocationUtils,
+    context: Context,
+    innerPadding: PaddingValues
+) {
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = {
+            permissions ->
+            if(
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                &&
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            ) {
+                // have access to location
+            } else {
+                // ask for permission
+                val rationaleRequired = ActivityCompat.shouldShowRequestPermissionRationale(
+                    context as MainActivity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) || ActivityCompat.shouldShowRequestPermissionRationale(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+
+                if(rationaleRequired) {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required for this feature to work.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required. Please enable it in your settings.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    )
+
+    Box(
+        modifier = Modifier.padding(innerPadding)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Location not available")
+
+            Button(
+                onClick = {
+                    if(locationUtils.hasLocationPermission(context)) {
+                        // update the location
+                    } else {
+                        // request location permission
+                        requestPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Get location")
+            }
+        }
+
+    }
+
+}
+```
+
+You would then use this `LocationDisplay` composable in another wrapper composable which would actually be your app:
+
+```java
+@Composable
+fun MyApp(
+    innerPadding: PaddingValues
+) {
+    val context = LocalContext.current
+    val locationUtils = LocationUtils(context)
+
+    LocationDisplay(locationUtils, context, innerPadding)
+}
+```
+
+Notice that the context is `LocalContext.current`.
