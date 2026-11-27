@@ -1959,6 +1959,8 @@ When you are going to build an application in which you need to acquire user's l
 <!-- This permission is used to acquire precise user's location, useful for navigation services. This service consumes the phone's battery with a high rate since it activates and uses GPS on the phone. -->
 ```
 
+### Asking for permission
+
 When you want to implement location services in your app, it is useful to set up a helper class that helps you with checking if you have the corresponding permission.
 
 ```java
@@ -2076,3 +2078,199 @@ fun MyApp(
 ```
 
 Notice that the context is `LocalContext.current`.
+
+### Getting the location
+
+Now that you have asked for permission, you need to get the actual location data. To do this there are several things you should take care of:
+
+1. Add another method to the `LocationUtils` class to get the actual location data; name it `requestLocationUpdates`.
+2. Create a view model for the location service; name it `LocationViewModel`
+3. Call the new method from `LocationUtils` to get the location data.
+
+Let's first add the new method to the `LocationUtils` class. There are several things that should be implmeneted:
+
+- Set up a location provider client (`getFusedLocationProviderClient()`) and store it in a private variable; name it `_fusedLocationClient`.
+- Call `requestLocationUpdates()` on the `_fusedLocationClient` variable and pass it 3 parameters: location request, location callback, and the main looper.
+- Define and build the location request using `Builder()` on `LocationRequest` and then calling the `build()` method on it.
+- Define the location callback by creating an instance of `LocationCallback` and overriding the `onLocationResult()` method. In the function override, format the location data so it matches the format your view model needs, and then update the location in your view model.
+
+```java
+class LocationUtils(val context: Context) {
+    private val _fusedLocationClient: FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(context)
+
+    @SuppressLint("MissingPermission")
+    fun requestLocationUpdates(viewModel: LocationViewModel) {
+        val locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                super.onLocationResult(locationResult)
+                locationResult.lastLocation?.let {
+                    val location = LocationData(latitude = it.latitude, longitude = it.longitude)
+                    viewModel.updateLocation(location)
+                }
+            }
+        }
+
+        val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            1000
+        ).build()
+
+        _fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
+    }
+
+    fun hasLocationPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+                &&
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+}
+```
+
+Let's now create the `LocationViewModel`:
+
+```java
+class LocationViewModel: ViewModel() {
+    private val _location = mutableStateOf<LocationData?>(null)
+    val location : State<LocationData?> = _location
+
+    fun updateLocation(newLocation: LocationData) {
+        _location.value = newLocation
+    }
+}
+```
+
+Now let's update the `LocationDisplay` composable to make it work with the view model:
+
+```java
+@Composable
+fun LocationDisplay(
+    locationUtils: LocationUtils,
+    viewModel: LocationViewModel,
+    context: Context,
+    innerPadding: PaddingValues
+) {
+    val location = viewModel.location.value
+
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = {
+            permissions ->
+            if(
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                &&
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            ) {
+                // have access to location
+                locationUtils.requestLocationUpdates(viewModel)
+            } else {
+                // ask for permission
+                val rationaleRequired = ActivityCompat.shouldShowRequestPermissionRationale(
+                    context as MainActivity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) || ActivityCompat.shouldShowRequestPermissionRationale(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+
+                if(rationaleRequired) {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required for this feature to work.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required. Please enable it in your settings.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    )
+
+    Box(
+        modifier = Modifier.padding(innerPadding)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if(location != null) {
+                Text("Address: ${location.latitude}, ${location.longitude}")
+            } else {
+                Text("Location not available")
+            }
+
+
+            Button(
+                onClick = {
+                    if(locationUtils.hasLocationPermission(context)) {
+                        // update the location
+                        locationUtils.requestLocationUpdates(viewModel)
+                    } else {
+                        // request location permission
+                        requestPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Get location")
+            }
+        }
+
+    }
+
+}
+```
+
+And now update the `MyApp` composable to make it pass the view model to the `LocationDisplay`:
+
+```java
+@Composable
+fun MyApp(
+    innerPadding: PaddingValues,
+    viewModel: LocationViewModel
+) {
+    val context = LocalContext.current
+    val locationUtils = LocationUtils(context)
+
+
+    LocationDisplay(locationUtils, viewModel, context, innerPadding)
+}
+```
+
+And finally in the main activity:
+
+```java
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            val viewModel : LocationViewModel = viewModel()
+            LocationBasicsTheme {
+                Scaffold( modifier = Modifier.fillMaxSize() ) { innerPadding ->
+                        MyApp(innerPadding, viewModel)
+                }
+            }
+        }
+    }
+}
+```
+
+### Converting location to address
