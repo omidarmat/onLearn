@@ -2094,6 +2094,20 @@ Let's first add the new method to the `LocationUtils` class. There are several t
 - Define and build the location request using `Builder()` on `LocationRequest` and then calling the `build()` method on it.
 - Define the location callback by creating an instance of `LocationCallback` and overriding the `onLocationResult()` method. In the function override, format the location data so it matches the format your view model needs, and then update the location in your view model.
 
+These requirements come from several location-related imports:
+
+```java
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.maps.model.LatLng;
+```
+
+Now let's implement:
+
 ```java
 class LocationUtils(val context: Context) {
     private val _fusedLocationClient: FusedLocationProviderClient =
@@ -2274,3 +2288,38 @@ class MainActivity : ComponentActivity() {
 ```
 
 ### Converting location to address
+
+In order to convert a location (lat, lng) to a readable address you can use the `Geocoder` from `android.location.Geocoder`. Let's add another method to the `LocationUtils` class:
+
+```java
+fun reverseGeocodeLocation(location: LocationData): String {
+        val geocoder = Geocoder(context, Locale.getDefault())
+        val coordinate = LatLng(location.latitude, location.longitude)
+        val addresses: MutableList<Address?>? =
+            geocoder.getFromLocation(coordinate.latitude, coordinate.longitude, 1)
+            // 3rd param is maxResults which is set to 1 here
+
+        return if(addresses?.isNotEmpty() == true) {
+            addresses[0]?.getAddressLine(0) ?: "Address not found"
+        } else {
+            "Address not found"
+        }
+    }
+```
+
+> Notice that `getFromLocation` method on `geocoder` is deprecated but it works for now. Refer to Android documents for updates.
+
+### Displaying locations on map
+
+In order to add a map to your application you need several dependencies to be added to your app-level `build.gradle.kts` file:
+
+```java
+dependencies {
+    implementation("com.google.maps.android:maps-compose:2.15.0")
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("androidx.navigation:navigation-compose:2.7.4")
+}
+```
